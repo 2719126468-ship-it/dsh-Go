@@ -25,6 +25,11 @@ data class RuntimeManifest(
     val launchArgv: List<String>,
     val launchEnv: Map<String, String>,
     val raw: JSONObject,
+    /**
+     * False for a flavor that ships no guest runtime (armeabi-v7a: Node has no 32-bit
+     * Linux build from v24 on). The app then runs as a client of remote hosts only.
+     */
+    val bundled: Boolean = true,
 ) {
     fun archivesForInstall(hasRootfs: Boolean): List<RuntimeArchive> =
         if (hasRootfs) archives.takeLast(1) else archives
@@ -36,6 +41,28 @@ data class RuntimeManifest(
             val text = context.assets.open("$ASSET_DIR/manifest.json").bufferedReader().use { it.readText() }
             return fromJson(JSONObject(text))
         }
+
+        /** Null when this APK carries no guest runtime (see [bundled]). */
+        fun loadOrNull(context: Context): RuntimeManifest? = try {
+            load(context)
+        } catch (_: java.io.FileNotFoundException) {
+            null
+        } catch (_: java.io.IOException) {
+            null
+        }
+
+        /** Placeholder for a flavor without a runtime: every install/start refuses with a reason. */
+        fun absent(): RuntimeManifest = RuntimeManifest(
+            runtimeVersion = "",
+            abi = "",
+            archives = emptyList(),
+            dshVersion = "",
+            nodeVersion = "",
+            launchArgv = emptyList(),
+            launchEnv = emptyMap(),
+            raw = JSONObject(),
+            bundled = false,
+        )
 
         internal fun fromJson(json: JSONObject): RuntimeManifest {
             val schema = try { if (json.has("schema")) json.getInt("schema") else 1 }

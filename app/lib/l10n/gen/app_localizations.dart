@@ -20732,6 +20732,24 @@ abstract class L10n {
   /// **'石墨'**
   String get phoneAccentGraphite;
 
+  /// No description provided for @phoneAccentCinnabar.
+  ///
+  /// In zh, this message translates to:
+  /// **'朱砂'**
+  String get phoneAccentCinnabar;
+
+  /// No description provided for @phoneAccentMatcha.
+  ///
+  /// In zh, this message translates to:
+  /// **'柚绿'**
+  String get phoneAccentMatcha;
+
+  /// No description provided for @phoneAccentAbyss.
+  ///
+  /// In zh, this message translates to:
+  /// **'深海'**
+  String get phoneAccentAbyss;
+
   /// No description provided for @phoneAccentCustom.
   ///
   /// In zh, this message translates to:

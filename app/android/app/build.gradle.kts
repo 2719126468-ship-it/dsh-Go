@@ -61,11 +61,22 @@ android {
             dimension = "abi"
             ndk { abiFilters += "arm64-v8a" }
         }
+        // 32 位 ARM（Android 8.1 老设备 / 破解点读笔）。这一档不带 Linux 运行时：
+        // Node 自 v24 起没有 32 位 Linux 构建，DSH 又要求 node >= 24.9，所以这个包
+        // 只做远端主机的客户端（登录/会话/插件市场/皮肤全都在），本机引擎不出现。
+        create("arm32") {
+            dimension = "abi"
+            ndk { abiFilters += "armeabi-v7a" }
+        }
         create("x64") {
             dimension = "abi"
             ndk { abiFilters += "x86_64" }
         }
     }
+
+    // 没有运行时的 flavor：不打包 runtime/out 里的任何资源，Assets 目录里也就没有
+    // manifest.json，Kotlin 侧 RuntimeManifest.loadOrNull 返回 null，按「无内置运行时」处理。
+    val bundledAbis = setOf("arm64-v8a", "x86_64")
 
     sourceSets {
         getByName("main") {

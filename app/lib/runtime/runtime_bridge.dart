@@ -143,6 +143,7 @@ class RuntimeFailure {
 class RuntimeStatus {
   const RuntimeStatus({
     required this.phase,
+    this.bundledRuntime = true,
     this.abi,
     this.bundledVersion,
     this.installedVersion,
@@ -180,6 +181,11 @@ class RuntimeStatus {
   const RuntimeStatus.unknown() : this(phase: RuntimePhase.notInstalled);
 
   final RuntimePhase phase;
+
+  /// This APK flavor carries a local Linux runtime. False for armeabi-v7a: that
+  /// build runs as a client of remote hosts only, and the setup page says so
+  /// instead of asking to install something that is not in the package.
+  final bool bundledRuntime;
   final String? abi;
   final String? bundledVersion;
   final String? installedVersion;
@@ -277,6 +283,7 @@ class RuntimeStatus {
 
   factory RuntimeStatus.fromMap(Map<Object?, Object?> map) => RuntimeStatus(
     phase: RuntimePhase.parse(map['phase']),
+    bundledRuntime: map['bundledRuntime'] != false,
     abi: map['abi'] as String?,
     bundledVersion: map['bundledVersion'] as String?,
     installedVersion: map['installedVersion'] as String?,

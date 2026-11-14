@@ -47,8 +47,10 @@ OnboardingStep? initialOnboardingStep({
   bool hasCustomProvider = false,
 }) {
   final installedCurrent = status.installedVersion != null && status.installedVersion == status.bundledVersion;
+  // armeabi-v7a 不带运行时：直接当远端客户端用，不要引导去安装包里没有的东西。
+  if (!status.bundledRuntime && !hasApiKey && !hasCustomProvider && !prefs.keySkipped) return OnboardingStep.apiKey;
   final needsRuntime = switch (status.phase) {
-    RuntimePhase.notInstalled || RuntimePhase.installing => true,
+    RuntimePhase.notInstalled || RuntimePhase.installing => status.bundledRuntime,
     RuntimePhase.error => !installedCurrent,
     _ => false,
   };

@@ -51,7 +51,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     private val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val workspaceRecovery = WorkspaceRecoveryMode(prefs.getBoolean(K_WORKSPACE_RECOVERY, false))
 
-    val manifest: RuntimeManifest by lazy { RuntimeManifest.load(app) }
+    val manifest: RuntimeManifest by lazy { RuntimeManifest.loadOrNull(app) ?: RuntimeManifest.absent() }
     private val installer by lazy { RuntimeInstaller(app, manifest, ::note) }
     @Volatile private var process: DshProcess? = null
     @Volatile private var lastLaunch: LaunchDiagnostics? = null
@@ -113,7 +113,8 @@ class RuntimeController private constructor(private val app: Context) : DshProce
 
     init {
         phase = try {
-            if (installer.isCurrent()) Phase.INSTALLED else Phase.NOT_INSTALLED
+            if (!manifest.bundled) Phase.NOT_INSTALLED
+            else if (installer.isCurrent()) Phase.INSTALLED else Phase.NOT_INSTALLED
         } catch (e: Exception) {
             error = "manifest: ${e.message}"
             Phase.ERROR
@@ -124,6 +125,8 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     fun removeSink(sink: EventSink) = synchronized(sinks) { sinks -= sink }
 
     fun status(): Map<String, Any?> = mapOf(
+        // 这个 flavor 是否自带 Linux 运行时（armeabi-v7a 不带：Node 自 v24 起没有 32 位 Linux 包）。
+        "bundledRuntime" to runCatching { manifest.bundled }.getOrDefault(true),
         "abi" to (runCatching { manifest.abi }.getOrNull() ?: Build.SUPPORTED_ABIS.firstOrNull()),
         "bundledVersion" to runCatching { manifest.runtimeVersion }.getOrNull(),
         "installedVersion" to runCatching { installer.installedVersion() }.getOrNull(),
@@ -234,6 +237,8 @@ class RuntimeController private constructor(private val app: Context) : DshProce
 
     /** [dropKept]: give up what a reset kept but cannot be put back (see [KeepFailed]). */
     @Synchronized fun install(dropKept: Boolean = false, onDone: (Throwable?) -> Unit) {
+        // 这个 flavor 不含运行时（armeabi-v7a）：不安装，只做远端主机的客户端。
+        if (!manifest.bundled) return onDone(RuntimeUpgradeBlocked("noBundledRuntime"))
         if (phase == Phase.INSTALLING) return onDone(null)
         val current = runCatching { installer.isCurrent() }.getOrElse { return onDone(it) }
         if (current && phase != Phase.ERROR && !resetting) {
@@ -285,6 +290,12 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     ) {
         pendingPhoneStorage = phoneStorage
         pendingVisualReplies = visualReplies
+        if (!manifest.bundled) {
+            error = "noBundledRuntime"
+            log("[dsh-app] this build ships no local runtime; connect a remote host instead", "system")
+            emitStatus()
+            return
+        }
         if (phase == Phase.RUNNING || phase == Phase.STARTING) return
         pendingEnv = env
         val next = SafePolicy.onStartRequest(safeState, mode)
@@ -514,6 +525,11 @@ class RuntimeController private constructor(private val app: Context) : DshProce
                 if (!safe && !speechOverlay) {
                     log("[dsh-app] voice input overlay not written; the voice model keeps DSH's defaults", "system")
                 }
+                // 定制层：破甲预设 + 实用技能 + 插件 + 皮肤资源。安全模式不挂。
+                val customOverlay = !safe && CustomLayer.writeFiles(app, installer.rootfs)
+                if (!safe && !customOverlay) {
+                    log("[dsh-app] 定制层未写入；本次启动没有破甲预设 / 附加技能 / 预装插件", "system")
+                }
                 if (pendingPhoneStorage && !storage) log("[dsh-app] phone storage requested but permission not granted", "system")
                 val env = LinkedHashMap<String, String>()
                 env["TZ"] = java.util.TimeZone.getDefault().id
@@ -565,7 +581,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
                 val direct = directEngine()
                 val tawc = tawcEngine()
                 p.start(env, if (storage) PhoneStorage.binds() else emptyList(), safe, phone, direct.requested, direct.failed, searchOverlay, authOverlay, speechOverlay,
-                    tawcEngine = tawc.saved == true, tawcFailed = tawc.failed) { actualDirect ->
+                    tawcEngine = tawc.saved == true, tawcFailed = tawc.failed, customOverlay = customOverlay) { actualDirect ->
                     // SafeMode.prepare writes its own briefing; leave the original home untouched.
                     if (!safe) GuestSetup.writeAgentsMd(installer.rootfs, storage, phone, pendingVisualReplies, actualDirect)
                 }

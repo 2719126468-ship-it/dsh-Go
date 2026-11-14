@@ -11128,6 +11128,15 @@ class L10nZh extends L10n {
   String get phoneAccentGraphite => '石墨';
 
   @override
+  String get phoneAccentCinnabar => '朱砂';
+
+  @override
+  String get phoneAccentMatcha => '柚绿';
+
+  @override
+  String get phoneAccentAbyss => '深海';
+
+  @override
   String get phoneAccentCustom => '自定义';
 
   @override

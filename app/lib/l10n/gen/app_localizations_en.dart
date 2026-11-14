@@ -11697,6 +11697,15 @@ class L10nEn extends L10n {
   String get phoneAccentGraphite => 'Slate';
 
   @override
+  String get phoneAccentCinnabar => 'Cinnabar';
+
+  @override
+  String get phoneAccentMatcha => 'Matcha';
+
+  @override
+  String get phoneAccentAbyss => 'Abyss';
+
+  @override
   String get phoneAccentCustom => 'Custom';
 
   @override

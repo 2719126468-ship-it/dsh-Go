@@ -11,7 +11,12 @@ extension RuntimeMissing on RuntimeStatus {
   /// uninstalled. Every real report names the bundled runtime; a status
   /// without one is no report at all (no native side: tests, other
   /// platforms) and counts as unknown, not missing.
-  bool get runtimeMissing => phase == RuntimePhase.notInstalled && bundledVersion != null;
+  bool get runtimeMissing =>
+      phase == RuntimePhase.notInstalled && bundledVersion != null && bundledRuntime;
+
+  /// This build has no local runtime to install (armeabi-v7a): there is nothing
+  /// to unpack, so the setup pages offer remote hosts instead.
+  bool get noBundledRuntime => !bundledRuntime;
 }
 
 /// The phone's memory and free storage, and the bundled runtime's unpacked

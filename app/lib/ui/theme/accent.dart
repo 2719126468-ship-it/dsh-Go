@@ -72,6 +72,9 @@ class AppAccent {
         'turquoise' => appL10n.phoneAccentTurquoise,
         'amber' => appL10n.phoneAccentAmber,
         'graphite' => appL10n.phoneAccentGraphite,
+        'cinnabar' => appL10n.phoneAccentCinnabar,
+        'matcha' => appL10n.phoneAccentMatcha,
+        'abyss' => appL10n.phoneAccentAbyss,
         _ => appL10n.phoneAccentCustom,
       };
 
@@ -255,8 +258,77 @@ class AppAccent {
     hazeDark: Color(0xFF4A4D52),
   );
 
+  /// 朱砂:赤陶红(25°,彩度 0.115)。深色主色偏陶粉,用作消息主色时不刺眼;
+  /// 中性色带一点暖砂,页面像旧纸。
+  static const cinnabar = AppAccent(
+    id: 'cinnabar',
+    seed: Color(0xFFA44E49),
+    pressed: Color(0xFF8E3E3A),
+    container: Color(0xFFFCE1DE),
+    onContainer: Color(0xFF58221F),
+    bubble: Color(0xFFFADCD9),
+    glow: Color(0xFFF3B1AA),
+    seedDark: Color(0xFFE59D96),
+    pressedDark: Color(0xFFD18A84),
+    onSeedDark: Color(0xFF2F1412),
+    containerDark: Color(0xFF58312E),
+    onContainerDark: Color(0xFFF3DAD8),
+    bubbleDark: Color(0xFF412B29),
+    glowDark: Color(0xFF935550),
+    tintHue: 30,
+    tintChroma: 0.75,
+    haze: Color(0xFFEBC7C3),
+    hazeDark: Color(0xFF644340),
+  );
+
+  /// 柚绿:抹茶苔绿(145°,彩度 0.105)。低饱和、偏灰绿,长时间看不抢眼;
+  /// 中性色带一丝青苔,光晕配浅天青。
+  static const matcha = AppAccent(
+    id: 'matcha',
+    seed: Color(0xFF3E7941),
+    pressed: Color(0xFF2F6633),
+    container: Color(0xFFDDEDDD),
+    onContainer: Color(0xFF193F1C),
+    bubble: Color(0xFFD8EAD8),
+    glow: Color(0xFFA8D1A8),
+    seedDark: Color(0xFF90BD90),
+    pressedDark: Color(0xFF7DAA7E),
+    onSeedDark: Color(0xFF102211),
+    containerDark: Color(0xFF2B452C),
+    onContainerDark: Color(0xFFD7E6D7),
+    bubbleDark: Color(0xFF283628),
+    glowDark: Color(0xFF4C754D),
+    tintHue: 150,
+    tintChroma: 0.7,
+    haze: Color(0xFFC2D8C2),
+    hazeDark: Color(0xFF3F533F),
+  );
+
+  /// 深海:冷调青蓝(232°,彩度 0.12)。比雾蓝更沉、更青,像深水;
+  /// 深色主色明度抬高到 0.74,深色界面里仍是可点的亮块。
+  static const abyss = AppAccent(
+    id: 'abyss',
+    seed: Color(0xFF006C93),
+    pressed: Color(0xFF005A7B),
+    container: Color(0xFFD4ECF9),
+    onContainer: Color(0xFF003B52),
+    bubble: Color(0xFFCEE9F8),
+    glow: Color(0xFF8DCEF0),
+    seedDark: Color(0xFF6AB3D9),
+    pressedDark: Color(0xFF57A0C5),
+    onSeedDark: Color(0xFF00212F),
+    containerDark: Color(0xFF144358),
+    onContainerDark: Color(0xFFCFE5F1),
+    bubbleDark: Color(0xFF1E3540),
+    glowDark: Color(0xFF2A7192),
+    tintHue: 235,
+    tintChroma: 0.85,
+    haze: Color(0xFFB6D7E9),
+    hazeDark: Color(0xFF315263),
+  );
+
   /// 设置页里的顺序。
-  static const presets = [mist, daiqing, dusk, turquoise, amber, graphite];
+  static const presets = [mist, daiqing, dusk, turquoise, amber, graphite, cinnabar, matcha, abyss];
 
   static const customId = 'custom';
   static const wallpaperId = 'wallpaper';

@@ -6483,6 +6483,9 @@
   "phoneAccentTurquoise": "松石",
   "phoneAccentAmber": "琥珀",
   "phoneAccentGraphite": "石墨",
+  "phoneAccentCinnabar": "朱砂",
+  "phoneAccentMatcha": "柚绿",
+  "phoneAccentAbyss": "深海",
   "phoneAccentCustom": "自定义",
   "phoneEngineInstallPercent": "正在安装 · {percent}%",
   "@phoneEngineInstallPercent": {

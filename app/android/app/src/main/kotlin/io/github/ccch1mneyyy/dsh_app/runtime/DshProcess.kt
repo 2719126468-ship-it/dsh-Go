@@ -84,7 +84,7 @@ class DshProcess(
      * [binds] are extra proot `-b host:guest` mounts, inserted before the guest command.
      * [safe] boots the rescue profile instead of `web` (see [SafeMode.profileArg]).
      */
-    fun start(guestEnv: Map<String, String>, binds: List<String> = emptyList(), safe: Boolean = false, phone: Boolean = false, directEngine: Boolean = false, directFailed: Boolean = false, searchOverlay: Boolean = false, authOverlay: Boolean = false, speechOverlay: Boolean = false, tawcEngine: Boolean = false, tawcFailed: Boolean = false, onLaunchMethod: ((Boolean) -> Unit)? = null) {
+    fun start(guestEnv: Map<String, String>, binds: List<String> = emptyList(), safe: Boolean = false, phone: Boolean = false, directEngine: Boolean = false, directFailed: Boolean = false, searchOverlay: Boolean = false, authOverlay: Boolean = false, speechOverlay: Boolean = false, tawcEngine: Boolean = false, tawcFailed: Boolean = false, customOverlay: Boolean = false, onLaunchMethod: ((Boolean) -> Unit)? = null) {
         check(process == null) { "already started" }
         // tawcroot wins over Direct when both are on; like Direct it needs PRoot's fake hard links gone.
         val tawcWanted = tawcEngine && !safe
@@ -144,6 +144,9 @@ class DshProcess(
         var authPending = !safe && authOverlay && AppAuthGuest.file(rootfs).isFile
         // On-device voice input: the recognizer's phone settings, same rule.
         var speechPending = !safe && speechOverlay && SpeechGuest.file(rootfs).isFile
+        // 定制层（破甲预设 / 技能 / 插件）：overlay 文件在就挂，安全模式下从不挂。
+        var customPending = !safe && customOverlay &&
+            CustomLayer.presetFile(rootfs).isFile && CustomLayer.pluginFile(rootfs).isFile
         for (arg in launchArgv) {
             if (!bindsPlaced && arg == "/usr/bin/env") {
                 allBinds.forEach { argv += "-b"; argv += it }
@@ -164,7 +167,9 @@ class DshProcess(
                 if (withAuth != null) authPending = false
                 val withSpeech = if (speechPending) SpeechGuest.launchArg(withAuth ?: withSearch ?: withPhone ?: selected ?: arg) else null
                 if (withSpeech != null) speechPending = false
-                argv += expand(withSpeech ?: withAuth ?: withSearch ?: withPhone ?: selected ?: arg)
+                val withCustom = if (customPending) CustomLayer.launchArg(withSpeech ?: withAuth ?: withSearch ?: withPhone ?: selected ?: arg) else null
+                if (withCustom != null) customPending = false
+                argv += expand(withCustom ?: withSpeech ?: withAuth ?: withSearch ?: withPhone ?: selected ?: arg)
             }
         }
         check(!safe || profileSelected) { "safe mode: this runtime's launch command has no `dsh web` to replace" }
