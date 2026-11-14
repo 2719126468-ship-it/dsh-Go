@@ -163,7 +163,11 @@ fi
 # libtawcroot.so for the opt-in tawcroot launch method, from the pinned tawc commit.
 # Release builds must carry it; other builds go on without it (the option shows unavailable).
 if ! python3 -I "$ROOT/runtime/tawcroot/build.py"; then
-  [[ $mode == release ]] && die "tawcroot: libtawcroot.so did not build"
+  # DSH_SKIP_TAWCROOT=1 makes a release build without it; the launch option then reports
+  # itself unavailable, everything else (proot, direct) stays as is.
+  if [[ $mode == release && "${DSH_SKIP_TAWCROOT:-0}" != 1 ]]; then
+    die "tawcroot: libtawcroot.so did not build (install NDK 28.2.13676358, or set DSH_SKIP_TAWCROOT=1)"
+  fi
   rm -rf "$ROOT/runtime/out-tawcroot" # never package an older build's library
   echo "build-apk: building without libtawcroot.so; the tawcroot launch option will be unavailable" >&2
 fi
