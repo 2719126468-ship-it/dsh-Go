@@ -93,6 +93,9 @@ jobs:
           tooling/build-apk.sh -f arm64 ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
+          # tawcroot 是可选启动方式（proot / direct 仍在）；CI 里 NDK 的 Pkg.Revision
+          # 与 pin 不完全一致时直接跳过，不让一个可选库挡住出包。
+          DSH_SKIP_TAWCROOT: '1'
 
       - name: 校验签名
         working-directory: .
