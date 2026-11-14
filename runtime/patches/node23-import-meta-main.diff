@@ -1,0 +1,60 @@
+# dsh-go: the 32-bit ARM runtime runs Node v23.11.1 (no official 32-bit Linux build exists from
+# v24 on). Node 23 has no import.meta.main, and both entry guards below then skip the CLI. ??
+# keeps Node 24 identical: there import.meta.main is a boolean and the guard never runs.
+--- a/node_modules/@deepseek-ai/dsh/lib/bin.js
++++ b/node_modules/@deepseek-ai/dsh/lib/bin.js
+@@ -1,4 +1,17 @@
+ #!/usr/bin/env node
++import { pathToFileURL } from "node:url";
++/**
++* dsh-go: Node 23 answers import.meta.main with undefined, so this entry guard never runs the CLI.
++* Node 24 answers with a boolean, and ?? below then never reaches this function.
++*/
++function dshGoIsMainEntry() {
++	try {
++		const entry = process.argv[1];
++		return entry !== undefined && import.meta.url === pathToFileURL(entry).href;
++	} catch {
++		return false;
++	}
++}
+ import { StartupError, getDshRuntimeVersion, loadLayeredEnv } from "@deepseek-ai/dsh-app-boot";
+ import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
+ import { Command, CommanderError, InvalidArgumentError } from "commander";
+@@ -249,6 +262,6 @@
+ 		default: throw new Error(`dsh: unhandled invocation mode ${JSON.stringify(invocation)}`);
+ 	}
+ }
+-if (import.meta.main) await runCli();
++if (import.meta.main ?? dshGoIsMainEntry()) await runCli();
+ //#endregion
+ export { runCli };
+--- a/node_modules/@deepseek-ai/dsh-subprocess-local/lib/runner.js
++++ b/node_modules/@deepseek-ai/dsh-subprocess-local/lib/runner.js
+@@ -1,4 +1,17 @@
+ import { S as loadLinuxExecve, a as resolveWindowsExecutable, b as serializeRunnerError, f as consumeLinuxLaunchRequest, g as linuxLaunchFilesFromLocator, h as isWindowsTerminateRequest, i as parseRunnerTargetArgv, r as consumeRunnerSelection, t as SUBPROCESS_RUNNER_ENV, v as parseWindowsStartRequest, x as writeLinuxStartupError } from "./runner-launch-B2zsQ1Dz.js";
++import { pathToFileURL } from "node:url";
++/**
++* dsh-go: Node 23 answers import.meta.main with undefined, so this entry guard never runs the CLI.
++* Node 24 answers with a boolean, and ?? below then never reaches this function.
++*/
++function dshGoIsMainEntry() {
++	try {
++		const entry = process.argv[1];
++		return entry !== undefined && import.meta.url === pathToFileURL(entry).href;
++	} catch {
++		return false;
++	}
++}
+ import { closeSync } from "node:fs";
+ import { SUBPROCESS_CONTROL_FD } from "@deepseek-ai/dsh-subprocess/control";
+ import { Win32Error, closeHandleChecked, isJobEmpty, loadWin32ProcessBindings, pollProcessExit, spawnCurrentTokenJobProcess, terminateJob } from "@deepseek-ai/dsh-win32-process";
+@@ -427,7 +440,7 @@
+ 		await reportSpawnRunnerFailure(selection, error);
+ 	}
+ }
+-if (import.meta.main) {
++if (import.meta.main ?? dshGoIsMainEntry()) {
+ 	const selection = consumeRunnerSelection();
+ 	if (selection === void 0) process.exitCode = 127;
+ 	else runSelectedSubprocessRunner(selection);

@@ -61,9 +61,10 @@ android {
             dimension = "abi"
             ndk { abiFilters += "arm64-v8a" }
         }
-        // 32 位 ARM（Android 8.1 老设备 / 破解点读笔）。这一档不带 Linux 运行时：
-        // Node 自 v24 起没有 32 位 Linux 构建，DSH 又要求 node >= 24.9，所以这个包
-        // 只做远端主机的客户端（登录/会话/插件市场/皮肤全都在），本机引擎不出现。
+        // 32 位 ARM（Android 8.1 老设备 / 破解点读笔）。带**实验性**本机引擎：Ubuntu 没有
+        // armhf 基础镜像、Node 自 v24 起也没有 32 位 Linux 构建，所以这一档是 Debian armhf +
+        // Node v23.11.1 armv7l + runtime/patches 里的 v23 兼容补丁，flock 走文件锁降级。
+        // 装机验证前不要当成稳定发行；引擎起不来时 App 仍是远端主机客户端。
         create("arm32") {
             dimension = "abi"
             ndk { abiFilters += "armeabi-v7a" }
@@ -74,9 +75,8 @@ android {
         }
     }
 
-    // 没有运行时的 flavor：不打包 runtime/out 里的任何资源，Assets 目录里也就没有
-    // manifest.json，Kotlin 侧 RuntimeManifest.loadOrNull 返回 null，按「无内置运行时」处理。
-    val bundledAbis = setOf("arm64-v8a", "x86_64")
+    // Each flavor packages the runtime/out ABI it names; a missing directory means no engine.
+    val bundledAbis = setOf("arm64-v8a", "armeabi-v7a", "x86_64")
 
     sourceSets {
         getByName("main") {
@@ -85,6 +85,10 @@ android {
         getByName("arm64") {
             assets.srcDir(File(runtimeOut, "arm64-v8a/assets"))
             jniLibs.srcDir(File(runtimeOut, "arm64-v8a/jniLibs"))
+        }
+        getByName("arm32") {
+            assets.srcDir(File(runtimeOut, "armeabi-v7a/assets"))
+            jniLibs.srcDir(File(runtimeOut, "armeabi-v7a/jniLibs"))
         }
         getByName("x64") {
             assets.srcDir(File(runtimeOut, "x86_64/assets"))

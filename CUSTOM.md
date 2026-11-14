@@ -11,7 +11,7 @@
 | 实用技能 | `apk-sign`、`dev-loop`、`runtime-triage`、`phone-control` | `app/assets/custom/skills/<name>/SKILL.md` |
 | 插件 | `dsh-our-free-model` 2.8.0（去掉 win32 引擎与 .git，9.6 MB） | `app/assets/custom/plugins/dsh-our-free-model/` |
 | 皮肤 | 朱砂 / 柚绿 / 深海 三套新配色（OKLCH 推导，对比度全部过 WCAG） | `app/lib/ui/theme/accent.dart` |
-| 架构 | 新增 `arm32` flavor（armeabi-v7a） | `app/android/app/build.gradle.kts` |
+| 架构 | 新增 `arm32` flavor（armeabi-v7a），带**实验性**本机引擎 | `app/android/app/build.gradle.kts`、`runtime/build-runtime.sh` |
 | 签名 | 固定密钥库经 CI secret 注入，v1/v2/v3 全开 | `.github/workflows/custom-release.yml` |
 
 ## 定制层怎么生效
@@ -35,17 +35,33 @@ assets/custom/skills/<name>/  → /root/.dsh/skills/<name>/
 - 只在内容变化时重写文件，不是每次启动都碰磁盘。
 - 插件按绝对路径加载，浏览器半身由包内 `package.json` 的 `dsh.client` 声明。
 
-## 两个架构
+## 三个架构
 
 | flavor | ABI | 本机 Linux 引擎 | 用途 |
 |---|---|---|---|
-| `arm64` | arm64-v8a | 有（完整 ununtu+node+dsh） | Android 10 手机（LYA-AL10 / 鸿蒙 4.0） |
-| `arm32` | armeabi-v7a | **无** | Android 8.1 32 位设备（点读笔一类的 MTK 机） |
+| `arm64` | arm64-v8a | 有（Ubuntu 24.04 + Node 24.22.1 + DSH） | Android 10 手机（LYA-AL10 / 鸿蒙 4.0） |
+| `arm32` | armeabi-v7a | 有，**实验性**（Debian 12 armhf + Node 23.11.1 armv7l） | Android 8.1 32 位设备（点读笔一类的 MTK 机） |
 | `x64` | x86_64 | 有 | 模拟器自测 |
 
-arm32 不带引擎的原因：DSH 要求 `node >= 24.9`，而 Node 官方自 v24 起**不再提供 32 位 Linux 构建**（最后一个是 v23.11.1）。硬塞只会得到一个永远起不来的引擎，所以这一档按"远端主机客户端"发：登录、会话、插件市场、皮肤、手机控制全在，只是不显示"安装本机运行环境"。
+arm32 为什么和别人不一样：DSH 要求 `node >= 24.9`，而 Node 官方自 v24 起**不再提供 32 位 Linux 构建**（最后一个带 `linux-armv7l` 的是 v23.11.1）；Ubuntu 也从来没有 armhf 的基础镜像。所以这一档换成 **Debian 12 (bookworm) armhf + Node v23.11.1**，`runtime/build-runtime.sh armeabi-v7a` 出包，输入钉死如下：
 
-Kotlin 侧对应 `RuntimeManifest.loadOrNull()` → `absent()`（`bundled = false`），`RuntimeController` 的 `install()` / `start()` 直接拒绝并给出理由，Dart 侧 `RootGate` 跳过安装引导。
+```
+基础镜像  debuerreotype dist-arm32v7 bookworm rootfs.tar.gz   sha256 b6d0c47d…8ee097
+Node      node-v23.11.1-linux-armv7l.tar.xz                  sha256 4dd49f33…23a554
+Python    cpython-3.12.15+20261021-armv7-unknown-linux-gnueabihf  sha256 7a807f31…797422
+proot     Termux binary-arm 5.1.107.102 / libtalloc 2.5.0 / libandroid-shmem 0.7
+apt 包     deb.debian.org bookworm + bookworm-updates（InRelease 用镜像内 keyring gpgv 验签，
+          闭包钉在 runtime/locks/debian-bookworm-armhf.json）
+```
+
+**实验性，装机验证前不要当稳定发行。** 已知限制与对应的补丁：
+
+1. `node23-import-meta-main.diff` — Node 23 没有 `import.meta.main`，`bin.js` / `runner.js` 的入口守卫会静默跳过，`dsh web` 根本起不来。补丁把守卫改成 `import.meta.main ?? dshGoIsMainEntry()`；v24 下 `??` 永不触发，arm64/x86_64 行为不变。
+2. `node-addon-system-armv7-flock.diff` — npm 不发布 `linux-arm` 的 flock addon（只有 x64/arm64/darwin/android-arm64），`SessionWriteLease.acquire` 会在每次会话写入时抛错。补丁只在 `require.resolve` 失败时回落到 `runtime/flock-fallback/dsh-go-flock.cjs`（O_EXCL 锁文件 + pid + 30s stale 判定）；**addon 包存在但加载失败仍然上抛**，不会把 arm64 的 addon 损坏悄悄降级成文件锁。
+3. v23 的实验 API 面未做全量验证（`node:sqlite` v23.4 起免 flag，可用）。构建报告的 `warnings` 里带一条，真机行为才算确认。
+4. arm32 只走 proot：`DirectLaunch` 对 `armeabi-v7a` 返回 `unsupportedAbi`（loader 路径直接抛错），tawcroot 同理，界面上这两项显示不可用。
+
+不带引擎的包仍然可用：没有 `runtime/out/armeabi-v7a` 时 `RuntimeManifest.loadOrNull()` → `absent()`（`bundled = false`），`RuntimeController` 的 `install()` / `start()` 直接拒绝并给出理由，Dart 侧 `RootGate` 跳过安装引导，App 退化成远端主机客户端。
 
 ## 签名
 
@@ -74,9 +90,10 @@ v1 / v2 / v3 三项必须为 `true`，证书主题不得含 `CN=Android Debug`�
 gh workflow run custom-release.yml --repo <owner>/dsh-Go --ref custom/pojia-free-model \
   -f version=1.0.16 -f build_arm64=true -f build_arm32=true
 
-# 本地（Termux，需先产出 runtime/out）
-tooling/build-apk.sh -f arm64
-tooling/build-apk.sh -f arm32
+# 本地（先产出 runtime/out，flavor 与 ABI 一一对应）
+bash runtime/build-runtime.sh arm64-v8a && tooling/build-apk.sh -f arm64
+bash runtime/build-runtime.sh armeabi-v7a && tooling/build-apk.sh -f arm32   # 实验性
+bash runtime/build-runtime.sh x86_64 && tooling/build-apk.sh -f x64
 ```
 
 本地构建要签名，把 `app/android/key.properties` 指向密钥库即可（不进版本库）。
@@ -93,4 +110,6 @@ tooling/build-apk.sh -f arm32
 
 - 不要把 `key.properties` 或 `.jks` 提交进仓库。
 - 不要改 `versionCode` 生成规则（构建分钟编码），否则覆盖安装会变成降级。
-- 不要在没有 `runtime/out` 的情况下打 arm64 包（`check_runtime_bundle.py` 会拦）。
+- 不要在没有对应 `runtime/out/<abi>` 的情况下打 release 包：三个 flavor 都会被 `check_runtime_bundle.py` 逐个校验，缺哪个拦哪个。
+- arm32 的本机引擎是实验性的：真机验证（`dsh web` 能否起来、会话写入是否被 flock 降级锁卡住、v23 的 API 面）之前，不要在发布说明里把它写成稳定能力。
+- CI 的 arm32 job 目前只跑 `flutter build apk`（绕过 build-apk.sh，所以没有 preflight，也不会失败，但包里**没有引擎**）。要打带引擎的 arm32 包，得像 arm64 job 那样先加一步 `bash runtime/build-runtime.sh armeabi-v7a`；workflow 不在本任务改动范围内。

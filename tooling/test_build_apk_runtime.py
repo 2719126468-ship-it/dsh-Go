@@ -15,7 +15,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-ABIS = {"arm64": "arm64-v8a", "x64": "x86_64"}
+ABIS = {"arm64": "arm64-v8a", "arm32": "armeabi-v7a", "x64": "x86_64"}
 JNI = ("libproot.so", "libproot-loader.so", "libtalloc.so", "libandroid-shmem.so")
 
 
@@ -144,12 +144,13 @@ apk.write_bytes(b'fake APK: shell flow only')
         self.assertEqual(self.calls(), [], "preflight must finish before any Flutter build")
 
     def test_release_missing_runtime_blocks_each_flavor(self):
-        for flavor in ("arm64", "x64", "all"):
+        for flavor in ("arm64", "arm32", "x64", "all", "portable"):
             with self.subTest(flavor=flavor):
                 self.assert_blocked(self.run_script("--release", "-f", flavor), "manifest.json")
 
-    def test_all_preflights_both_before_building_either(self):
+    def test_all_preflights_every_flavor_before_building_any(self):
         self.make_bundle("arm64", 1)
+        self.make_bundle("arm32", 1)
         self.assert_blocked(self.run_script("-f", "all"), "x86_64/assets/runtime/manifest.json")
 
     def test_both_schemas_and_abis_accept_complete_bundles(self):
@@ -163,10 +164,11 @@ apk.write_bytes(b'fake APK: shell flow only')
 
     def test_all_complete_flavors_build_with_one_number(self):
         self.make_bundle("arm64", 1)
+        self.make_bundle("arm32", 1)
         self.make_bundle("x64", 2)
         result = self.run_script("-f", "all")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([args[args.index("--flavor") + 1] for args in self.calls()], ["arm64", "x64"])
+        self.assertEqual([args[args.index("--flavor") + 1] for args in self.calls()], ["arm64", "arm32", "x64"])
         self.assertEqual({args[args.index("--build-number") + 1] for args in self.calls()}, {"10251234"})
 
     def test_each_archive_is_required(self):
@@ -230,7 +232,7 @@ apk.write_bytes(b'fake APK: shell flow only')
         result = self.run_script("--dry-run", "-f", "all")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls(), [])
-        self.assertEqual(result.stdout.count("flutter build apk"), 2)
+        self.assertEqual(result.stdout.count("flutter build apk"), 3)
 
     def test_leading_zero_build_number_uses_one_decimal_value(self):
         result = self.run_script("--debug", "-n", "00010251234")

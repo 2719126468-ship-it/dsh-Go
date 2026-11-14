@@ -702,6 +702,7 @@ class _WebViewPageState extends State<WebViewPage> {
               if (widget.dshWeb) unawaited(_injectBackBridge());
               if (widget.dshWeb) unawaited(_injectOpenBridge());
               if (widget.dshWeb) unawaited(_injectSidebarBridge());
+              if (widget.dshWeb) unawaited(_injectPopupsBridge());
               if (widget.dshWeb && widget.onSession != null) {
                 unawaited(_injectStateBridge());
               }
@@ -734,6 +735,9 @@ class _WebViewPageState extends State<WebViewPage> {
         // Whether DSH Web's own sidebar drawer covers the page (the seat
         // marker steps aside while it does).
         if (widget.dshWeb) controller.addJavaScriptChannel('DshAppSidebar', onMessageReceived: _onSidebar),
+        // window.open / target=_blank: the WebView opens no window, so the
+        // page hands the URL over and the system browser answers.
+        if (widget.dshWeb) controller.addJavaScriptChannel('DshAppPopup', onMessageReceived: _onPopupRequest),
       ].map((f) => f.catchError((_) {})),
     );
     if (!mounted || controller != _controller) return;
@@ -849,6 +853,35 @@ class _WebViewPageState extends State<WebViewPage> {
   void _onSidebar(JavaScriptMessage message) {
     final open = message.message == 'open';
     if (open != _sidebarOpen && mounted) setState(() => _sidebarOpen = open);
+  }
+
+  /// Popups inside the page: `window.open` and `target="_blank"` clicks
+  /// (`assets/web/dsh_web_popups.js`).
+  static Future<String> _popupBridge() =>
+      _source('popups', () => rootBundle.loadString('assets/web/dsh_web_popups.js', cache: false));
+
+  Future<void> _injectPopupsBridge() async {
+    try {
+      await _controller.runJavaScript(await _popupBridge());
+    } catch (_) {
+      // Error page without a DOM: the next load injects again.
+    }
+  }
+
+  /// One popup the page asked for: `{url}` for an http(s) target, opened
+  /// outside (the WebView has no window for it).
+  void _onPopupRequest(JavaScriptMessage message) {
+    Uri? uri;
+    try {
+      final json = jsonDecode(message.message);
+      final url = json is Map ? json['url'] : null;
+      if (url is! String) return;
+      uri = Uri.tryParse(url);
+    } on FormatException {
+      return;
+    }
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
+    unawaited(launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) => false));
   }
 
   /// Session tracking (`assets/web/dsh_web_state.js`).

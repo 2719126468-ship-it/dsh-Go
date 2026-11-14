@@ -123,7 +123,7 @@ jobs:
   arm32:
     if: github.event_name == 'push' || inputs.build_arm32
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 300
     defaults:
       run:
         working-directory: app
@@ -137,6 +137,16 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      - name: 构建内置 Linux 运行时（arm32，实验性：Debian armhf + Node v23.11.1）
+        working-directory: .
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gpgv xz-utils file
+          bash runtime/build-runtime.sh armeabi-v7a
+        env:
+          COMPRESS: xz
+          XZ_THREADS: 4
 
       - name: 固定签名
         working-directory: .
@@ -155,10 +165,10 @@ jobs:
         run: flutter pub get
 
       - name: 打包 arm32
+        working-directory: .
         run: |
-          flutter build apk --release --flavor arm32 --target-platform android-arm \
-            --build-number "$(python3 ../tooling/build_number.py)" \
-            ${VERSION:+--build-name "$VERSION"}
+          chmod +x tooling/build-apk.sh
+          tooling/build-apk.sh -f arm32 ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
 
@@ -220,7 +230,7 @@ jobs:
             echo "破甲预设 + 实用技能 + dsh-our-free-model + 三套皮肤 + 固定签名（v1/v2/v3）。"
             echo
             echo "- arm64：Android 8+ 64 位，含本机 Linux 引擎"
-            echo "- arm32：Android 8+ 32 位，仅远端主机客户端（Node 无 32 位 v24）"
+            echo "- arm32：Android 8+ 32 位，带实验性本机引擎（Debian armhf + Node v23.11.1）"
             echo
             echo "证书 SHA-256：2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444"
           } > notes.md

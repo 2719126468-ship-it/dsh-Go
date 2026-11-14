@@ -15,6 +15,8 @@ session-title-word-prefix.diff
 str-editor-view-prefix.diff
 web-composer-mobile-newline.diff
 z-plugin-install-log-utf8.diff
+node-addon-system-armv7-flock.diff
+node23-import-meta-main.diff
 zz-direct-runtime.diff
 zzz-config-editor-path.diff
 zzz-fs-replace-all-count.diff

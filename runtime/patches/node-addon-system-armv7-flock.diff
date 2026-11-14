@@ -1,0 +1,28 @@
+# dsh-go: npm publishes no flock addon for linux-arm, the 32-bit ARM runtime's platform-arch
+# pair. Without a fallback dsh-session-persistence-jsonl's SessionWriteLease.acquire rejects on
+# every session write. Only require.resolve is caught, so an addon that exists but fails to
+# load still errors out instead of silently downgrading arm64/x86_64. patch-dsh installs the
+# companion module runtime/flock-fallback/dsh-go-flock.cjs beside flock.js as dsh-go-flock.cjs.
+--- a/node_modules/@deepseek-ai/node-addon-system/lib/flock.js
++++ b/node_modules/@deepseek-ai/node-addon-system/lib/flock.js
+@@ -20,7 +20,19 @@
+         filename = join(report.header.glibcVersionRuntime ? 'glibc' : 'musl', filename);
+     }
+     const require = createRequire(import.meta.url);
+-    const manifest = require.resolve(`@deepseek-ai/node-addon-system-${platform}-${arch}/package.json`);
++    let manifest;
++    try {
++        manifest = require.resolve(`@deepseek-ai/node-addon-system-${platform}-${arch}/package.json`);
++    }
++    catch {
++        // dsh-go: npm publishes no addon for this platform-arch pair (linux-arm is the
++        // 32-bit ARM runtime). The companion module installed beside this file keeps the
++        // same tryLock(fd, resolve) contract with an O_EXCL lock file. Only resolution is
++        // caught: an addon that exists but fails to load stays an error, so a broken
++        // binding cannot turn into a silent fallback on the ABIs that ship one.
++        binding = require('./dsh-go-flock.cjs');
++        return binding;
++    }
+     binding = require(join(dirname(manifest), 'bin', filename));
+     return binding;
+ }

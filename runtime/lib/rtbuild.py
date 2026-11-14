@@ -50,8 +50,15 @@ def upgrade_descriptor(abi, ubuntu_version, base_sha, deb_shas, python_sha):
             "paths": ENGINE_PATHS}
 
 ABI = {
-    "arm64-v8a": {"machine": 183, "npm_cpu": "arm64", "node": "arm64", "ubuntu": "arm64", "termux": "aarch64"},
-    "x86_64": {"machine": 62, "npm_cpu": "x64", "node": "x64", "ubuntu": "amd64", "termux": "x86_64"},
+    "arm64-v8a": {"machine": 183, "npm_cpu": "arm64", "termux": "aarch64",
+                  "loader": "/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1"},
+    "x86_64": {"machine": 62, "npm_cpu": "x64", "termux": "x86_64",
+               "loader": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"},
+    # 32-bit ARM: Ubuntu publishes no armhf base and Node has no 32-bit Linux build from v24 on,
+    # so this runtime is Debian armhf + Node v23.11.1 armv7l + the two compatibility patches in
+    # runtime/patches (node-addon-system-armv7-flock, node23-import-meta-main). Experimental.
+    "armeabi-v7a": {"machine": 40, "npm_cpu": "arm", "termux": "arm",
+                    "loader": "/usr/lib/ld-linux-armhf.so.3"},
 }
 
 
@@ -422,6 +429,15 @@ def cmd_patch_dsh(args):
             json.dump(pins, f, indent=2, sort_keys=True)
             f.write("\n")
         print("recorded pins for DSH %s in %s" % (args.dsh_version, pins_path))
+    if "node-addon-system-armv7-flock.diff" in applied:
+        # Source-owned companion module, installed only alongside the vetted flock seam.
+        source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "flock-fallback", "dsh-go-flock.cjs")
+        target = os.path.join(args.prefix, "node_modules", "@deepseek-ai", "node-addon-system", "lib", "dsh-go-flock.cjs")
+        tmp = target + ".dsh-app-patch"
+        with open(source, "rb") as src, open(tmp, "wb") as dst:
+            dst.write(src.read())
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, target)
     if "zzzzzz-session-deletion.diff" in applied:
         # Source-owned companion module, installed only alongside the vetted rc4 seam.
         source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "session-deletion", "core.mjs")
@@ -755,11 +771,23 @@ def base_drop(path):
     return False
 
 
+def prebuild_matches(name, cpu):
+    """napi's `linux-<cpu>` prebuild directory, with or without a libc suffix.
+
+    The suffix must start with a dash: npm's cpu "arm" is a prefix of "arm64", and a plain
+    startswith would keep 64-bit binaries in the 32-bit rootfs."""
+    want = "linux-" + cpu
+    if not name.startswith(want):
+        return False
+    rest = name[len(want):]
+    return rest == "" or rest.startswith("-")
+
+
 def dsh_drop_reason(rel, abi, prune_dev):
     parts = rel.split("/")
     if "prebuilds" in parts:
         i = parts.index("prebuilds")
-        if i + 1 < len(parts) and not parts[i + 1].startswith("linux-" + ABI[abi]["npm_cpu"]):
+        if i + 1 < len(parts) and not prebuild_matches(parts[i + 1], ABI[abi]["npm_cpu"]):
             return "foreign-prebuild"
         if i + 1 < len(parts) and "musl" in parts[i + 1]:
             return "foreign-prebuild"
@@ -1243,6 +1271,15 @@ def cmd_assemble(args):
             samples.append(path)
 
     runtime_info = json.loads(args.runtime_info)
+    node_major = str(runtime_info.get("nodeVersion", "")).split(".")[0]
+    if node_major.isdigit() and int(node_major) < 24:
+        # The 32-bit ARM runtime is the only one below Node 24: everything Node 24 added is
+        # deliberately patched, but the wider v24 API surface is not verified on it.
+        report["warnings"].append(
+            "Node v%s is below the DSH engines.node range and its v24 API surface is not fully "
+            "verified; see runtime/patches/node23-import-meta-main.diff and "
+            "runtime/patches/node-addon-system-armv7-flock.diff" % runtime_info.get("nodeVersion"))
+
     def digest(path):
         with open(path, "rb") as source:
             return hashlib.file_digest(source, "sha256").hexdigest()
@@ -1253,7 +1290,9 @@ def cmd_assemble(args):
     runtime_info["upgrade"] = upgrade
     report["upgrade"] = upgrade
 
-    # 1. Ubuntu Base
+    # 1. Base tarball: Ubuntu Base (64-bit ABIs) or the Debian armhf rootfs layer (armeabi-v7a).
+    # The Debian layer keeps all payload under /usr with bin/lib/sbin as symlinks, so no member
+    # lies under a symlink and the archive rules below apply unchanged.
     hardlinks = []
     with tarfile.open(args.base, "r:gz") as t:
         for m in t:
@@ -1700,6 +1739,8 @@ def cmd_manifest(args):
         "nodeVersion": v["nodeVersion"],
         "pnpmVersion": v["pnpmVersion"],
         "ubuntuVersion": v["ubuntuVersion"],
+        # armeabi-v7a ships a Debian armhf base; the other ABIs are Ubuntu.
+        **({"baseDistro": v["baseDistro"]} if v.get("baseDistro") else {}),
         "prootVersion": v["prootVersion"],
         "dshPatches": v.get("dshPatches", []),
         "dshGoBridge": {"version": v["dshGoBridge"], "path": DSH_GO_BRIDGE} if v.get("dshGoBridge") else None,
@@ -1718,7 +1759,7 @@ def cmd_manifest(args):
             "schema": 2,
             "defaultEnabled": False,
             "preload": "/opt/dsh-go/direct/preload.mjs",
-            "loader": "/usr/lib/" + ("x86_64-linux-gnu/ld-linux-x86-64.so.2" if args.abi == "x86_64" else "aarch64-linux-gnu/ld-linux-aarch64.so.1"),
+            "loader": ABI[args.abi]["loader"],
             "paths": "typed guest/physical path seams; same-path PRoot alias only for direct or a prior direct preparation",
             "safeMode": "proot",
             "tls": "Node bundled CA defaults; explicit extra CA environment retained",

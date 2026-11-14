@@ -1,0 +1,307 @@
+{
+  "arch": "armhf",
+  "want": [
+    "tzdata",
+    "ca-certificates",
+    "git"
+  ],
+  "packages": [
+    {
+      "package": "ca-certificates",
+      "version": "20230311+deb12u1",
+      "architecture": "all",
+      "filename": "pool/main/c/ca-certificates/ca-certificates_20230311+deb12u1_all.deb",
+      "sha256": "0d5f444f594e48c1e16a41d8fc628a09b24c658916a1274025c2330f2a802bed",
+      "size": 155260,
+      "installedSize": 387,
+      "upgradesBase": null,
+      "neededBy": "requested"
+    },
+    {
+      "package": "git",
+      "version": "1:2.39.5-0+deb12u3",
+      "architecture": "armhf",
+      "filename": "pool/main/g/git/git_2.39.5-0+deb12u3_armhf.deb",
+      "sha256": "126581060b0e2fdc09c1174e3b4bd083ac15b64c24f920549b6845c5703e3582",
+      "size": 6062808,
+      "installedSize": 34102,
+      "upgradesBase": null,
+      "neededBy": "requested"
+    },
+    {
+      "package": "git-man",
+      "version": "1:2.39.5-0+deb12u3",
+      "architecture": "all",
+      "filename": "pool/main/g/git/git-man_2.39.5-0+deb12u3_all.deb",
+      "sha256": "904dbd8dbc3db34c6780fb0abfe35816d4a90a490126ef0a055a77a0c5dcab82",
+      "size": 2053236,
+      "installedSize": 2107,
+      "upgradesBase": null,
+      "neededBy": "git"
+    },
+    {
+      "package": "libbrotli1",
+      "version": "1.0.9-2+b6",
+      "architecture": "armhf",
+      "filename": "pool/main/b/brotli/libbrotli1_1.0.9-2+b6_armhf.deb",
+      "sha256": "cd5f71b7f74d56781e19e0186435c46e1d0a4541e3261f2bc15af751e314d0c2",
+      "size": 271040,
+      "installedSize": 664,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "libcurl3-gnutls",
+      "version": "7.88.1-10+deb12u15",
+      "architecture": "armhf",
+      "filename": "pool/main/c/curl/libcurl3-gnutls_7.88.1-10+deb12u15_armhf.deb",
+      "sha256": "81d19d83b9c2ac3032d6cdd778b08b2489c346f36080cddaf9703800363affc2",
+      "size": 346844,
+      "installedSize": 564,
+      "upgradesBase": null,
+      "neededBy": "git"
+    },
+    {
+      "package": "liberror-perl",
+      "version": "0.17029-2",
+      "architecture": "all",
+      "filename": "pool/main/libe/liberror-perl/liberror-perl_0.17029-2_all.deb",
+      "sha256": "5a466348531b9c38c8e5ccb18c231f27a98b9fdab61b37ea22592553de5d2ced",
+      "size": 29032,
+      "installedSize": 73,
+      "upgradesBase": null,
+      "neededBy": "git"
+    },
+    {
+      "package": "libexpat1",
+      "version": "2.5.0-1+deb12u2",
+      "architecture": "armhf",
+      "filename": "pool/main/e/expat/libexpat1_2.5.0-1+deb12u2_armhf.deb",
+      "sha256": "e1cbf8b00e34295cd92865747abf80999218b6511ddc68daffd6b0e5f9fe0d63",
+      "size": 81908,
+      "installedSize": 250,
+      "upgradesBase": null,
+      "neededBy": "git"
+    },
+    {
+      "package": "libgdbm-compat4",
+      "version": "1.23-3",
+      "architecture": "armhf",
+      "filename": "pool/main/g/gdbm/libgdbm-compat4_1.23-3_armhf.deb",
+      "sha256": "9e55a0ac2ea09f37e3cd7d5f81579712314c6dad2c100e878a622c242ecb0d93",
+      "size": 47788,
+      "installedSize": 122,
+      "upgradesBase": null,
+      "neededBy": "libperl5.36"
+    },
+    {
+      "package": "libgdbm6",
+      "version": "1.23-3",
+      "architecture": "armhf",
+      "filename": "pool/main/g/gdbm/libgdbm6_1.23-3_armhf.deb",
+      "sha256": "28b9b49b726c4e359b82ddf9489c3e8f4ae0cd79e045407a3b09799bfa83356e",
+      "size": 68472,
+      "installedSize": 124,
+      "upgradesBase": null,
+      "neededBy": "libperl5.36"
+    },
+    {
+      "package": "libgssapi-krb5-2",
+      "version": "1.20.1-2+deb12u5",
+      "architecture": "armhf",
+      "filename": "pool/main/k/krb5/libgssapi-krb5-2_1.20.1-2+deb12u5_armhf.deb",
+      "sha256": "e3f674af80e03b04a257eec5d4cb5baf680488b95f9f6eff35a151c1594432b0",
+      "size": 112040,
+      "installedSize": 287,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "libk5crypto3",
+      "version": "1.20.1-2+deb12u5",
+      "architecture": "armhf",
+      "filename": "pool/main/k/krb5/libk5crypto3_1.20.1-2+deb12u5_armhf.deb",
+      "sha256": "be0457040c22c67f765767f63dc5531f1629f8f4914bcc8992b1edea17f493d0",
+      "size": 75360,
+      "installedSize": 216,
+      "upgradesBase": null,
+      "neededBy": "libgssapi-krb5-2"
+    },
+    {
+      "package": "libkeyutils1",
+      "version": "1.6.3-2",
+      "architecture": "armhf",
+      "filename": "pool/main/k/keyutils/libkeyutils1_1.6.3-2_armhf.deb",
+      "sha256": "bfc6a3a668b58b88876b9e37192f669ceeb68db6d50c8374a9267a2bbd8f8a8e",
+      "size": 7832,
+      "installedSize": 84,
+      "upgradesBase": null,
+      "neededBy": "libkrb5-3"
+    },
+    {
+      "package": "libkrb5-3",
+      "version": "1.20.1-2+deb12u5",
+      "architecture": "armhf",
+      "filename": "pool/main/k/krb5/libkrb5-3_1.20.1-2+deb12u5_armhf.deb",
+      "sha256": "3dac821ed96dd0bfcafe9a1643f81ada7bcae30f64a3b5069fd1322886e6d478",
+      "size": 288188,
+      "installedSize": 751,
+      "upgradesBase": null,
+      "neededBy": "libgssapi-krb5-2"
+    },
+    {
+      "package": "libkrb5support0",
+      "version": "1.20.1-2+deb12u5",
+      "architecture": "armhf",
+      "filename": "pool/main/k/krb5/libkrb5support0_1.20.1-2+deb12u5_armhf.deb",
+      "sha256": "85a53b81203d0773809a1a76c20bd92fc2aee7ae063592a8ed8e6499b86706fa",
+      "size": 30216,
+      "installedSize": 114,
+      "upgradesBase": null,
+      "neededBy": "libgssapi-krb5-2"
+    },
+    {
+      "package": "libldap-2.5-0",
+      "version": "2.5.13+dfsg-5",
+      "architecture": "armhf",
+      "filename": "pool/main/o/openldap/libldap-2.5-0_2.5.13+dfsg-5_armhf.deb",
+      "sha256": "817a72aa1dd85719f1f6d6ed2d95d69794be3a094fb133c0c327395b507b13cd",
+      "size": 157644,
+      "installedSize": 387,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "libnghttp2-14",
+      "version": "1.52.0-1+deb12u3",
+      "architecture": "armhf",
+      "filename": "pool/main/n/nghttp2/libnghttp2-14_1.52.0-1+deb12u3_armhf.deb",
+      "sha256": "ef8cb9a1fe21f0f3d804488f4cfaf9959d26f594f387bd382e86f12307832d86",
+      "size": 62456,
+      "installedSize": 151,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "libperl5.36",
+      "version": "5.36.0-7+deb12u3",
+      "architecture": "armhf",
+      "filename": "pool/main/p/perl/libperl5.36_5.36.0-7+deb12u3_armhf.deb",
+      "sha256": "46e60ef29014d818f991c695696401cb1d172e6eec35a3ed6c48efb36a5297c5",
+      "size": 3493972,
+      "installedSize": 21073,
+      "upgradesBase": null,
+      "neededBy": "perl"
+    },
+    {
+      "package": "libpsl5",
+      "version": "0.21.2-1",
+      "architecture": "armhf",
+      "filename": "pool/main/libp/libpsl/libpsl5_0.21.2-1_armhf.deb",
+      "sha256": "f56ff9c1fb6f8e714215f8e233e71b96e0200f21357e7d58bd1849cf30662977",
+      "size": 57476,
+      "installedSize": 88,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "librtmp1",
+      "version": "2.4+20151223.gitfa8646d.1-2+b2",
+      "architecture": "armhf",
+      "filename": "pool/main/r/rtmpdump/librtmp1_2.4+20151223.gitfa8646d.1-2+b2_armhf.deb",
+      "sha256": "6ab3a47f57ce868e8f4041b10bdf867f247e9846f647ea5eb5b01f34d6a6f7aa",
+      "size": 55220,
+      "installedSize": 105,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "libsasl2-2",
+      "version": "2.1.28+dfsg-10",
+      "architecture": "armhf",
+      "filename": "pool/main/c/cyrus-sasl2/libsasl2-2_2.1.28+dfsg-10_armhf.deb",
+      "sha256": "79eb02c25f48924572a0bc25bf3b5ab5d1582f5aaeceeba34a0975bbe5409795",
+      "size": 52304,
+      "installedSize": 122,
+      "upgradesBase": null,
+      "neededBy": "libldap-2.5-0"
+    },
+    {
+      "package": "libsasl2-modules-db",
+      "version": "2.1.28+dfsg-10",
+      "architecture": "armhf",
+      "filename": "pool/main/c/cyrus-sasl2/libsasl2-modules-db_2.1.28+dfsg-10_armhf.deb",
+      "sha256": "b7448799d1e0b9265c3819f9214b0c2d198e3843bd576c7c5d301acd5b6f575f",
+      "size": 18960,
+      "installedSize": 113,
+      "upgradesBase": null,
+      "neededBy": "libsasl2-2"
+    },
+    {
+      "package": "libssh2-1",
+      "version": "1.10.0-3+b1",
+      "architecture": "armhf",
+      "filename": "pool/main/libs/libssh2/libssh2-1_1.10.0-3+b1_armhf.deb",
+      "sha256": "1c98868656aef1ae5dd8be89e6a8790c63354347773df782298dc6e8b7bf2330",
+      "size": 163224,
+      "installedSize": 260,
+      "upgradesBase": null,
+      "neededBy": "libcurl3-gnutls"
+    },
+    {
+      "package": "libssl3",
+      "version": "3.0.20-1~deb12u2",
+      "architecture": "armhf",
+      "filename": "pool/main/o/openssl/libssl3_3.0.20-1~deb12u2_armhf.deb",
+      "sha256": "8e7bfa25f6be0b5b0257e093ffad36f6ccb72f51ead97d8b7e78fafac59184a4",
+      "size": 1681260,
+      "installedSize": 3640,
+      "upgradesBase": null,
+      "neededBy": "openssl"
+    },
+    {
+      "package": "openssl",
+      "version": "3.0.20-1~deb12u2",
+      "architecture": "armhf",
+      "filename": "pool/main/o/openssl/openssl_3.0.20-1~deb12u2_armhf.deb",
+      "sha256": "d698dd032e96ccd68f8d6e1bd9b2d7805960ada5011cc1a3984e2397afc72961",
+      "size": 1405716,
+      "installedSize": 2000,
+      "upgradesBase": null,
+      "neededBy": "ca-certificates"
+    },
+    {
+      "package": "perl",
+      "version": "5.36.0-7+deb12u3",
+      "architecture": "armhf",
+      "filename": "pool/main/p/perl/perl_5.36.0-7+deb12u3_armhf.deb",
+      "sha256": "c7594043b97de3a0992a56798608bf66aaa9540a0ebeacaec5bbb2066a4260e4",
+      "size": 238900,
+      "installedSize": 670,
+      "upgradesBase": null,
+      "neededBy": "git"
+    },
+    {
+      "package": "perl-base",
+      "version": "5.36.0-7+deb12u3",
+      "architecture": "armhf",
+      "filename": "pool/main/p/perl/perl-base_5.36.0-7+deb12u3_armhf.deb",
+      "sha256": "d66e9e6d050b1d33465cad2cea5ce309c828ed0c2440ef143df26dc0c79259f4",
+      "size": 1464120,
+      "installedSize": 6460,
+      "upgradesBase": "5.36.0-7+deb12u4",
+      "neededBy": "perl"
+    },
+    {
+      "package": "perl-modules-5.36",
+      "version": "5.36.0-7+deb12u3",
+      "architecture": "all",
+      "filename": "pool/main/p/perl/perl-modules-5.36_5.36.0-7+deb12u3_all.deb",
+      "sha256": "3d237ccb1ea32727b6573d43c67d78337aa928a81148d36cef54b369a07c240a",
+      "size": 2815332,
+      "installedSize": 17817,
+      "upgradesBase": null,
+      "neededBy": "perl"
+    }
+  ]
+}

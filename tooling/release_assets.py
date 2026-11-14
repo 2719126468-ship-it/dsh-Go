@@ -37,8 +37,8 @@ import apk_delta
 from build_number import MAX_VERSION_CODE, decode
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-FLAVORS = ("arm64", "x64")
-FLAVOR_ABI = {"arm64": "arm64-v8a", "x64": "x86_64"}
+FLAVORS = ("arm64", "arm32", "x64")
+FLAVOR_ABI = {"arm64": "arm64-v8a", "arm32": "armeabi-v7a", "x64": "x86_64"}
 REPO = "ccch1mneyyy/dsh-go"
 VERSION_RE = re.compile(r"^(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\+(\d+))?$")
 BADGING_RE = re.compile(r"^package: .*?\bversionCode='(\d*)' versionName='([^']*)'", re.MULTILINE)

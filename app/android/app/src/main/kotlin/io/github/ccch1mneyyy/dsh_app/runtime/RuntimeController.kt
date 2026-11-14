@@ -615,6 +615,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
         if (expectedGeneration != null && expectedGeneration != runGen) return false
         if (phase == Phase.INSTALLING) return false
         stopGen = runGen
+        OpenUrlBridge.stop()
         val p = process
         if (p == null) {
             if (phase == Phase.STARTING) {
@@ -1038,6 +1039,15 @@ class RuntimeController private constructor(private val app: Context) : DshProce
         timeline.ready()?.let { log(it, "system") }
         setPhase(Phase.RUNNING)
         PhoneControl.get(app).onEngineReady()
+        // openExternal 桥（guest 的 xdg-open shim → 系统浏览器）：只在正常模式消费；安全模式下
+        // CustomLayer 不写 shim，这里的 active 条件也不会放行。stopProcess / onExit 里停。
+        if (!runSafe) {
+            val rootfs = installer.rootfs
+            OpenUrlBridge.start(app, rootfs) {
+                synchronized(this) { process != null && !runSafe &&
+                    (phase == Phase.STARTING || phase == Phase.RUNNING) }
+            }
+        }
         val gen = runGen
         main.postDelayed({
             synchronized(this) {
@@ -1052,6 +1062,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
             if (source.startupError != null) source.launchDiagnostics.failed("startFailed")
             else if (!expected && stopGen < runGen) source.launchDiagnostics.failed("exit:$code")
             process = null
+            OpenUrlBridge.stop()
             PhoneControl.get(app).onEngineStopped()
             baseUrl = null
             token = null

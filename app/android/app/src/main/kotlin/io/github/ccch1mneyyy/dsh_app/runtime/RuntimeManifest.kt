@@ -26,8 +26,8 @@ data class RuntimeManifest(
     val launchEnv: Map<String, String>,
     val raw: JSONObject,
     /**
-     * False for a flavor that ships no guest runtime (armeabi-v7a: Node has no 32-bit
-     * Linux build from v24 on). The app then runs as a client of remote hosts only.
+     * False when the APK ships no guest runtime assets, e.g. an arm32 build made without
+     * runtime/out/armeabi-v7a. The app then runs as a client of remote hosts only.
      */
     val bundled: Boolean = true,
 ) {
@@ -74,7 +74,7 @@ data class RuntimeManifest(
                 2 -> try {
                     require(!json.has("rootfs") && !json.has("rootfsSha256") && !json.has("rootfsFormat"))
                     val abi = json.getString("abi")
-                    require(abi in listOf("arm64-v8a", "x86_64"))
+                    require(abi in listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
                     val layers = json.getJSONObject("layers")
                     listOf("base", "engine").map { name ->
                         val layer = layers.getJSONObject(name)

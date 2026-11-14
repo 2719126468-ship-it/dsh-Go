@@ -60,7 +60,7 @@ done
 case "$flavor" in
   arm64 | arm32 | x64) flavors=("$flavor") ;;
   all) flavors=(arm64 arm32 x64) ;;
-  # 没有运行时的 flavor：本地引擎不出现，只做远端主机的客户端。
+  # 只要 32 位包（老设备/点读笔）；arm32 现在带实验性本机引擎。
   portable) flavors=(arm32) ;;
   *) die "flavor is arm64, x64 or all: $flavor" ;;
 esac
@@ -95,9 +95,8 @@ when=$(python3 "$ROOT/tooling/build_number.py" --decode "$code" 2>/dev/null || e
 
 platform_of() { case "$1" in arm64) echo android-arm64 ;; arm32) echo android-arm ;; x64) echo android-x64 ;; esac; }
 
-# arm32 不带 Linux 运行时（Node 自 v24 起没有 32 位 Linux 构建），
-# 因此打包前不对它做 runtime/out 的完整性检查。
-flavor_has_runtime() { [[ "$1" != arm32 ]]; }
+# Every flavor now carries a Linux runtime (arm32's is experimental: Debian armhf +
+# Node v23.11.1 armv7l + runtime/patches), so release builds always preflight runtime/out.
 
 # Beta channel token: handed to flutter in a JSON file (600, shredded on exit),
 # so it never shows up in the commands printed here.
@@ -135,11 +134,7 @@ fi
 # Check every selected flavor before starting any build or writing build config.
 # Debug/profile may intentionally exercise UI without a bundled runtime.
 if [[ $mode == release ]]; then
-  runtime_flavors=()
-  for f in "${flavors[@]}"; do flavor_has_runtime "$f" && runtime_flavors+=("$f"); done
-  if ((${#runtime_flavors[@]})); then
-    python3 -I "$ROOT/tooling/check_runtime_bundle.py" "${runtime_flavors[@]}"
-  fi
+  python3 -I "$ROOT/tooling/check_runtime_bundle.py" "${flavors[@]}"
 fi
 
 # Toolchain: use what's on PATH; the gitignored tooling/env.sh is the fallback.

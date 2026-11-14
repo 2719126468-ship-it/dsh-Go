@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
-# Builds the bundled Linux runtime for dsh-app (Ubuntu Base + Node.js + DeepSeek Harness,
-# run through Termux proot) for each Android ABI, entirely on an x86_64 Linux host without
-# executing any foreign-architecture code.
+# Builds the bundled Linux runtime for dsh-app (Ubuntu Base or Debian armhf + Node.js +
+# DeepSeek Harness, run through Termux proot) for each Android ABI, entirely on an x86_64
+# Linux host without executing any foreign-architecture code.
 #
-#   runtime/build-runtime.sh                 # both ABIs (x86_64 first)
+#   runtime/build-runtime.sh                 # all three ABIs (x86_64 first)
 #   runtime/build-runtime.sh x86_64          # one ABI
+#   runtime/build-runtime.sh armeabi-v7a     # the 32-bit ARM runtime (experimental, see below)
 #   COMPRESS=gz runtime/build-runtime.sh     # .tar.gz instead of .tar.xz
 #   RUNTIME_LAYERS=1 runtime/build-runtime.sh # opt in to base + engine assets
 #   RUNTIME_OUT=/path runtime/build-runtime.sh   # stage outputs outside runtime/out (not packaged)
+#
+# armeabi-v7a is built differently and is EXPERIMENTAL: Ubuntu has no armhf base, so its
+# rootfs is Debian 12 armhf (debuerreotype rootfs tarball), and Node has no 32-bit Linux build
+# from v24 on, so it runs Node v23.11.1 linux-armv7l. That Node is below DSH's engines.node
+# range; the two patches it needs (no import.meta.main on v23, no linux-arm flock addon) are
+# part of the pinned series for every ABI and are no-ops on Node 24 with a loadable addon.
+# The v24 API surface beyond those two points is not verified; validate on a real device.
 #
 # The DSH tree is patched with runtime/patches/*.diff (pinned per DSH version in
 # runtime/patches/pins.json; an unvetted DSH version fails the build) and the dsh-go-bridge
@@ -43,6 +51,11 @@ PY=(python3 -I "$HERE/lib/rtbuild.py")
 RUNTIME_REVISION="${RUNTIME_REVISION:-r15}"  # r14 + per-family DNS under PRoot, input recovery, session deletion and upload resolver fixes, title and boot cache work; DSH as r12
 DSH_VERSION="${DSH_VERSION:-0.2.2-rc.1}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
+# Node for armeabi-v7a: the last release with an official 32-bit Linux (linux-armv7l) build.
+NODE_VERSION_ARM32="${NODE_VERSION_ARM32:-23.11.1}"
+# Base image for armeabi-v7a: Ubuntu has none for armhf, so Debian 12 (bookworm) armhf.
+DEBIAN_VERSION="${DEBIAN_VERSION:-12.15}"
+DEBIAN_MIRROR="https://deb.debian.org/debian"
 # pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
 PNPM_VERSION="${PNPM_VERSION:-11.28.5}"
 # dist.integrity of pnpm-$PNPM_VERSION.tgz, identical on registry.npmjs.org and npmmirror
@@ -61,6 +74,8 @@ PRUNE_DEV_METADATA="${PRUNE_DEV_METADATA:-1}"   # drop *.map / *.d.ts from node_
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1767225600}"  # 2026-01-01T00:00:00Z, fixed tar mtimes
 
 UBUNTU_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/24.04/release"
+# debuerreotype daily rootfs layer for Debian armhf (bookworm, dist-arm32v7 branch).
+DEBIAN_ROOTFS_URL="https://raw.githubusercontent.com/debuerreotype/docker-debian-artifacts/dist-arm32v7/bookworm/oci/blobs"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 NPM_REGISTRY="https://registry.npmmirror.com"
 TERMUX_REPO="https://packages.termux.dev/apt/termux-main"
@@ -71,10 +86,15 @@ PBS_OFFICIAL="https://github.com/astral-sh/python-build-standalone/releases/down
 PBS_MIRROR="https://registry.npmmirror.com/-/binary/python-build-standalone"
 
 # sha256 pins, cross-checked against cdimage.ubuntu.com / nodejs.org / the Termux Packages
-# index. Unpinned version overrides still resolve the upstream checksum metadata.
+# index. Unpinned version overrides still resolve the upstream checksum metadata, except
+# for the Debian rootfs blob (no published index to resolve it against): a DEBIAN_VERSION
+# override must update that pin here.
 declare -A PIN=(
   [ubuntu-base-24.04.5-base-arm64.tar.gz]=a91d5a93010193712d346d761372b7c9db6dfcf093893161c64ca107f05914f2
   [ubuntu-base-24.04.5-base-amd64.tar.gz]=e77b6f10c2590cef872b33ee9f635a0e3fd1f57fb074c0e52b5c7f56147a0c86
+  [node-v23.11.1-linux-armv7l.tar.xz]=4dd49f33d9f2f9f18fea549ceabb33a15101f0435692c477cff4381f5c23a554
+  # Debian 12 armhf base (debuerreotype OCI layer); no ubuntu-base exists for armhf.
+  [debian-base-$DEBIAN_VERSION-armhf.tar.gz]=b6d0c47d4db8cde48b4a6494637b995ef0a318b3071c7117bba0ff1d4b8ee097
   [node-v24.22.1-linux-arm64.tar.xz]=dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e
   [node-v24.22.1-linux-x64.tar.xz]=6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6
   # 102 is the current Termux build; 98 left the pool, so its URL 404s.
@@ -89,6 +109,7 @@ declare -A PIN=(
   [libandroid-shmem_0.7_x86_64.deb]=ffa9e4c87467b158b148d0ff92dda796aa038276c2075af3269cdcdb06f25797
   [cpython-3.12.15+20261021-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz]=b4567aa5a11f51b540c4dfd9e082ebf23e554f8ac17b85caa6cea23e83693394
   [cpython-3.12.15+20261021-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz]=6d7521138fd33afddc1ccd08abb007d9a2829e38117c2576f9efdc0ec73ce772
+  [cpython-3.12.15+20261021-armv7-unknown-linux-gnueabihf-install_only_stripped.tar.gz]=7a807f31b7ea4f6704ddedad1a120a94fd3e0dd274e196004df2629864797422
   # GPL-2.0 source of the proot binary (same archive Termux's build recipe pins); used for COPYING.
   [proot-v5.1.107.102.zip]=30d12a6e2cc4147123756ff58edea262d3083bbc238c12d0ab9b39e3d1c40852
 )
@@ -163,15 +184,28 @@ ubuntu_base() {  # $1 = ubuntu arch; echoes path
   printf '%s' "$dir/$name"
 }
 
-node_dist() {  # $1 = node arch (arm64|x64); echoes path
-  local name="node-v${NODE_VERSION}-linux-$1.tar.xz" dir="$CACHE/node/v$NODE_VERSION"
+# Debian armhf base for armeabi-v7a. Ubuntu publishes no armhf base, so this ABI uses the
+# debuerreotype daily rootfs: the bookworm layer tarball of the dist-arm32v7 branch, whose
+# sha256 is also the blob's file name under bookworm/oci/blobs/sha256/ (verified by that name).
+# There is no SHA256SUMS index to fall back on, so a DEBIAN_VERSION override must update the pin.
+debian_base() {  # $1 = debian arch (armhf); echoes path
+  local name="debian-base-${DEBIAN_VERSION}-$1.tar.gz"
+  local dir="$CACHE/debian/$DEBIAN_VERSION"
+  local pin; pin="$(pin_of "$name")"
+  [[ -n "$pin" ]] || die "$name is not pinned; DEBIAN_VERSION overrides must add the rootfs blob sha256 to the PIN table"
+  fetch "$DEBIAN_ROOTFS_URL/rootfs.tar.gz" "$dir/$name" "$pin"
+  printf '%s' "$dir/$name"
+}
+
+node_dist() {  # $1 = node arch (arm64|x64|armv7l), $2 = node version (default NODE_VERSION); echoes path
+  local version="${2:-$NODE_VERSION}" name="node-v$version-linux-$1.tar.xz" dir="$CACHE/node/v$version"
   local pin; pin="$(pin_of "$name")"
   if [[ -z "$pin" ]]; then
-    fetch "$NODE_MIRROR/v$NODE_VERSION/SHASUMS256.txt" "$dir/SHASUMS256.txt"
+    fetch "$NODE_MIRROR/v$version/SHASUMS256.txt" "$dir/SHASUMS256.txt"
     pin="$(awk -v f="$name" '$2==f {print $1}' "$dir/SHASUMS256.txt")"
     [[ -n "$pin" ]] || die "$name not listed in SHASUMS256.txt"
   fi
-  fetch "$NODE_MIRROR/v$NODE_VERSION/$name" "$dir/$name" "$pin"
+  fetch "$NODE_MIRROR/v$version/$name" "$dir/$name" "$pin"
   printf '%s' "$dir/$name"
 }
 
@@ -196,29 +230,38 @@ termux_deb() {  # $1 = package, $2 = version, $3 = termux arch; echoes path
   printf '%s' "$dest"
 }
 
-# Extra Ubuntu noble packages (tzdata, ca-certificates, git and their dependency closure).
-# Chain of trust: InRelease of noble / noble-updates / noble-security verified with gpgv against
-# ubuntu-archive-keyring.gpg from the checksum-verified Ubuntu Base tarball -> Packages.xz hash
-# -> each .deb hash. The resolved set is pinned in runtime/locks/ubuntu-noble-<arch>.json
+# Extra base packages (tzdata, ca-certificates, git and their dependency closure), from Ubuntu
+# noble for the 64-bit ABIs or Debian bookworm for armeabi-v7a ($3). Chain of trust: InRelease
+# verified with gpgv against the keyring inside the checksum-verified base tarball -> Packages.xz
+# hash -> each .deb hash. The resolved set is pinned in runtime/locks/<suite>-<arch>.json
 # (re-resolve with UPDATE_DEB_LOCK=1).
-ubuntu_extra_debs() {  # $1 = ubuntu arch, $2 = verified base tarball; echoes deb paths, one per line
-  local arch="$1" base="$2" lock="$LOCKS/ubuntu-noble-$1.json" mirror
-  [[ "$arch" == amd64 ]] && mirror="$UBUNTU_ARCHIVE_AMD64" || mirror="$UBUNTU_ARCHIVE_ARM64"
+ubuntu_extra_debs() {  # $1 = distro arch, $2 = verified base tarball, $3 = ubuntu|debian; echoes deb paths
+  local arch="$1" base="$2" distro="${3:-ubuntu}" lock
+  local -a suites=() keyrings=()
+  if [[ "$distro" == debian ]]; then
+    # armeabi-v7a: bookworm's own suites, verified against the keyring inside the Debian rootfs.
+    lock="$LOCKS/debian-bookworm-$1.json"; mirror="$DEBIAN_MIRROR"
+    suites=(bookworm bookworm-updates); keyrings=(debian-archive-keyring.gpg)
+  else
+    lock="$LOCKS/ubuntu-noble-$1.json"
+    [[ "$arch" == amd64 ]] && mirror="$UBUNTU_ARCHIVE_AMD64" || mirror="$UBUNTU_ARCHIVE_ARM64"
+    suites=(noble noble-updates noble-security); keyrings=(ubuntu-archive-keyring.gpg)
+  fi
   if [[ ! -f "$lock" || "${UPDATE_DEB_LOCK:-0}" == 1 ]] || \
      ! python3 -I -c 'import json,sys; sys.exit(json.load(open(sys.argv[1]))["want"] != sys.argv[2].split())' "$lock" "$UBUNTU_EXTRA"; then
-    command -v gpgv >/dev/null || die "gpgv is required to resolve Ubuntu packages"
-    local dir="$CACHE/ubuntu/dists-$arch"; rm -rf "$dir"; mkdir -p "$dir"
-    python3 -I - "$base" "$dir/archive-keyring.gpg" <<'PYEOF'
+    command -v gpgv >/dev/null || die "gpgv is required to resolve distro packages"
+    local dir="$CACHE/$distro/dists-$arch"; rm -rf "$dir"; mkdir -p "$dir"
+    python3 -I - "$base" "$dir/archive-keyring.gpg" "${keyrings[0]}" <<'PYEOF'
 import sys, tarfile
 with tarfile.open(sys.argv[1], "r:gz") as t:
     for m in t:
-        if m.name.lstrip("./") == "usr/share/keyrings/ubuntu-archive-keyring.gpg":
+        if m.name.lstrip("./") == "usr/share/keyrings/" + sys.argv[3]:
             open(sys.argv[2], "wb").write(t.extractfile(m).read()); break
     else:
         sys.exit("keyring not found in base tarball")
 PYEOF
     local -a idx=() ; local suite want
-    for suite in noble noble-updates noble-security; do
+    for suite in "${suites[@]}"; do
       fetch "$mirror/dists/$suite/InRelease" "$dir/$suite.InRelease"
       gpgv --keyring "$dir/archive-keyring.gpg" "$dir/$suite.InRelease" 2>/dev/null \
         || die "InRelease signature check failed for $suite"
@@ -237,15 +280,21 @@ PYEOF
   while read -r file sum; do
     name="$(basename "$file")"
     # Superseded versions can leave the mirror; keep the locked bytes and hash.
-    fetch "$mirror/$file" "$CACHE/ubuntu/debs/$name" "$sum" "$UBUNTU_DEB_FALLBACK/$name"
-    printf '%s\n' "$CACHE/ubuntu/debs/$name"
+    # launchpad only serves Ubuntu, so Debian's current pool is the single origin.
+    if [[ "$distro" == ubuntu ]]; then
+      fetch "$mirror/$file" "$CACHE/ubuntu/debs/$name" "$sum" "$UBUNTU_DEB_FALLBACK/$name"
+      printf '%s\n' "$CACHE/ubuntu/debs/$name"
+    else
+      fetch "$mirror/$file" "$CACHE/debian/debs/$name" "$sum"
+      printf '%s\n' "$CACHE/debian/debs/$name"
+    fi
   done
 }
 
 # Relocatable CPython (python-build-standalone, install_only_stripped). Checksums come from the
 # checked-in pins, or SHA256SUMS on GitHub for an unpinned version override.
-python_dist() {  # $1 = aarch64|x86_64; echoes path
-  local name="cpython-${PYTHON_VERSION}+${PBS_RELEASE}-$1-unknown-linux-gnu-install_only_stripped.tar.gz"
+python_dist() {  # $1 = PBS target triple (aarch64-unknown-linux-gnu, ...); echoes path
+  local name="cpython-${PYTHON_VERSION}+${PBS_RELEASE}-$1-install_only_stripped.tar.gz"
   local dir="$CACHE/python/$PBS_RELEASE" pin; pin="$(pin_of "$name")"
   if [[ -z "$pin" ]]; then
     fetch "$PBS_OFFICIAL/$PBS_RELEASE/SHA256SUMS" "$dir/SHA256SUMS"
@@ -370,11 +419,14 @@ PYEOF
 # per-ABI build
 # ---------------------------------------------------------------------------
 build_abi() {
-  local abi="$1" ubuntu_arch node_arch npm_cpu termux_arch elf_name
+  local abi="$1" distro base_arch node_arch node_version npm_cpu termux_arch elf_name python_triple
   case "$abi" in
-    arm64-v8a) ubuntu_arch=arm64; node_arch=arm64; npm_cpu=arm64; termux_arch=aarch64; elf_name="ARM aarch64" ;;
-    x86_64)    ubuntu_arch=amd64; node_arch=x64;   npm_cpu=x64;   termux_arch=x86_64;  elf_name="x86-64" ;;
-    *) die "unknown ABI $abi (use arm64-v8a or x86_64)" ;;
+    arm64-v8a)   distro=ubuntu; base_arch=arm64;  node_arch=arm64;  node_version="$NODE_VERSION";        npm_cpu=arm64; termux_arch=aarch64; elf_name="ARM aarch64"; python_triple=aarch64-unknown-linux-gnu ;;
+    x86_64)      distro=ubuntu; base_arch=amd64;  node_arch=x64;    node_version="$NODE_VERSION";        npm_cpu=x64;   termux_arch=x86_64;  elf_name="x86-64";      python_triple=x86_64-unknown-linux-gnu ;;
+    # EXPERIMENTAL: Debian armhf + Node v23.11.1 (the last 32-bit Linux build) + the two
+    # compatibility patches pinned in runtime/patches/series.
+    armeabi-v7a) distro=debian; base_arch=armhf;  node_arch=armv7l; node_version="$NODE_VERSION_ARM32"; npm_cpu=arm;   termux_arch=arm;     elf_name="ARM, EABI5"; python_triple=armv7-unknown-linux-gnueabihf ;;
+    *) die "unknown ABI $abi (use arm64-v8a, armeabi-v7a or x86_64)" ;;
   esac
   log "=== $abi ==="
   local work="$WORK/$abi" out="$OUT/$abi"
@@ -382,13 +434,17 @@ build_abi() {
   mkdir -p "$work"
   rm -rf "$out"; mkdir -p "$assets/licenses" "$jni"
 
-  local base node proot_deb talloc_deb shmem_deb proot_src
-  base="$(ubuntu_base "$ubuntu_arch")"
-  node="$(node_dist "$node_arch")"
-  ubuntu_extra_debs "$ubuntu_arch" "$base" > "$work/extra-debs.txt"   # set -e aborts on any failure inside
+  local base node proot_deb talloc_deb shmem_deb proot_src base_version
+  if [[ "$distro" == debian ]]; then
+    base="$(debian_base "$base_arch")"; base_version="$DEBIAN_VERSION"
+  else
+    base="$(ubuntu_base "$base_arch")"; base_version="$UBUNTU_VERSION"
+  fi
+  node="$(node_dist "$node_arch" "$node_version")"
+  ubuntu_extra_debs "$base_arch" "$base" "$distro" > "$work/extra-debs.txt"   # set -e aborts on any failure inside
   local -a extra_debs=(); mapfile -t extra_debs < "$work/extra-debs.txt"
-  [[ ${#extra_debs[@]} -gt 0 ]] || die "Ubuntu package resolution produced nothing"
-  local python; python="$(python_dist "$termux_arch")"
+  [[ ${#extra_debs[@]} -gt 0 ]] || die "$distro package resolution produced nothing"
+  local python; python="$(python_dist "$python_triple")"
   proot_deb="$(termux_deb proot "$PROOT_VERSION" "$termux_arch")"
   talloc_deb="$(termux_deb libtalloc "$TALLOC_VERSION" "$termux_arch")"
   shmem_deb="$(termux_deb libandroid-shmem "$SHMEM_VERSION" "$termux_arch")"
@@ -466,16 +522,16 @@ PYEOF
   local pnpm_lockfile="$LOCKS/pnpm-$PNPM_VERSION/package-lock.json"
   local inputs_sha
   inputs_sha="$( {
-      echo "$RUNTIME_REVISION $abi $DSH_VERSION $NODE_VERSION $PNPM_VERSION $UBUNTU_VERSION $COMPRESS $XZ_PRESET $XZ_THREADS $PRUNE_DEV_METADATA $SOURCE_DATE_EPOCH $RUNTIME_LAYERS"
+      echo "$RUNTIME_REVISION $abi $DSH_VERSION $node_version $PNPM_VERSION $distro$base_version $COMPRESS $XZ_PRESET $XZ_THREADS $PRUNE_DEV_METADATA $SOURCE_DATE_EPOCH $RUNTIME_LAYERS"
       sha256 "$base"; sha256 "$node"; sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
       sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
       sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"
-      (cd "$HERE" && find patches bridge boot direct session-deletion -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+      (cd "$HERE" && find patches bridge boot direct session-deletion flock-fallback -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
     } | sha256sum | cut -c1-12 )"
-  local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${NODE_VERSION}-ubuntu${UBUNTU_VERSION}-${inputs_sha}"
+  local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${node_version}-${distro}${base_version}-${inputs_sha}"
   local runtime_info
   runtime_info="$(printf '{"runtimeVersion":"%s","abi":"%s","dshVersion":"%s","nodeVersion":"%s","pnpmVersion":"%s","ubuntuVersion":"%s","prootVersion":"%s","dshPatches":%s,"dshGoBridge":"%s"}' \
-    "$runtime_version" "$abi" "$DSH_VERSION" "$NODE_VERSION" "$PNPM_VERSION" "$UBUNTU_VERSION" "$PROOT_VERSION" \
+    "$runtime_version" "$abi" "$DSH_VERSION" "$node_version" "$PNPM_VERSION" "$base_version" "$PROOT_VERSION" \
     "$(cat "$work/dsh-patches.json")" "$bridge_version")"
 
   # -- rootfs archive --
@@ -493,8 +549,8 @@ PYEOF
     "${extra_debs[@]/#/--deb=}" --python "$python" --bridge "$bridge"
 
   local versions
-  versions="$(printf '{"runtimeVersion":"%s","dshVersion":"%s","nodeVersion":"%s","pnpmVersion":"%s","ubuntuVersion":"%s","prootVersion":"%s","tallocVersion":"%s","androidShmemVersion":"%s","dshPatches":%s,"dshGoBridge":"%s","build":{"inputsSha256_12":"%s","ubuntuBaseSha256":"%s","nodeSha256":"%s","dshLockSha256":"%s","pnpmIntegrity":"%s","sourceDateEpoch":%s}}' \
-    "$runtime_version" "$DSH_VERSION" "$NODE_VERSION" "$PNPM_VERSION" "$UBUNTU_VERSION" "$PROOT_VERSION" "$TALLOC_VERSION" "$SHMEM_VERSION" \
+  versions="$(printf '{"runtimeVersion":"%s","dshVersion":"%s","nodeVersion":"%s","pnpmVersion":"%s","ubuntuVersion":"%s","baseDistro":"%s","prootVersion":"%s","tallocVersion":"%s","androidShmemVersion":"%s","dshPatches":%s,"dshGoBridge":"%s","build":{"inputsSha256_12":"%s","ubuntuBaseSha256":"%s","nodeSha256":"%s","dshLockSha256":"%s","pnpmIntegrity":"%s","sourceDateEpoch":%s}}' \
+    "$runtime_version" "$DSH_VERSION" "$node_version" "$PNPM_VERSION" "$base_version" "$distro" "$PROOT_VERSION" "$TALLOC_VERSION" "$SHMEM_VERSION" \
     "$(cat "$work/dsh-patches.json")" "$bridge_version" \
     "$inputs_sha" "$(sha256 "$base")" "$(sha256 "$node")" "$(sha256 "$lockfile")" "$PNPM_INTEGRITY" "$SOURCE_DATE_EPOCH")"
   "${PY[@]}" manifest --abi "$abi" --report "$out/build-report.json" --jnilibs "$work/jnilibs.json" \
@@ -507,7 +563,7 @@ PYEOF
   done
   python3 -I - "$out/build-report.json" "$abi" <<'PYEOF' || bad=1
 import json, sys
-r = json.load(open(sys.argv[1])); want = {"arm64-v8a": "aarch64", "x86_64": "x86-64"}[sys.argv[2]]
+r = json.load(open(sys.argv[1])); want = {"arm64-v8a": "aarch64", "x86_64": "x86-64", "armeabi-v7a": "arm"}[sys.argv[2]]
 wrong = [e["path"] for e in r["elf"] if e["machine"] != want]
 print("rootfs ELF objects: %d, wrong-arch: %d, warnings: %d" % (len(r["elf"]), len(wrong), len(r["warnings"])), file=sys.stderr)
 sys.exit(1 if wrong else 0)
@@ -521,14 +577,14 @@ write_index() {
 import json, os, sys
 out = sys.argv[1]
 index = {"schema": 1, "abis": {}}
-for abi in ("x86_64", "arm64-v8a"):
+for abi in ("x86_64", "arm64-v8a", "armeabi-v7a"):
     p = os.path.join(out, abi, "assets", "runtime", "manifest.json")
     if not os.path.isfile(p):
         continue
     m = json.load(open(p))
     index["abis"][abi] = {k: m.get(k) for k in (  # .get: another ABI may still hold an older build
         "runtimeVersion", "rootfs", "rootfsSha256", "rootfsBytes", "uncompressedBytes", "entries",
-        "dshVersion", "nodeVersion", "pnpmVersion", "ubuntuVersion", "prootVersion")}
+        "dshVersion", "nodeVersion", "pnpmVersion", "ubuntuVersion", "baseDistro", "prootVersion")}
     if m.get("schema", 1) == 2:
         index["schema"] = 2
         for key in ("rootfs", "rootfsSha256"):
@@ -542,7 +598,7 @@ PYEOF
 
 main() {
   local -a abis=("$@")
-  [[ ${#abis[@]} -gt 0 ]] || abis=(x86_64 arm64-v8a)
+  [[ ${#abis[@]} -gt 0 ]] || abis=(x86_64 arm64-v8a armeabi-v7a)
   mkdir -p "$CACHE" "$WORK" "$OUT"
   local abi
   for abi in "${abis[@]}"; do build_abi "$abi"; done

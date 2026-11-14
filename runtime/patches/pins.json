@@ -136,6 +136,26 @@
         }
       }
     },
+    "node-addon-system-armv7-flock.diff": {
+      "0.2.2-rc.1": {
+        "node_modules/@deepseek-ai/node-addon-system/lib/flock.js": {
+          "after": "22814228c6447745f58b974c70ef3567b3b02e9fdb03305f7023df2a3269b869",
+          "before": "e42af00c298d56322c073bf7cc66485096028318ab645a2e69dc2aa7481ba646"
+        }
+      }
+    },
+    "node23-import-meta-main.diff": {
+      "0.2.2-rc.1": {
+        "node_modules/@deepseek-ai/dsh-subprocess-local/lib/runner.js": {
+          "after": "7ce87c21f9fdf60423f2317a1658a9aaad709da1a8be7cb18aa6c32715af5d2f",
+          "before": "4e21528dfdb3e92bdce2340945dc4dcb202e4a4af0bbeb8b97585f67735d30c1"
+        },
+        "node_modules/@deepseek-ai/dsh/lib/bin.js": {
+          "after": "f37b4fc26b5b3fcbcfc66a718971552fd5356bf9628e11f838d2960f2c213ab1",
+          "before": "b6640801a5a65aae9f53ca21bcce3b2ea28bd9e9554c939c1ff7c4448d91fa18"
+        }
+      }
+    },
     "piai-anthropic-opus55-thinking.diff": {
       "0.2.2-rc.1": {
         "node_modules/@earendil-works/pi-ai/dist/api/anthropic-messages.js": {
