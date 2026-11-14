@@ -8,18 +8,16 @@ import java.nio.file.LinkOption
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
 
-/**
- * 定制层：APK 自带的破甲预设、实用技能、预装插件与皮肤资源，在每次引擎启动时写进 rootfs。
- *
- * - `assets/custom/presets/*.yml` → `/opt/dsh-app/custom/presets/master.patch.yml`（按 --patch 加载）
- * - `assets/custom/plugins.zip`   → 解开到 `/opt/dsh-app/custom/plugins/`（按绝对路径加载 index.js）
- * - `assets/custom/skills/<name>/**` → `/root/.dsh/skills/<name>/**`（DSH 直接扫描该目录）
- *
- * 插件打包成 zip 而不是散文件：3 MB 单资产比 285 个小文件在 APK 里更容易被 aapt 处理，
- * 也避免每个文件各占一条 zip 目录项。解压只做一次，用 zip 的 SHA-256 做版本戳。
- *
- * 只在本地引擎的正常启动里挂载（安全模式不挂）。写入失败则本次启动不带定制层，DSH 照常起来。
- */
+// 定制层：APK 自带的破甲预设、实用技能、预装插件与皮肤资源，在每次引擎启动时写进 rootfs。
+//
+//   assets/custom/presets/<name>.yml      -> /opt/dsh-app/custom/presets/master.patch.yml（按 --patch 加载）
+//   assets/custom/plugins.zip             -> 解开到 /opt/dsh-app/custom/plugins/（按绝对路径加载 index.js）
+//   assets/custom/skills/<name>/...       -> /root/.dsh/skills/<name>/（DSH 直接扫描该目录）
+//
+// 插件打包成 zip 而不是散文件：3 MB 单资产比 285 个小文件在 APK 里更容易被 aapt 处理，
+// 也避免每个文件各占一条 zip 目录项。解压只做一次，用 zip 的 SHA-256 做版本戳。
+//
+// 只在本地引擎的正常启动里挂载（安全模式不挂）。写入失败则本次启动不带定制层，DSH 照常起来。
 object CustomLayer {
     const val GUEST_DIR = "/opt/dsh-app/custom"
     const val PRESET_PATCH = "$GUEST_DIR/presets/master.patch.yml"
@@ -29,11 +27,12 @@ object CustomLayer {
     private const val ASSET_DIR = "flutter_assets/assets/custom"
     private const val PLUGINS_ZIP = "$ASSET_DIR/plugins.zip"
     private const val PLUGIN_STAMP = ".dsh-app-layer"
+    private const val MAX_ENTRIES = 4000
 
     private const val WEB_PATCH_ARG = "--patch /etc/dsh-app/dsh-web.patch.yml"
     private const val DSH_WEB = "/usr/local/bin/dsh web"
 
-    /** 插件行：绝对路径加载，浏览器半身由包内 package.json 的 dsh.client 声明。 */
+    // 插件行：绝对路径加载，浏览器半身由包内 package.json 的 dsh.client 声明。
     private val PLUGINS = listOf(
         "dsh-our-free-model" to "our-free-model",
     )
@@ -47,7 +46,7 @@ object CustomLayer {
         }
     }
 
-    /** 把定制层挂到 `dsh web` 的 --patch 链尾；[arg] 不是那条启动命令时返回 null。 */
+    // 把定制层挂到 `dsh web` 的 --patch 链尾；arg 不是那条启动命令时返回 null。
     fun launchArg(arg: String): String? {
         val web = arg.indexOf("$DSH_WEB ")
         if (web < 0 || arg.indexOf("$DSH_WEB ", web + 1) >= 0 || arg.contains("--profile")) return null
@@ -59,10 +58,8 @@ object CustomLayer {
     fun presetFile(rootfs: File) = File(rootfs, PRESET_PATCH.removePrefix("/"))
     fun pluginFile(rootfs: File) = File(rootfs, PLUGIN_PATCH.removePrefix("/"))
 
-    /**
-     * 复制预设、解开插件、复制技能，然后写两份 overlay。任何一步失败就删掉 overlay 并返回 false，
-     * 让这次启动只用 App 自带的 dsh-web 补丁。
-     */
+    // 复制预设、解开插件、复制技能，然后写两份 overlay。任何一步失败就删掉 overlay 并返回 false，
+    // 让这次启动只用 App 自带的 dsh-web 补丁。
     fun writeFiles(context: Context, rootfs: File): Boolean {
         return try {
             val custom = dir(rootfs, GUEST_DIR)
@@ -91,10 +88,8 @@ object CustomLayer {
         }
     }
 
-    /**
-     * 把 plugins.zip 解开到 [target]。zip 的 SHA-256 存在 [PLUGIN_STAMP] 里：内容没变就跳过，
-     * 变了才清空重解，避免每次启动都写几百个文件。
-     */
+    // 把 plugins.zip 解开到 target。zip 的 SHA-256 存在 PLUGIN_STAMP 里：内容没变就跳过，
+    // 变了才清空重解，避免每次启动都写几百个文件。
     private fun unzipPlugins(context: Context, target: File) {
         val bytes = context.assets.open(PLUGINS_ZIP).use { it.readBytes() }
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
@@ -143,7 +138,7 @@ object CustomLayer {
         if (!target.mkdirs() && !target.isDirectory) throw IOException("could not create ${target.path}")
     }
 
-    /** Recursively mirror an APK asset directory. */
+    // Recursively mirror an APK asset directory.
     private fun copyTree(context: Context, assetDir: String, target: File, depth: Int = 0) {
         if (depth > 12) throw IOException("asset tree too deep: $assetDir")
         ensureDir(target)
@@ -160,7 +155,7 @@ object CustomLayer {
         }
     }
 
-    /** 只比较普通文件；符号链接/FIFO 一律覆盖。 */
+    // 只比较普通文件；符号链接/FIFO 一律覆盖。
     private fun writeIfChanged(target: File, bytes: ByteArray) {
         if (Files.isRegularFile(target.toPath(), LinkOption.NOFOLLOW_LINKS) &&
             target.length() == bytes.size.toLong() && target.readBytes().contentEquals(bytes)
@@ -177,6 +172,4 @@ object CustomLayer {
             if (tmp.exists()) tmp.delete()
         }
     }
-
-    private const val MAX_ENTRIES = 4000
 }
