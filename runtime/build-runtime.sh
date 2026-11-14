@@ -198,7 +198,8 @@ debian_base() {  # $1 = debian arch (armhf); echoes path
 }
 
 node_dist() {  # $1 = node arch (arm64|x64|armv7l), $2 = node version (default NODE_VERSION); echoes path
-  local version="${2:-$NODE_VERSION}" name="node-v$version-linux-$1.tar.xz" dir="$CACHE/node/v$version"
+  local version="${2:-$NODE_VERSION}"
+  local name="node-v$version-linux-$1.tar.xz" dir="$CACHE/node/v$version"
   local pin; pin="$(pin_of "$name")"
   if [[ -z "$pin" ]]; then
     fetch "$NODE_MIRROR/v$version/SHASUMS256.txt" "$dir/SHASUMS256.txt"
