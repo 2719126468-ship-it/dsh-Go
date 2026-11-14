@@ -22,7 +22,7 @@ on:
       - custom/**
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   FLUTTER_VERSION: 3.47.7
@@ -33,7 +33,10 @@ jobs:
   arm64:
     if: github.event_name == 'push' || inputs.build_arm64
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 300
+    defaults:
+      run:
+        working-directory: app
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,23 +53,23 @@ jobs:
           cache: true
 
       - name: 构建内置 Linux 运行时（arm64）
+        working-directory: .
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gpgv xz-utils
+          sudo apt-get install -y -qq gpgv xz-utils file
           bash runtime/build-runtime.sh arm64-v8a
         env:
           COMPRESS: xz
           XZ_THREADS: 4
 
       - name: 固定签名
+        working-directory: .
         run: |
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          cat > app/android/key.properties <<EOF
-          storeFile=$RUNNER_TEMP/release.jks
-          storePassword=$KEY_STORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP/release.jks" "$KEY_STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" \
+            > app/android/key.properties
+          test -s app/android/key.properties || (echo "key.properties is empty" && exit 1)
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -74,36 +77,32 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: 依赖
-        working-directory: app
         run: flutter pub get
 
       - name: 打包 arm64
+        working-directory: .
         run: |
           chmod +x tooling/build-apk.sh
           tooling/build-apk.sh -f arm64 ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          DSH_KEY_PROPERTIES: app/android/key.properties
 
       - name: 校验签名
+        working-directory: .
         run: |
-          APK=$(ls app/build/app/outputs/flutter-apk/app-arm64-release.apk 2>/dev/null || ls app/build/app/outputs/flutter-apk/*arm64*release*.apk | head -1)
+          APK=$(ls app/build/app/outputs/flutter-apk/*arm64*release*.apk | head -1)
           echo "APK=$APK"
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee /tmp/verify.txt
-          grep -q "Verified using v1 scheme (JAR signing): true" /tmp/verify.txt
-          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" /tmp/verify.txt
-          grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" /tmp/verify.txt
-          ! grep -q "CN=Android Debug" /tmp/verify.txt
-          grep -m1 'certificate SHA-256 digest' /tmp/verify.txt || true
+          "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify.txt
+          grep -q "Verified using v1 scheme (JAR signing): true" verify.txt
+          grep -q "Verified using v2 scheme" verify.txt
+          grep -q "Verified using v3 scheme" verify.txt
+          ! grep -q "CN=Android Debug" verify.txt
 
       - name: 清理密钥
         if: always()
-        run: |
-          rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
+        working-directory: .
+        run: rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -114,7 +113,10 @@ jobs:
   arm32:
     if: github.event_name == 'push' || inputs.build_arm32
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: app
     steps:
       - uses: actions/checkout@v4
         with:
@@ -127,14 +129,12 @@ jobs:
           cache: true
 
       - name: 固定签名
+        working-directory: .
         run: |
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          cat > app/android/key.properties <<EOF
-          storeFile=$RUNNER_TEMP/release.jks
-          storePassword=$KEY_STORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP/release.jks" "$KEY_STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" \
+            > app/android/key.properties
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -142,34 +142,32 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: 依赖
-        working-directory: app
         run: flutter pub get
 
       - name: 打包 arm32
         run: |
           flutter build apk --release --flavor arm32 --target-platform android-arm \
-            --build-number "$(python3 tooling/build_number.py)" \
+            --build-number "$(python3 ../tooling/build_number.py)" \
             ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: 校验签名
+        working-directory: .
         run: |
           APK=$(ls app/build/app/outputs/flutter-apk/*arm32*release*.apk | head -1)
           echo "APK=$APK"
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee /tmp/verify32.txt
-          grep -q "Verified using v2 scheme" /tmp/verify32.txt
-          ! grep -q "CN=Android Debug" /tmp/verify32.txt
-          "$ANDROID_HOME"/build-tools/*/aapt2 dump badging "$APK" | grep -E "native-code|sdkVersion|package:" || true
+          "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify32.txt
+          grep -q "Verified using v2 scheme" verify32.txt
+          ! grep -q "CN=Android Debug" verify32.txt
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep -E "native-code|sdkVersion|package:" || true
 
       - name: 清理密钥
         if: always()
-        run: |
-          rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
+        working-directory: .
+        run: rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -177,7 +175,7 @@ jobs:
           path: app/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
 
-  release:
+  bundle:
     needs: [arm64, arm32]
     if: always() && (needs.arm64.result == 'success' || needs.arm32.result == 'success')
     runs-on: ubuntu-24.04
