@@ -187,7 +187,11 @@ flutter:
     # 定制层（破甲预设 / 实用技能 / 预装插件 / 皮肤资源），由
     # runtime/CustomLayer.kt 在每次引擎启动时写进 rootfs。
     - assets/custom/presets/
-    - assets/custom/skills/
+    # 目录声明只收该目录的直接文件，技能各有子目录，逐个列出。
+    - assets/custom/skills/apk-sign/
+    - assets/custom/skills/dev-loop/
+    - assets/custom/skills/phone-control/
+    - assets/custom/skills/runtime-triage/
     # 预装插件整包（dsh-our-free-model）：单文件比 285 个小文件更适合放进 APK，
     # runtime/CustomLayer.kt 在启动时按 SHA-256 判断是否需要重解。
     - assets/custom/plugins.zip
