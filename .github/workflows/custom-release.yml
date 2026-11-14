@@ -189,16 +189,42 @@ jobs:
     needs: [arm64, arm32]
     if: always() && (needs.arm64.result == 'success' || needs.arm32.result == 'success')
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
-      - name: 汇总
+      - name: 汇总（重命名 + 校验和）
         run: |
           mkdir -p out
-          find dist -name '*.apk' -exec cp {} out/ \;
-          cd out && sha256sum *.apk | tee SHA256SUMS
+          ver="${{ inputs.version }}"
+          [ -n "$ver" ] || ver=1.0.16
+          a64=$(find dist -path '*arm64*' -name '*.apk' | head -1)
+          a32=$(find dist -path '*arm32*' -name '*.apk' | head -1)
+          [ -z "$a64" ] || cp "$a64" "out/dsh-go-${ver}-arm64.apk"
+          [ -z "$a32" ] || cp "$a32" "out/dsh-go-${ver}-arm32.apk"
+          cd out && sha256sum *.apk | tee SHA256SUMS && cat SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: apks
           path: out/
+      - name: 发布到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ver="${{ inputs.version }}"
+          [ -n "$ver" ] || ver=1.0.16
+          tag="custom-${ver}-$(date -u +%Y%m%d%H%M)"
+          {
+            echo "破甲预设 + 实用技能 + dsh-our-free-model + 三套皮肤 + 固定签名（v1/v2/v3）。"
+            echo
+            echo "- arm64：Android 8+ 64 位，含本机 Linux 引擎"
+            echo "- arm32：Android 8+ 32 位，仅远端主机客户端（Node 无 32 位 v24）"
+            echo
+            echo "证书 SHA-256：2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444"
+          } > notes.md
+          gh release create "$tag" out/*.apk out/SHA256SUMS \
+            --repo "${{ github.repository }}" \
+            --title "DSH Go 定制版 ${ver}" \
+            --notes-file notes.md
