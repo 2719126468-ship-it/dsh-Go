@@ -7,10 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../update/update_http.dart';
 
-/// The 社区 hub's content: picked plugins, GitHub projects, prompt ideas,
-/// group links and news, curated in `community.json` at the repository root.
-/// project repository (docs/design/community.md). Nothing here is
-/// written by users and nothing is uploaded.
+/// The community hub's content: picked plugins, GitHub projects, prompt ideas,
+/// group links and news, curated in the repository's `community.json`
+/// (docs/design/community.md). Nothing here is written by users or uploaded.
 ///
 /// Offline-safe: the copy bundled in `assets/community/community.json` is
 /// there from the first launch, the last good download is cached, and a
@@ -71,8 +70,6 @@ class CommunityPlugin {
   final String? note;
 }
 
-/// A prompt idea: opens a new conversation with [prompt] in the composer,
-/// not sent.
 class CommunityLocalizedText {
   const CommunityLocalizedText({required this.zh, required this.en});
 
@@ -101,6 +98,8 @@ class CommunityProject {
   String get url => 'https://github.com/$repository';
 }
 
+/// A prompt idea: opens a new conversation with [prompt] in the composer,
+/// not sent.
 class CommunityPrompt {
   const CommunityPrompt({required this.title, required this.prompt, this.summary, this.icon});
 
@@ -203,8 +202,13 @@ class CommunityFeed {
         final license = _text(m['license'], 24);
         final note = _localized(m['note'], 120);
         final compatibility = _localized(m['compatibility'], 140);
-        if (repository == null || !_repository.hasMatch(repository) || stars is! int || stars < 0 ||
-            license == null || note == null || compatibility == null) {
+        if (repository == null ||
+            !_repository.hasMatch(repository) ||
+            stars is! int ||
+            stars < 0 ||
+            license == null ||
+            note == null ||
+            compatibility == null) {
           return null;
         }
         return CommunityProject(
