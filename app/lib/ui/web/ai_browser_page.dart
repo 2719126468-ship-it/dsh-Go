@@ -128,6 +128,7 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
     final loopback = parsed?.host == '127.0.0.1' || parsed?.host == 'localhost';
     if (parsed == null ||
         parsed.host.isEmpty ||
+        parsed.userInfo.isNotEmpty ||
         !const ['http', 'https'].contains(parsed.scheme) ||
         (parsed.scheme == 'http' && !loopback)) {
       url.dispose();
@@ -137,8 +138,8 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
           SnackBar(
             content: Text(
               _text(
-                '请输入有效地址；远程服务必须使用 HTTPS，HTTP 仅支持 localhost / 127.0.0.1。',
-                'Enter a valid URL. Remote hosts must use HTTPS; HTTP is limited to localhost / 127.0.0.1.',
+                '请输入有效地址；不要在 URL 中嵌入用户名或密码。远程服务必须使用 HTTPS，HTTP 仅支持 localhost / 127.0.0.1。',
+                'Enter a valid URL without embedded username or password. Remote hosts must use HTTPS; HTTP is limited to localhost / 127.0.0.1.',
               ),
             ),
           ),
