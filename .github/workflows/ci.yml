@@ -304,7 +304,7 @@ jobs:
           node - "$prefix/node_modules/@deepseek-ai/dsh-schedule/lib/index.js" <<'NODE'
           const fs = require("node:fs");
           const source = fs.readFileSync(process.argv[2], "utf8");
-          for (const token of ["async validateTarget", "target.kind === \"new\"", "requireSessionCreation()", "async create(", "serialize(work)"]) {
+          for (const token of ["async validateTarget", "target.kind === \"new\"", "requireSessionCreation()", "async create(", "serialize(work)", "cleanup = ctx.effect(() => async () => {", "this.stopping = true;", "await this.runtime?.dispose()"]) {
             const index = source.indexOf(token);
             console.log("__DSH_GO_SCHEDULE_CONTEXT__ " + token + " " + JSON.stringify(
               index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1800))
