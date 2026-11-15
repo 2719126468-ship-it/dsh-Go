@@ -107,7 +107,7 @@ class CommunityPluginRow extends ConsumerWidget {
       if (bundled != null) {
         unawaited(showBundleSheet(context, bundled));
       } else if (marketEntry != null) {
-        unawaited(showMarketPluginSheet(context, marketEntry!));
+        unawaited(showMarketPluginSheet(context, marketEntry));
       }
     }
 
