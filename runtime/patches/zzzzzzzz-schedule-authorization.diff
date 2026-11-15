@@ -273,7 +273,7 @@
 +const CALLER_ERRORS = ["subagent_session", "authorization_required", "internal_error"];
 
 @@ -0,1 +0,4 @@
-+    if (error instanceof Error && "code" in error && error.code === "schedule-authorization-required") {
-+      return { code: "authorization_required", message: error.message };
-+    }
-     if (error instanceof ScheduleInputError) {
++		if (error instanceof Error && "code" in error && error.code === "schedule-authorization-required") {
++			return { code: "authorization_required", message: error.message };
++		}
+ 		if (error instanceof ScheduleInputError) {
