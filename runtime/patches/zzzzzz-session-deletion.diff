@@ -141,7 +141,7 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1678,3 +1678,18 @@
+@@ -1678,1 +1678,16 @@
  	*/
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
