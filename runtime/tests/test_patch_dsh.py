@@ -181,39 +181,16 @@ class PatchDsh(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
-    def test_shipped_exclusive_create_patch_applies_and_rejects_drift(self):
-        shipped = os.path.join(HERE, "..", "patches")
-        name = "fs-create-exclusive.diff"
-        rel = "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js"
-        pins = load(os.path.join(shipped, "pins.json"))
-        version = os.environ.get("DSH_VERSION", "0.2.1-rc.2")
-        pin = pins["patches"][name][version][rel]
+    def test_upstream_fs_local_has_exclusive_create_fallback(self):
+        # DSH 0.2.2-rc.1 already ships this behavior. Keep the runtime contract
+        # checked without carrying a duplicate patch or inventing a new pin.
         with open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb") as source:
-            original = source.read()
-        self.assertEqual(hashlib.sha256(original).hexdigest(), pin["before"])
-        target = os.path.join(self.prefix, rel)
-        os.makedirs(os.path.dirname(target), exist_ok=True)
-        with open(target, "wb") as out:
-            out.write(original)
-        os.remove(os.path.join(self.patches, "guard.diff"))
-        with open(os.path.join(self.patches, name), "w") as out:
-            out.write(read(os.path.join(shipped, name)))
-        with open(os.path.join(self.patches, "pins.json"), "w") as out:
-            json.dump({"schema": 1, "patches": {name: pins["patches"][name]}}, out)
+            original = source.read().decode("utf-8")
+        self.assertIn('["EPERM", "EXDEV", "ENOTSUP", "EMLINK"]', original)
+        self.assertIn('open(absolutePath, "wx", 384)', original)
+        self.assertIn("await handle.sync()", original)
+        self.assertIn("await handle.close()", original)
 
-        result = self.run_cli("--dsh-version", version)
-        self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual(sha(read(target)), pin["after"])
-        again = self.run_cli("--dsh-version", version)
-        self.assertEqual(again.returncode, 0, again.stdout)
-        self.assertIn("already patched", again.stdout)
-        with open(target, "wb") as out:
-            out.write(original + b"// upstream drift\n")
-        changed = self.run_cli("--dsh-version", version)
-        self.assertNotEqual(changed.returncode, 0)
-        self.assertIn("differs from the vetted", changed.stdout)
-        with open(target, "rb") as source:
-            self.assertEqual(source.read(), original + b"// upstream drift\n")
 
 
 if __name__ == "__main__":
