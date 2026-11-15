@@ -159,9 +159,13 @@
 +		const { session } = options;
 +		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-@@ -1799,1 +1799,2 @@
-+			agent.dshGoDispose = dispose;
- 			return { agent, dispose };
+@@ -1581,5 +1581,6 @@
+ 					ready = true;
++					agent.dshGoDispose = dispose;
+ 					return {
+ 						agent,
+ 						dispose
+ 					};
 --- a/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 @@ -166,6 +166,7 @@
