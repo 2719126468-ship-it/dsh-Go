@@ -218,14 +218,12 @@
  					exitCode = 1;
  					const restoration = repaired.exitCode === 0 ? "restored package.json, pnpm-lock.yaml, and node_modules" : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'";
  					const diagnostic = `\ndsh: installation rejected: ${warnings.join("\n")}\ndsh: ${restoration}.\n`;
-@@ -761,11 +879,38 @@
- 					append(Buffer.from(diagnostic));
- 				} else if (options.activateNewBundles !== false) await reconcile(before, dir, context.installAnchor, options);
- 			}
+@@ -760,3 +878,4 @@
 +			completed = true;
  		} finally {
  			control.settled = true;
  			clearTimeout(idleTimer);
+@@ -764,2 +883,28 @@
 -			await rm(runRecordPath(dir), { force: true });
 -			await log.close();
 +			if (grouped) {
@@ -256,9 +254,6 @@
 +				await rm(runRecordPath(dir), { force: true });
 +				await log.close();
 +			}
- 		}
- 		return {
- 			exitCode,
 @@ -1972,6 +2117,7 @@
  			const control = {
  				abort: new AbortController(),
@@ -279,15 +274,10 @@
  						if (stopped()) throw new InstallCancelledError();
  						result.registries.push(registry);
  						used = registry;
-@@ -2035,7 +2184,7 @@
- 							spec,
- 							...options?.saveExact === true ? ["--save-exact"] : [],
- 							...registryArguments(registry)
+@@ -2035,2 +2184,2 @@
 -						], control.abort.signal, requestId);
 +						], control.abort.signal, requestId, control.runs);
  						result.packageResult = run;
- 						if (stopped()) throw new InstallCancelledError();
- 						if (run.incompatible !== void 0) throw new ManagementFailure("incompatible-version", run.incompatible);
 @@ -2077,12 +2226,20 @@
  					for (const file of bundlePatchPaths(dir, manifest.dsh.bundle)) loadOverlayPatches("dsh", file);
  					version = manifest.version;

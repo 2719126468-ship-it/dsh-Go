@@ -91,7 +91,7 @@ class BuildApkDryRunTest(unittest.TestCase):
     def run_script(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["bash", str(SCRIPT), "--dry-run", *args], capture_output=True, text=True)
 
-    def test_every_flavor_shares_one_build_number(self):
+    def test_all_flavors_share_one_build_number(self):
         out = self.run_script("-f", "all").stdout
         commands = [line for line in out.splitlines() if "flutter build apk" in line]
         self.assertEqual(len(commands), 3)

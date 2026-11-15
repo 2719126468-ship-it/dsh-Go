@@ -36,10 +36,11 @@
 代码：`app/lib/ui/community/`、`app/lib/state/community_state.dart`。从上到下：
 
 1. **论坛**概览卡（`CommunityPage(onOpenForum: …)`，论坛客户端接好后由集成步骤传入；不传时这里是项目卡：品牌图形、「dsh-go」、一句 tagline，点开 GitHub）。
-2. **精选插件**：维护者在 JSON 里写包名和一句推荐语；在 dshfind 目录里查到的才显示，「获取」打开插件市场原有的详情弹层（带信任提示，装到当前主机），状态（获取 / 更新 / 已安装 / 安装中）和插件市场一致。目录打不开时显示一行「插件目录没打开 · 点一下重试」。
-3. **玩法**：两列磁贴，点一下回到聊天、开一个新对话，把提示词放进输入框**但不发送**（复用「让 DSH 帮我修」的 `repairDraftProvider`）。
-4. **交流群**：QQ / 微信 / Telegram / 论坛等行，点开弹层：大二维码、群号（「复制群号」）、「打开」。
-5. **更新动态**：最新在前，最多 8 条，有链接的可点。
+2. **精选插件**：维护者在 JSON 里写包名和推荐语。ARM64 本机运行时把 `@liustack/modsearch@5.10.12` 与 `dsh-context@0.84.1` 作为 installation-provided optional bundles 预装；App 显示「预装」，默认关闭，点「管理」直达开关，不需要再次下载。其他主机仍走现有插件市场安装流程。ARM32 版没有本机 Node/DSH 引擎，必须连接远程 DSH 主机，不能显示为本机预装。
+3. **GitHub 热门项目**：展示维护者精选的仓库、星标快照、许可证和兼容说明；只打开 GitHub 源码页，不下载、安装或执行第三方代码。
+4. **玩法**：两列磁贴，点一下回到聊天、开一个新对话，把提示词放进输入框**但不发送**（复用「让 DSH 帮我修」的 `repairDraftProvider`）。
+5. **交流群**：QQ / 微信 / Telegram / 论坛等行，点开弹层：大二维码、群号（「复制群号」）、「打开」。
+6. **更新动态**：最新在前，最多 8 条，有链接的可点。
 
 **内容从哪来**（与应用内更新同一个思路）：
 
@@ -48,8 +49,8 @@
   → 先用：缓存（上次下载成功的） 或 内置 assets/community/community.json，取 revision 大的
   → 距上次联网 ≥ 6 小时：依次问
        自建源（--dart-define=DSH_COMMUNITY_FEED=https://…，配了才有）
-       raw.githubusercontent.com/ccch1mneyyy/dsh-go/main/community.json
-       cdn.jsdelivr.net/gh/ccch1mneyyy/dsh-go@main/community.json
+       raw.githubusercontent.com/2719126468-ship-it/dsh-Go/main/community.json
+       cdn.jsdelivr.net/gh/2719126468-ship-it/dsh-Go@main/community.json
        fastly.jsdelivr.net/gh/…（同上）
      上次成功的源排第一；第一个给出合法 JSON 的为准
   → revision 更大才替换并写缓存（CDN 上的旧副本不会把新内容盖回去）
@@ -68,6 +69,7 @@
   "updatedAt": "2026-10-24T00:00:00Z",
   "tagline": "开源项目，欢迎点星",
   "plugins": [{ "name": "@liustack/modsearch", "note": "免费的联网搜索" }],
+  "projects": [{ "repository": "dsh-market/dsh-market", "stars": 12447, "license": "MIT", "note": { "zh": "…", "en": "…" }, "compatibility": { "zh": "…", "en": "…" } }],
   "prompts": [{ "title": "读懂报错", "summary": "原因、修法和验证", "icon": "bug", "prompt": "…报错如下：\n\n" }],
   "groups": [{ "kind": "qq", "title": "QQ 交流群", "subtitle": "群号 123456789", "url": "https://qm.qq.com/q/…", "qr": "", "copy": "123456789" }],
   "updates": [{ "date": "2026-10-24", "title": "…", "summary": "…", "url": "https://…" }]
@@ -78,6 +80,9 @@
 |---|---|
 | `revision` | **每次修改都 +1**。App 只接受比手上更大的 |
 | `plugins[].name` | npm 包名，必须在 dshfind 目录里能查到，否则不显示 |
+| `projects[].repository` | `owner/repo` 格式；只生成 `https://github.com/owner/repo` 链接，不安装项目代码 |
+| `projects[].stars` / `license` | GitHub 星标快照与仓库许可证；每次内容更新时刷新星标数 |
+| `projects[].note` / `compatibility` | 必须同时提供 `zh` / `en`，分别说明用途和当前宿主限制 |
 | `prompts[].icon` | `code` `doc` `bug` `chart` `school` `travel` `search` `image` `write` `translate` `terminal` `mail` `calendar`，其他值显示通用图标 |
 | `groups[].kind` | `qq` `wechat` `telegram` `discord` `forum` `github`，决定图标 |
 | `groups[].qr` | 二维码内容，缺省用 `url`；`url` `qr` `copy` 全空的项不显示 |
@@ -152,3 +157,23 @@
 - 「保存图片」落在 `下载/DSH/` 而不是 `Pictures/`，多数相册能看到；要进「相机胶卷」类相册需要给 `FilesPlugin.kt` 加一个写 `MediaStore.Images` 的方法。
 - 长回答截断靠估算，极端排版（大量表格、长公式）可能比估算高，由硬上限兜底淡出。
 - 未在真机上验证：系统分享面板接收 PNG、各家相册是否显示 `下载/DSH`、大图（2× 长图）的内存占用。
+
+## 2026-11-15：GitHub 项目发现与精选插件预装
+
+`community.json` revision 4 新增并扩充 `projects`。项目卡只展示 GitHub 仓库链接、星标快照、许可证和适配限制；App 不会自动克隆、安装或执行这些仓库。ModSearch 与 dsh-context 继续作为两款精选插件，但现在同时预装到 ARM64 本机 DSH 运行时：
+
+- `@liustack/modsearch@5.10.12`（MIT）：运行依赖为 commander 与 undici；Node 要求 `>=22.13`。默认 keyless 网页抓取会把公开 URL 发送给 Firecrawl 云端；agy 引擎会跳过权限提示，不能把它视为 OS 沙箱。插件预装但关闭，启用前需看清云端请求与执行权限。
+- `dsh-context@0.84.1`（Apache-2.0）：运行依赖为 zod；Node 要求 `^22.19.0 || >=24.0.0`，公开 DSH 兼容声明包含 `>=0.2.2-rc.1`。它可查看上下文组成与变化；启用前请检查插件偏好设置中的提示词前缀/后缀。
+- 两个包的精确版本记录在 `runtime/preinstalled-bundles.json`。构建时使用 `--ignore-scripts`、`--legacy-peer-deps` 安装，校验版本与 `dsh.bundle.patch` 文件，再加入 DSH 的 `OPTIONAL_BUNDLES` 清单。它们作为安装时提供的可选项随运行时带入，但默认不会加载，不会在后台常驻；用户可以从社区页「管理」按钮或「插件 → 已安装」打开开关。
+- 32 位 APK 不含本机 Node/DSH 运行时，因此不把这两个插件伪装成 32 位本机预装；连接远程 DSH 主机后仍可使用主机端插件管理。
+
+ModLens 的部分 CLI 引擎使用 `--dangerously-skip-permissions`，且图像可能交给外部服务；DSH-IM 有大量渠道 SDK 与账号凭据读写；官方媒体包当前无法找到公开源码仓库，因此三者不加入预装。Agent Teams、B 站助手和视觉工具箱也只作为源码参考，并标出并发开销、账号写操作或 Python 依赖风险。星标为 2026-11-15 快照。这是维护者做过的有限源码与清单审查，不是病毒扫描、安全认证或 Android/ARM32 兼容背书。
+
+## Android 资源预算（2026-11-15）
+
+运行时内存与 APK 文件体积是两条独立约束：
+
+- **运行内存预算保持不变**：32 位设备低于 500 MB；64 位设备按 1–2 GB 控制。预装插件默认关闭，只有用户启用才由 DSH 加载；不启用多 Agent 并发或后台常驻。插件启用后的峰值 RSS 仍需真机实测，未测量前标注“待测”。
+- **APK 文件体积硬上限**：每个 ABI 不得超过 600,000,000 bytes（600 MB）。当前正式版 1.0.17 基线为 ARM32 213,860,496 bytes（约 213.9 MB）、ARM64 233,748,437 bytes（约 233.7 MB）；目标是尽量保持低体积，而不是用满 600 MB。正式构建工作流会分别检查 arm32 / arm64 APK，超限直接失败。
+- 不能为了集成社区项目而把源码树、devDependencies、Python 环境、模型或大型原生库塞进 APK。当前两款预装包只含 JS 插件和运行依赖；它们只进入 ARM64 DSH rootfs，不进入 ARM32 客户端运行时。
+- 当前离线 feed 为约 7.5 KB，远程 feed 上限 256 KB；GitHub 项目卡只打开源码链接，不克隆、安装或执行这些项目。此 PR 未重建正式 APK，也没有真机峰值 RSS 数据，因此包体上限和运行内存仍需正式构建与设备实测确认。

@@ -102,6 +102,10 @@ jobs:
         run: |
           APK=$(ls app/build/app/outputs/flutter-apk/*arm64*release*.apk | head -1)
           echo "APK=$APK"
+          SIZE=$(stat -c%s "$APK")
+          MAX_APK_BYTES=600000000
+          echo "APK size: $SIZE bytes (limit: $MAX_APK_BYTES)"
+          (( SIZE <= MAX_APK_BYTES )) || { echo "arm64 APK exceeds 600 MB"; exit 1; }
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify.txt
           grep -q "Verified using v1 scheme (JAR signing): true" verify.txt
@@ -167,6 +171,10 @@ jobs:
         run: |
           APK=$(ls app/build/app/outputs/flutter-apk/*arm32*release*.apk | head -1)
           echo "APK=$APK"
+          SIZE=$(stat -c%s "$APK")
+          MAX_APK_BYTES=600000000
+          echo "APK size: $SIZE bytes (limit: $MAX_APK_BYTES)"
+          (( SIZE <= MAX_APK_BYTES )) || { echo "arm32 APK exceeds 600 MB"; exit 1; }
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify32.txt
           grep -q "Verified using v2 scheme" verify32.txt

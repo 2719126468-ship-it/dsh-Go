@@ -12,7 +12,7 @@
  	const absoluteCwd = isAbsolute(cwd) ? cwd : `${process.cwd()}${sep}${cwd}`;
  	const raw = isAbsolute(path) ? path : `${absoluteCwd}${sep}${path}`;
  	const physicalSpelling = /(?:^|[\\/])\.\.(?:[\\/]|$)/u.test(raw) ? raw : resolve(cwd, path);
-@@ -169,10 +172,16 @@
+@@ -169,9 +172,15 @@
  async function resolveLocalTarget(cwd, path) {
  	if (path.trim().length === 0) throw new FsError("file_path must be a non-empty string", "FS_NOT_FOUND");
  	const displayPath = localDisplayPath(cwd, path);
@@ -29,7 +29,6 @@
 +			targetKey: FsTargetKey(checkDirect(await realpath$1(displayPath)))
  		};
  	} catch (error) {
- 		/* v8 ignore next -- Windows reports this case as ENOENT and repairs it in the ancestor walk below. */
 @@ -183,7 +192,7 @@
  	const missing = [basename(displayPath)];
  	let ancestor = dirname(displayPath);
@@ -54,8 +53,8 @@
  	* @returns its effective absolute directory.
  	*/
  	get(session) {
--		return this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
-+		const directory = this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
+-		return this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
++		const directory = this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
 +		return globalThis[Symbol.for("dsh.go.direct")]?.toHost(directory) ?? directory;
  	}
  	/**
@@ -110,19 +109,9 @@
  /** Preserve execution-world spelling; enforcing providers resolve filesystem identity on their host. */
  function resolveWorkspaceRoot(path) {
 +	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
- 	if (!isAbsolute(path)) throw new Error("sandbox-policy: workspace root must be an absolute execution-world path");
+ 	if (!isAbsolute(path) || path.includes("\0")) throw new Error("sandbox-policy: workspace root must be an absolute execution-world path without NUL bytes");
  	return path;
  }
---- a/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
-@@ -148,6 +148,7 @@
- *   outcome; inventing a fallback would grant a path the caller never named).
- */
- function canonicalPath(path) {
-+	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
- 	try {
- 		return realpathSync.native(path);
- 	} catch {
 --- a/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
 @@ -75,13 +75,13 @@

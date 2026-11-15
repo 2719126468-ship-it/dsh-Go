@@ -41,7 +41,7 @@ PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
 RUNTIME_REVISION="${RUNTIME_REVISION:-r15}"  # r14 + per-family DNS under PRoot, input recovery, session deletion and upload resolver fixes, title and boot cache work; DSH as r12
-DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
+DSH_VERSION="${DSH_VERSION:-0.2.2-rc.1}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 # pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
 PNPM_VERSION="${PNPM_VERSION:-11.28.5}"
@@ -309,7 +309,7 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir
     log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
     cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
     warm_npm_cache "$bin" "$lockdir/package-lock.json"
-    PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
+    PATH="$bin:$PATH" npm ci --legacy-peer-deps "${npm_flags[@]}"
   else
     log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
     PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
@@ -333,6 +333,21 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir
 
 # pnpm for the guest (zero dependencies, plain JS). Same lock-then-`npm ci` scheme as DSH; the
 # lock's integrity must equal PNPM_INTEGRITY, so a regenerated lock cannot swap the tarball.
+install_preinstalled_bundles() {  # $1 = npm cpu, $2 = DSH npm prefix
+  local cpu="$1" prefix="$2" bin; bin="$(host_npm)"
+  local -a npm_flags=() specs=()
+  npm_prefix_flags "$cpu" "$prefix"
+  mapfile -t specs < <(python3 -I -c 'import json,sys; [print(p["name"] + "@" + p["version"]) for p in json.load(open(sys.argv[1]))["packages"]]' "$HERE/preinstalled-bundles.json")
+  [[ ${#specs[@]} -gt 0 ]] || die "no preinstalled DSH bundles declared"
+  log "preinstalling optional DSH bundles: ${specs[*]} (lifecycle scripts disabled)"
+  PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact --legacy-peer-deps "${specs[@]}"
+  mkdir -p "$LOCKS/dsh-$DSH_VERSION"
+  cp "$prefix/package.json" "$LOCKS/dsh-$DSH_VERSION/package.json"
+  cp "$prefix/package-lock.json" "$LOCKS/dsh-$DSH_VERSION/package-lock.json.tmp"
+  mv "$LOCKS/dsh-$DSH_VERSION/package-lock.json.tmp" "$LOCKS/dsh-$DSH_VERSION/package-lock.json"
+  python3 -I "$HERE/lib/preinstall_optional_bundles.py" --prefix "$prefix" --manifest "$HERE/preinstalled-bundles.json"
+}
+
 install_pnpm() {  # $1 = npm cpu, $2 = prefix dir
   local cpu="$1" prefix="$2" bin; bin="$(host_npm)"
   local lockdir="$LOCKS/pnpm-$PNPM_VERSION"
@@ -452,6 +467,7 @@ PYEOF
   # -- DSH --
   local prefix="$work/dsh-prefix"
   install_dsh "$npm_cpu" "$prefix"
+  install_preinstalled_bundles "$npm_cpu" "$prefix"
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
   "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
     --out "$work/dsh-patches.json" >&2
@@ -470,6 +486,7 @@ PYEOF
       sha256 "$base"; sha256 "$node"; sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
       sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
       sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"
+      sha256 "$HERE/preinstalled-bundles.json"; sha256 "$HERE/lib/preinstall_optional_bundles.py"
       (cd "$HERE" && find patches bridge boot direct session-deletion -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
     } | sha256sum | cut -c1-12 )"
   local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${NODE_VERSION}-ubuntu${UBUNTU_VERSION}-${inputs_sha}"

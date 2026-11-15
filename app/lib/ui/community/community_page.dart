@@ -51,6 +51,7 @@ class CommunityPage extends ConsumerWidget {
       );
     } else {
       if (feed.plugins.isNotEmpty) children.add(_Plugins(picks: feed.plugins));
+      if (feed.projects.isNotEmpty) children.add(_Projects(projects: feed.projects));
       if (feed.prompts.isNotEmpty) children.add(_Prompts(prompts: feed.prompts));
       if (feed.groups.isNotEmpty) {
         children.add(
@@ -118,7 +119,7 @@ class _Plugins extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final catalog = ref.watch(marketCatalogProvider);
+    final catalog = ref.watch(marketAllProvider);
     final rows = catalog.when<List<Widget>>(
       skipLoadingOnRefresh: false,
       loading: () => [for (final pick in picks) CommunityPluginRow(pick: pick, entry: null)],
@@ -129,14 +130,46 @@ class _Plugins extends ConsumerWidget {
           subtitle: l10n.botsTapRetry,
           onTap: () => ref.invalidate(marketCatalogProvider),
         ),
+        for (final pick in picks) CommunityPluginRow(pick: pick, entry: null),
       ],
       data: (catalog) => [
-        for (final pick in picks)
-          if (catalog.byName[pick.name] case final entry?) CommunityPluginRow(pick: pick, entry: entry),
+        for (final pick in picks) CommunityPluginRow(pick: pick, entry: catalog.byName[pick.name]),
       ],
     );
     if (rows.isEmpty) return const SizedBox.shrink();
     return SettingsSection(title: l10n.botsFeaturedPlugins, footer: Text(l10n.botsPluginSource), children: rows);
+  }
+}
+
+class _Projects extends StatelessWidget {
+  const _Projects({required this.projects});
+
+  final List<CommunityProject> projects;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    final chinese = locale == 'zh';
+    String formatStars(int count) => count >= 1000 ? '${(count / 1000).toStringAsFixed(1)}k' : '$count';
+    return SettingsSection(
+      title: chinese ? 'GitHub 热门项目' : 'Popular GitHub projects',
+      footer: Text(
+        chinese
+            ? '仅展示源码项目，不会自动安装或运行。星标为 2026-11-15 快照；安装前请核对项目说明与宿主兼容性。'
+            : 'Source links only; nothing is installed or executed. Stars are a 2026-11-15 snapshot. Check project instructions and host compatibility before installing.',
+      ),
+      children: [
+        for (final project in projects)
+          ListPageRow(
+            icon: AppIcons.code,
+            title: project.repository,
+            subtitle: '${project.note.resolve(locale)} · ${project.compatibility.resolve(locale)}',
+            subtitleMaxLines: 3,
+            meta: '${formatStars(project.stars)} ★ · ${project.license}',
+            onTap: () => unawaited(openCommunityLink(context, project.url)),
+          ),
+      ],
+    );
   }
 }
 

@@ -173,11 +173,117 @@ jobs:
         run: |
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
           prefix="$RUNNER_TEMP/dsh"
-          mkdir "$prefix"
-          cp "runtime/locks/dsh-$version/package.json" "runtime/locks/dsh-$version/package-lock.json" "$prefix/"
-          npm ci --prefix "$prefix" --ignore-scripts --no-audit --no-fund
+          mkdir -p "$prefix"
+          lockdir="runtime/locks/dsh-$version"
+          if [[ -f "$lockdir/package-lock.json" ]]; then
+            cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
+            npm ci --prefix "$prefix" --ignore-scripts --no-audit --no-fund --legacy-peer-deps
+          else
+            npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          fi
+          python3 -I runtime/lib/preinstall_optional_bundles.py --prefix "$prefix" --manifest runtime/preinstalled-bundles.json
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
-          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version"
+          # Emit the exact resolved lock once so it can be pinned in the repository.
+          echo __DSH_GO_PACKAGE_JSON_BEGIN__
+          cat "$prefix/package.json"
+          echo __DSH_GO_PACKAGE_JSON_END__
+          echo __DSH_GO_PACKAGE_LOCK_BEGIN__
+          cat "$prefix/package-lock.json"
+          echo __DSH_GO_PACKAGE_LOCK_END__
+          # Temporary diagnostic: capture the exact published JS context for the strict process-tree patch.
+          node - "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["await rm(runRecordPath(dir)", "options.activateNewBundles", "control.settled = true", "this.restoreFiles(files)", "installedFrom.set(name, used)", "registryArguments(registry)", "control.abort.signal, requestId", "webServer.listen", "Longest-prefix-wins", "responderFor(pathname)", "match(pathname)", "this.match(pathname)", "async init()", "this.exact.get(pathname)"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_PLUGIN_MANAGER_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 250), Math.min(source.length, index + 1800))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["this.responderFor(target.pathname)", "route.handler(req, res)", "this.upgradedSockets.add(socket)", "match(pathname)", "this.match(pathname)", "webServer.listen", "async [Service.init]"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_HOST_WEBSERVER_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 2400))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-working-directory/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["get(session)", "sessionProjections.stateOf", "defaultDirectory"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_WORKING_DIRECTORY_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1500))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["function localDisplayPath(cwd, path)", "async function resolveLocalTarget(cwd, path)", "const displayPath = localDisplayPath(cwd, path)", "realpath$1(displayPath)"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_FS_LOCAL_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1800))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["function resolveWorkspaceRoot(path)", "sandbox-policy: workspace root", "isAbsolute(path)"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_SANDBOX_POLICY_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1200))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["parsePatchList", "export {", "reconcileProfilePatches"]) {
+            const index = token === "export {" ? source.lastIndexOf(token) : source.indexOf(token);
+            console.log("__DSH_GO_APP_BOOT_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1500))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-config-editor/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["entryListSchema", "parsePatchList", "dsh-app-boot", "patches: yaml.load", "patches: parsePatchList"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_CONFIG_EDITOR_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1600))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["ApiSessionList", "workSliceMs", "summarizeCold", "items.push(this.summarizeCold", "private summarizeCold"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_API_SESSION_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 500), Math.min(source.length, index + 2600))
+            ));
+          }
+          NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-storage-domain/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["for (const [table, tableRecords] of records)", "var KvTableImpl", "constructor(host, tableName, records)", "this.tables.set(table, new KvTableImpl"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_STORAGE_DOMAIN_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 500), Math.min(source.length, index + 2200))
+            ));
+          }
+          NODE
+          # Record hashes only inside this temporary CI checkout; commit pins only after reviewing them.
+          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
             echo "DSH_TEST_PREFIX=$prefix"
