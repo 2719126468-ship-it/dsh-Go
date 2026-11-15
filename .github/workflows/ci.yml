@@ -186,31 +186,6 @@ jobs:
           grep -n -A18 -B8 'restoreFiles(files)' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 90 || true
           echo '--- bundled index warning-repair path ---'
           grep -n -A55 -B12 'warnings.length > 0' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 95 || true
-          python3 - <<'PY'
-          import os, sys
-          sys.path.insert(0, "runtime/lib")
-          import rtbuild
-          rel = "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js"
-          data = open(os.path.join(os.environ["RUNNER_TEMP"], "dsh", rel)).read()
-          patches = "runtime/patches"
-          for name in sorted(n for n in os.listdir(patches) if n.endswith(".diff")):
-              parsed = rtbuild.parse_unified_diff(open(os.path.join(patches, name)).read())
-              for target, hunks in parsed:
-                  if target != rel:
-                      continue
-                  if name == "plugin-manager-cancel-tree-confirmation.diff":
-                      for number, (old, new) in enumerate(hunks, 1):
-                          if number == 13:
-                              print("DEBUG_HUNK13_OLD", repr(old))
-                              print("DEBUG_HUNK13_COUNT", data.count(old))
-                              for line in data.splitlines(True):
-                                  if "restoreFiles(files)" in line:
-                                      print("DEBUG_RESTORE_LINE", repr(line))
-                              break
-                          data = rtbuild.apply_hunks(data, [(old, new)], name)
-                      break
-                  data = rtbuild.apply_hunks(data, hunks, name)
-          PY
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
           cat runtime/patches/pins.json
