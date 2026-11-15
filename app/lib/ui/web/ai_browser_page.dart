@@ -58,6 +58,11 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
   Future<bool> _editMediaConfig() async {
     final url = TextEditingController(text: _mediaUrl);
     final token = TextEditingController(text: await _secureStorage.read(key: _mediaTokenKey) ?? '');
+    if (!mounted) {
+      url.dispose();
+      token.dispose();
+      return false;
+    }
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
