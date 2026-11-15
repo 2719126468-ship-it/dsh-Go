@@ -222,7 +222,7 @@ jobs:
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
       - working-directory: app/android
-        run: gradle --stacktrace :app:testArm64DebugUnitTest
+        run: gradle --stacktrace :app:testArm64DebugUnitTest :app:assembleArm32Debug
 
   ci-ok:
     name: CI OK
