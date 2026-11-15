@@ -91,14 +91,6 @@
  		} catch (error) {
  			scope?.cleanup();
  			activity?.dispose();
---- a/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
-@@ -67,4 +67,5 @@
- function resolveWorkspaceRoot(path) {
-+	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
- 	if (!isAbsolute(path) || path.includes("\0")) throw new Error("sandbox-policy: workspace root must be an absolute execution-world path without NUL bytes");
- 	return path;
- }
 --- a/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
 @@ -148,6 +148,7 @@
