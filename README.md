@@ -184,11 +184,11 @@ DSH Go 提供聊天界面、本机运行环境和远程连接，是基于 [DeepS
 
 ## AI 浏览器与 B站媒体
 
-「全部功能」提供 AI 浏览器（ChatGPT / Claude / 普通网址）和 DSH-017 B站媒体入口。B站媒体连接你自己的 DSH-017 服务，访问地址与普通 Token 在 App 内配置；媒体后端不打进 APK。屏幕读取和点按复用已有「手机操控」功能。配置与兼容边界见[接入说明](docs/integrations/dsh017-screen-click-capture.md)。
+「全部功能」提供 AI 浏览器（ChatGPT / Claude / 普通网址）和 DSH-017 B站媒体入口。B站媒体连接你自己的 DSH-017 服务，访问地址与普通 Token 在 App 内配置；Token 使用 Android 安全存储，并且只会发送给匹配的 DSH-017 Basic Auth 主机与认证域。媒体后端不打进 APK。屏幕读取和点按复用已有「手机操控」功能。配置与兼容边界见[接入说明](docs/integrations/dsh017-screen-click-capture.md)。
 
 ## 安装
 
-安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。**32 位 ARMv7 手机可使用 arm32 远程客户端包**（由仓库的 [Custom release 工作流](https://github.com/2719126468-ship-it/dsh-Go/actions/workflows/custom-release.yml)构建）：支持 AI 浏览器、B站媒体和远程主机，但不包含本机 Linux 运行时；64 位 ARM64 包保留本机运行环境。
+安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。仓库没有 32 位 ARM 构建。
 
 1. 从 [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) 或[官网下载页](https://go.dshtui.com/download)下载对应架构的 APK，并按系统提示允许该安装来源。
 2. 首次启动时，选择在本机安装运行环境，或连接远程主机。
