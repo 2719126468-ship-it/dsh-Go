@@ -18,14 +18,10 @@
  						this.stopping = true;
 +						this.dshGoAuthorizationAbort.abort();
 
-@@ -2082,6 +2084,7 @@
- 		* @returns The durably stored schedule. Cancellation does not roll back an in-flight write.
- 		*/
+@@ -2082,1 +2082,2 @@
  		async create(sessionId, request, signal) {
 +			request = structuredClone(request);
- 			if (Number(request.at !== void 0) + Number(request.after_seconds !== void 0) + Number(request.every_seconds !== void 0) + Number(request.daily !== void 0) + Number(request.weekly !== void 0) + Number(request.cron !== void 0) > 1) throw new ScheduleInputError("invalid_selector", "Exactly one reminder selector is required.");
- 			const title = scheduleTitle(request.title);
- 			const id = ScheduleId(`schedule-${randomUUID()}`);
+
 @@ -2094,11 +2097,13 @@
  			else if (request.weekly !== void 0) record = createWeeklyScheduleRecord(id, request.prompt, request.weekly, now, title);
  			else if (request.cron !== void 0) record = createCronScheduleRecord(id, request.prompt, request.cron, now, title);
