@@ -45,17 +45,21 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
 
     def test_push_events_are_received_then_filtered_by_job_branch_guards(self):
         # Receive push events first; apply the supported branch scope in jobs so GitHub
-        # cannot silently miss the nested custom/* branch pattern at event filtering.
+        # cannot silently miss nested branch names. The dedicated validation branch is
+        # explicitly admitted to CI, dual-ABI release and golden verification as well.
         self.assertIn("  push:", self.ci)
         self.assertIn("github.ref == 'refs/heads/main'", self.ci)
         self.assertIn("startsWith(github.ref, 'refs/heads/custom/')", self.ci)
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.ci)
+        self.assertIn("github.ref == 'refs/heads/trigger-dsh-go-validation'", self.ci)
         self.assertIn("  push:", self.goldens)
         self.assertIn("startsWith(github.ref, 'refs/heads/custom/')", self.goldens)
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.goldens)
+        self.assertIn("github.ref == 'refs/heads/trigger-dsh-go-validation'", self.goldens)
         self.assertIn("  push:", self.text)
         self.assertIn("startsWith(github.ref, 'refs/heads/custom/')", self.text)
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.text)
+        self.assertIn("github.ref == 'refs/heads/trigger-dsh-go-validation'", self.text)
         self.assertIn("  workflow_dispatch:", self.text)
 
     def test_ci_summary_skips_when_push_branch_is_out_of_scope(self):
