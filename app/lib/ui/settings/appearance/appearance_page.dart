@@ -430,9 +430,8 @@ class _PhonePainter extends CustomPainter {
 
 // ── 配色 ─────────────────────────────────────────────────────────────────
 
-/// 六套预设 + 自定义(色轮),设置页窄时折行。色点画的是守卫之后、当前明暗下的
-/// 主色;选中的外面一圈同色环,下面是名字。[custom] 为 false 时只有六套
-/// 预设(首次启动的外观页)。
+/// 九套预设 + 自定义(色轮),设置页按六列折行。首次启动只展示前六套,
+/// 保持引导页简洁且高度稳定。色点画的是守卫之后、当前明暗下的主色。
 class PalettePicker extends ConsumerWidget {
   const PalettePicker({super.key, this.custom = true});
 
@@ -462,8 +461,9 @@ class PalettePicker extends ConsumerWidget {
     final brightness = Theme.of(context).brightness;
     final customAccent = AppAccent.derive(Color(appearance.customColor));
     bool chosen(AppAccent p) => appearance.source == AccentSource.preset && appearance.presetId == p.id;
+    final presets = custom ? AppAccent.presets : AppAccent.presets.take(6);
     final items = [
-      for (final p in AppAccent.presets)
+      for (final p in presets)
         _Swatch(
           label: p.label,
           selected: chosen(p),
@@ -479,12 +479,13 @@ class PalettePicker extends ConsumerWidget {
           onTap: () => unawaited(notifier.selectCustom()),
         ),
     ];
-    // Rings 16 from the card's edges, centres evenly spaced; each slot is as
-    // wide as the spacing allows (up to [slot]) so the names have room.
+    // Keep six swatches per row in the settings page. On narrow phones the
+    // remaining presets wrap to a second row; first-run always has one row.
     return LayoutBuilder(
       builder: (context, constraints) {
         const ringSide = disc + 2 * (ringGap + ringWidth);
-        final step = (constraints.maxWidth - 2 * PickerGrid.inset - ringSide) / (items.length - 1);
+        final columns = math.min(items.length, 6);
+        final step = (constraints.maxWidth - 2 * PickerGrid.inset - ringSide) / (columns - 1);
         final width = math.max(ringSide, math.min(slot, step));
         final side = PickerGrid.inset - (width - ringSide) / 2;
         final slots = [for (final item in items) SizedBox(width: width, child: item)];
