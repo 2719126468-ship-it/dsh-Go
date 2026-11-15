@@ -117,8 +117,8 @@
     "zzzz-plugin-config-readability.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-app-boot/lib/index.js": {
-          "before": "ab25eb3c66b43a194c8350be2b32a30bc46e1b66eefe99b62fedcc018acf0e55",
-          "after": "2b7cc756a42b21c7204288b9f10b3f81d43bd9bec599a85072ac3753d292357e"
+          "before": "73c2735941be3d8ef2e7acc4eca953dd6bd360c1e95d19a50c4aca9f3b2271ba",
+          "after": "0b0ba56c33ca2e4f67a33066136f937489001ae39237c082b65f020ae7d37976"
         },
         "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": {
           "before": "2d05f943a25e2971bc0b964868a4031dcae378c01d8b928a21ec09f17952fc5f",
