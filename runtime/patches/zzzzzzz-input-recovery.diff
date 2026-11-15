@@ -141,17 +141,17 @@
  		}
  	}
 @@ -924,9 +968,11 @@
- 						messages: context === void 0 ? claimed : [...claimed, context]
- 					});
+ 					messages: context === void 0 ? claimed : [...claimed, context]
  				});
-+				const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
-+				this.inbox.settle(claimed.filter((message) => !retained.has(message.id)).map((message) => message.id));
- 				signal.throwIfAborted();
- 				if (decision.kind === "reject") {
- 					toolSet.dispose();
- 					return decision;
- 				}
- 				return {
+ 			});
++			const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
++			this.inbox.settle(claimed.filter((message) => !retained.has(message.id)).map((message) => message.id));
+ 			signal.throwIfAborted();
+ 			if (decision.kind === "reject") {
+ 				toolSet.dispose();
+ 				return decision;
+ 			}
+ 			return {
 
 @@ -1031,6 +1078,18 @@
  			};
