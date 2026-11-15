@@ -138,10 +138,7 @@ class _Plugins extends ConsumerWidget {
       ],
     );
     if (rows.isEmpty) return const SizedBox.shrink();
-    final footer = chinese
-        ? '${l10n.botsPluginSource} · ARM64 本机版随包预装，默认关闭；ARM32 请连接远程 DSH 主机。'
-        : '${l10n.botsPluginSource} · Bundled with the ARM64 runtime and off by default. ARM32 builds use a remote DSH host.';
-    return SettingsSection(title: l10n.botsFeaturedPlugins, footer: Text(footer), children: rows);
+    return SettingsSection(title: l10n.botsFeaturedPlugins, footer: Text(l10n.botsPluginSource), children: rows);
   }
 }
 
