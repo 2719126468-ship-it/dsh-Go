@@ -158,8 +158,7 @@
 +		await agent.dshGoDispose();
 +	}
  	async initializeAgent(ownerCtx, options) {
--		const { session, agentOptions, source, stored, setup, signal: callerSignal } = options;
-+		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
+		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
  		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
 +		if (parentAgent !== void 0) ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(parentAgent.id);
