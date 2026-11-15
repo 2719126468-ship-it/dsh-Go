@@ -224,6 +224,11 @@
           "before": "c1b83a1eb07cd6c5c2534038125dbeeb2e60a55deccd5827563379005240814f",
           "after": "6321a31f51f28ba948a01064fafd1ec473440a5feb4390041c64141098c0be04"
         }
+      },
+      "optional_files": {
+        "0.2.2-rc.1": [
+          "node_modules/@deepseek-ai/dsh-session-query/lib/index.js"
+        ]
       }
     },
     "zzzzzzzz-schedule-authorization.diff": {
