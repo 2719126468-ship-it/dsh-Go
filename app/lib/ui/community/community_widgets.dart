@@ -95,7 +95,15 @@ class CommunityPluginRow extends ConsumerWidget {
     final job = plugin == null ? null : ref.watch(pluginInstallsProvider.select((jobs) => jobs[plugin.name]));
     final title = plugin?.displayTitle() ?? pick.name;
     final subtitle = pick.note ?? plugin?.displayDescription() ?? plugin?.author;
-    void open() => unawaited(showMarketPluginSheet(context, entry!));
+    final bundled = bundles?.where((bundle) => isDshGoPreinstalledBundle(bundle) && bundle.name == pick.name).firstOrNull;
+    final chinese = Localizations.localeOf(context).languageCode == 'zh';
+    void open() {
+      if (bundled != null) {
+        unawaited(showBundleSheet(context, bundled));
+      } else if (entry != null) {
+        unawaited(showMarketPluginSheet(context, entry));
+      }
+    }
     return ListPageRow(
       leading: PluginAvatar(name: pick.name, title: title, icon: plugin?.icon),
       leadingWidth: 40,
@@ -105,6 +113,7 @@ class CommunityPluginRow extends ConsumerWidget {
       trailing: PluginInstallButton(
         status: plugin == null ? MarketInstallStatus.notInstalled : marketInstallStatus(plugin, bundles),
         job: job,
+        installedLabel: bundled == null ? null : (chinese ? '管理' : 'Manage'),
         onPressed: entry == null ? null : open,
       ),
       onTap: entry == null ? null : open,
