@@ -263,7 +263,7 @@ class MarketPluginSheet extends ConsumerWidget {
     }
     final manageable =
         installed != null &&
-        (installed.installed || installed.availability == 'profile') &&
+        (installed.installed || installed.availability == 'profile' || isDshGoPreinstalledBundle(installed)) &&
         bundleGroup(installed) != BundleGroup.hidden;
     Widget manage() => OutlinedButton(
       style: OutlinedButton.styleFrom(minimumSize: size),
