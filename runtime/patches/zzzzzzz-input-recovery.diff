@@ -62,7 +62,7 @@
  	/** Whether either pending-message list contains work. */
  	get hasPending() {
  		const state = this.current();
-@@ -158,7 +165,25 @@
+@@ -158,6 +165,25 @@
  	*/
  	splice(target, start, deleteCount, inserted) {
  		return this.mutate(target, start, deleteCount, inserted, true);
@@ -85,7 +85,7 @@
 +			if (messages.length > 0) this.splice(target, 0, 0, messages);
 +		}
 +		return claims.length > 0;
- 	}
++	}
  	/** Locate one pending identity across both owned lists. */
  	locate(messageId) {
 @@ -786,6 +812,8 @@
