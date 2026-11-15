@@ -28,10 +28,6 @@
     {
       "name": "@nanmicoder/dsh-agent-teams",
       "note": "多智能体协作；会增加 token 与后台任务开销"
-    },
-    {
-      "name": "@anionex/dsh-vision-toolkit",
-      "note": "视觉问答和 OCR；需宿主端 Python 依赖"
     }
   ],
   "prompts": [
