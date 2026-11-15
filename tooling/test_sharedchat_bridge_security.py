@@ -10,10 +10,17 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BRIDGE = ROOT / "services" / "sharedchat-bridge" / "bridge.py"
 
 # requests is only used for outbound calls; stub it so this test needs no pip install.
-sys.modules.setdefault("requests", types.SimpleNamespace(post=None))
-spec = importlib.util.spec_from_file_location("dsh_sharedchat_bridge", BRIDGE)
-bridge = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(bridge)
+_previous_requests = sys.modules.get("requests")
+sys.modules["requests"] = types.SimpleNamespace(post=None)
+try:
+    spec = importlib.util.spec_from_file_location("dsh_sharedchat_bridge", BRIDGE)
+    bridge = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bridge)
+finally:
+    if _previous_requests is None:
+        sys.modules.pop("requests", None)
+    else:
+        sys.modules["requests"] = _previous_requests
 
 
 class BridgeSecurityTest(unittest.TestCase):

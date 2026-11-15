@@ -116,7 +116,7 @@ export function apply(ctx, config) {
     description: [
       "Run one task on the locally installed Codex CLI and return its complete reply.",
       "Use it to hand a self-contained job to a second coding agent: an independent implementation, a second opinion on a change, or work you want isolated in another directory.",
-      "Android cannot enforce bubblewrap/Landlock, so this adapter uses danger-full-access. Approval prompts are declined by default because DSH cannot display interactive Codex approval cards; use only with trusted workspaces.",
+      "Codex runs autonomously with approvals and sandboxing disabled, because neither the bubblewrap nor the Landlock sandbox works on Android.",
       `Backed by a resident \`codex app-server\` that is reused across calls, so repeat calls are much faster than a cold \`codex exec\`; it shuts down after ${idleMinutes} minutes idle and respawns on demand.`,
       "Codex sees only `prompt` and cannot ask follow-up questions, so the prompt must be self-contained.",
       `If the turn has not finished within ${seconds}s it is interrupted and this returns a timeout message together with whatever text had arrived.`,

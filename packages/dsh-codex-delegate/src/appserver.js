@@ -357,9 +357,9 @@ export class CodexAppServer {
    * prompts must be declined rather than left pending or silently approved.
    */
   answerServerRequest(method) {
-    if (/RequestApproval|ApplyPatchApproval/.test(method)) {
-      return { decision: method === "ApplyPatchApproval" ? "denied" : "decline" };
-    }
+    if (method === "ExecCommandApproval") return { decision: "decline" };
+    if (method === "ApplyPatchApproval") return { decision: "denied" };
+    if (method === "PermissionsRequestApproval") return { permissions: [] };
     if (method === "ToolRequestUserInput") return { answers: [] };
     return {};
   }

@@ -254,7 +254,7 @@ const BWRAP_AVAILABLE = (() => {
  *   - `sandbox` 决定能碰什么（read-only / workspace-write / danger-full-access）
  *   - `approval` 决定什么时候停下来问你（untrusted / on-request / never）
  *
- * 默认所有权限档都按需审批；Android 无可用 OS 沙箱时，全权限也不会自动关闭审批。
+ * 默认组合跟 Codex 一致：越放开沙箱，越不需要问。
  */
 const MODES = {
   "read-only": {

@@ -79,17 +79,13 @@ Read from this bundle's `cordis.patch.yml` row `config:`; defaults live in
 | `handshakeTimeoutMs` | `30000` | spawn + `initialize` budget |
 | `codexPath` | `~/.local/bin/codex` | the proot/DNS wrapper — **not** `$PREFIX/bin/codex` |
 | `sandboxMode` | `danger-full-access` | any other value re-enables a sandbox that cannot work on Android |
-| `approvalPolicy` | `on-request` | mapped to `thread/start`; approval prompts are declined because this tool has no interactive approval UI |
+| `approvalPolicy` | `never` | mapped to `thread/start`'s `approvalPolicy` |
 | `defaultCwd` | `""` | used only when the caller omits `cwd` |
 | `maxOutputChars` | `100000` | truncation cap |
 | `killGraceMs` | `2000` | SIGTERM→SIGKILL grace for the process group |
 | `stderrTailChars` | `4000` | child stderr kept for diagnostics |
 | `subagentEnabled` | `true` | also register the `codex` SubagentProvider |
 | `residentProcess` | `true` | `false` stops the child when the last run disposes (slower, strictly matches the out-of-process teardown contract) |
-
-## Security boundary
-
-The Android host cannot enforce bubblewrap/Landlock, so the delegate currently uses `danger-full-access`. Its default `on-request` policy does **not** auto-approve: any approval request is declined because the DSH tool surface cannot show an interactive approval card. Tasks that need an approval-gated command will fail rather than silently proceed. Use only in a trusted working directory. Setting `approvalPolicy: never` is an explicit opt-in to unattended execution.
 
 ## Notes
 
