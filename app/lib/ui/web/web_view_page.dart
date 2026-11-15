@@ -595,7 +595,7 @@ class _WebViewPageState extends State<WebViewPage> {
             onHttpAuthRequest: widget.httpAuthUsername == null || widget.httpAuthPassword == null
                 ? null
                 : (request) {
-                    if (request.host == widget.url.host) {
+                    if (request.host == widget.url.host && request.realm == 'DSH017 remote access') {
                       request.onProceed(
                         WebViewCredential(
                           user: widget.httpAuthUsername!,
