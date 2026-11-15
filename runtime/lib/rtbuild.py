@@ -354,7 +354,9 @@ def cmd_patch_dsh(args):
             print("%s: superseded upstream for DSH %s; no local patch applied" % (name, args.dsh_version))
             continue
         diff = parse_unified_diff(open(os.path.join(args.patches, name)).read())
-        want = pins["patches"].get(name, {}).get(args.dsh_version)
+        patch_pins = pins["patches"].get(name, {})
+        want = patch_pins.get(args.dsh_version)
+        optional_files = set(patch_pins.get("optional_files", {}).get(args.dsh_version, []))
         if want is None and not args.record:
             sys.exit("patch %s has no pin for DSH %s: review the upstream files it touches, then run\n"
                      "  python3 -I runtime/lib/rtbuild.py patch-dsh --prefix <dsh-prefix> --dsh-version %s --record"
@@ -362,9 +364,16 @@ def cmd_patch_dsh(args):
         observed = {}
         for rel, hunks in diff:
             path = os.path.join(args.prefix, rel)
+            pin = (want or {}).get(rel)
+            if not os.path.isfile(path):
+                if rel in optional_files:
+                    print("%s: optional peer absent for DSH %s; skipped %s" % (name, args.dsh_version, rel))
+                    continue
+                sys.exit("%s: required patch target is missing: %s" % (name, rel))
+            if pin is None and not args.record:
+                sys.exit("%s: no pin for %s" % (name, rel))
             raw = open(path, "rb").read()
             before = hashlib.sha256(raw).hexdigest()
-            pin = (want or {}).get(rel)
             if not args.record:
                 if pin is None:
                     sys.exit("%s: no pin for %s" % (name, rel))
