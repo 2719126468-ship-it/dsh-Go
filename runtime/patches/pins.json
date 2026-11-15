@@ -3,7 +3,7 @@
     "plugin-manager-active-run-guard.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-          "after": "7a2c0b3e117e23744fa30adb744137308e2212a50d631feeab19ee9de6ed94b5",
+          "after": "3a4b8bdaf6b5505e6890103bf14db11bd0e057d07fe02180d4ea64ceaf44204e",
           "before": "1cc0c2d7eff5c72c35bb6bcac1551222280c4dcccf860a532bbcae9bc4385877"
         }
       }
@@ -137,8 +137,8 @@
     "plugin-manager-cancel-tree-confirmation.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-          "before": "7a2c0b3e117e23744fa30adb744137308e2212a50d631feeab19ee9de6ed94b5",
-          "after": "7978a5b16f406b3c223de5a83c93e86125677ece1265d39d79dcba19de13cd45"
+          "before": "3a4b8bdaf6b5505e6890103bf14db11bd0e057d07fe02180d4ea64ceaf44204e",
+          "after": "47f7b81a82f281c0191d08090b61b803fbd27457f00dc0ed1610c38becf791d8"
         }
       }
     },
