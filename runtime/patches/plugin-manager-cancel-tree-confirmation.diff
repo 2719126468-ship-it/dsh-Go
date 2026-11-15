@@ -218,47 +218,43 @@
  					exitCode = 1;
  					const restoration = repaired.exitCode === 0 ? "restored package.json, pnpm-lock.yaml, and node_modules" : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'";
  					const diagnostic = `\ndsh: installation rejected: ${warnings.join("\n")}\ndsh: ${restoration}.\n`;
-@@ -761,11 +879,38 @@
- 					append(Buffer.from(diagnostic));
- 				} else if (options.activateNewBundles !== false) await reconcile(before, dir, context.installAnchor, options);
- 			}
-+			completed = true;
- 		} finally {
- 			control.settled = true;
- 			clearTimeout(idleTimer);
--			await rm(runRecordPath(dir), { force: true });
--			await log.close();
-+			if (grouped) {
-+				const mustStop = !completed || exitCode !== 0 || control.stalled || combinedSignal.aborted;
-+				try {
-+					if (mustStop) await stopOwnedRuns(ownedRuns);
-+				} catch (error) {
-+					// A stop failure must not rejoin a parent/collector that can remain alive.
-+					cut = true;
-+					for (const current of ownedChildren) {
-+						current.stdout?.destroy();
-+						current.stderr?.destroy();
-+					}
-+					throw error;
-+				} finally {
-+					try {
-+						if (ownedStopFailure(ownedRuns) !== void 0) {
-+							for (const run of ownedRuns) run.detach();
-+						} else if (mustStop || options.onRunGuard === void 0) {
-+							// Install retains a normal successful primary until its applying boundary.
-+							for (const run of ownedRuns) await run.release();
-+						}
-+					} finally {
-+						await log.close();
-+					}
-+				}
-+			} else {
-+				await rm(runRecordPath(dir), { force: true });
-+				await log.close();
-+			}
+@@ -760,4 +878,5 @@
  		}
- 		return {
- 			exitCode,
++		completed = true;
+ 	} finally {
+ 		control.settled = true;
+ 		clearTimeout(idleTimer);
+@@ -764,2 +883,31 @@
+-		await rm(runRecordPath(dir), { force: true });
+-		await log.close();
++		if (grouped) {
++			const mustStop = !completed || exitCode !== 0 || control.stalled || combinedSignal.aborted;
++			try {
++				if (mustStop) await stopOwnedRuns(ownedRuns);
++			} catch (error) {
++				// A stop failure must not rejoin a parent/collector that can remain alive.
++				cut = true;
++				for (const current of ownedChildren) {
++					current.stdout?.destroy();
++					current.stderr?.destroy();
++				}
++				throw error;
++			} finally {
++				try {
++					if (ownedStopFailure(ownedRuns) !== void 0) {
++						for (const run of ownedRuns) run.detach();
++					} else if (mustStop || options.onRunGuard === void 0) {
++						// Install retains a normal successful primary until its applying boundary.
++						for (const run of ownedRuns) await run.release();
++					}
++				} finally {
++					await log.close();
++				}
++			}
++		} else {
++			await rm(runRecordPath(dir), { force: true });
++			await log.close();
++		}
 @@ -1972,6 +2117,7 @@
  			const control = {
  				abort: new AbortController(),
