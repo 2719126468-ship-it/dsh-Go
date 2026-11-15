@@ -147,12 +147,15 @@
  		ownerCtx.fiber.assertActive();
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
  		/* v8 ignore next -- unreachable backstop, see above */
-@@ -1779,3 +1786,4 @@
- 			/* v8 ignore next -- a synchronous effect exhausts the generator before returning */
- 			if (machine === void 0) throw new Error(`agent "${id}" lifecycle did not construct its driver`);
- 			const agent = machine;
-+			agent.dshGoDispose = dispose;
- 			assertLive();
+@@ -1580,6 +1580,7 @@
+ 				await loopCtx.agents.announce(agent, source, abort.signal);
+ 					assertLive();
+ 					ready = true;
++					agent.dshGoDispose = dispose;
+ 					return {
+ 						agent,
+ 						dispose
+ 					};
 @@ -1940,3 +1948,15 @@
  		}
  	}
