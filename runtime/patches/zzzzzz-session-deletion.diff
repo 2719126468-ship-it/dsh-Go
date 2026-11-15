@@ -214,6 +214,19 @@
  		const detached = snapshotJsonValue(rows);
  		if (detached === void 0) throw new TypeError("projection checkpoint is not losslessly JSON-serializable (a unit state violates the plain-JSON contract)");
  		await this.requireTable().put(id, {
+--- a/node_modules/@deepseek-ai/dsh-session-query/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-session-query/lib/index.js
+@@ -1061,6 +1061,10 @@
+ 	* @param options - cancellation and projection selection for this read.
+ 	* @returns a caller-owned observation lease.
+ 	*/
++	dshGoDeletionVersion = 1;
++	dshGoForget(id) {
++		this._observations.cache.delete(id);
++	}
+ 	observeSession(sessionId, options = {}) {
+ 		return this._observations.read(sessionId, options);
+ 	}
 --- a/node_modules/@deepseek-ai/dsh-session-query-sqlite/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-query-sqlite/lib/index.js
 @@ -643,7 +643,24 @@
