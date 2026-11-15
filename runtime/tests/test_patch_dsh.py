@@ -177,16 +177,23 @@ class PatchDsh(unittest.TestCase):
             files = rtbuild.parse_unified_diff(read(os.path.join(shipped, name)))
             self.assertTrue(files and all(hunks for _, hunks in files), name)
             diff_files = {rel for rel, _ in files}
+            hunk_counts = {rel: len(hunks) for rel, hunks in files}
             patch_pins = pins["patches"][name]
+            metadata = {"optional_files", "superseded_files", "superseded_hunks"}
             for version, by_file in ((version, value) for version, value in patch_pins.items()
-                                     if version != "optional_files"):
+                                     if version not in metadata):
                 optional = set(patch_pins.get("optional_files", {}).get(version, []))
                 superseded = set(patch_pins.get("superseded_files", {}).get(version, []))
+                superseded_hunks = patch_pins.get("superseded_hunks", {}).get(version, {})
                 self.assertTrue(set(by_file).issubset(diff_files), (name, version))
                 self.assertTrue(optional.issubset(diff_files), (name, version))
                 self.assertTrue(superseded.issubset(diff_files), (name, version))
                 self.assertTrue(optional.isdisjoint(superseded), (name, version))
                 self.assertEqual(diff_files, set(by_file) | optional | superseded, (name, version))
+                for rel, indices in superseded_hunks.items():
+                    self.assertIn(rel, diff_files, (name, version))
+                    self.assertTrue(all(isinstance(index, int) and 1 <= index <= hunk_counts[rel]
+                                        for index in indices), (name, version, rel))
 
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm 0.2.1-rc.2 lib/index.js")
