@@ -313,6 +313,16 @@ jobs:
           NODE
           # Record hashes only inside this temporary CI checkout; commit pins only after reviewing them.
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          # The broad legacy runtime suite targets the last fully locked 0.2.1 API.
+          # Keep it on that exact dependency graph; test the current 0.2.2 Host API separately.
+          legacy_version=0.2.1-rc.4
+          legacy_prefix="$RUNNER_TEMP/dsh-legacy"
+          mkdir -p "$legacy_prefix"
+          cp "runtime/locks/dsh-$legacy_version/package.json" "runtime/locks/dsh-$legacy_version/package-lock.json" "$legacy_prefix/"
+          npm ci --prefix "$legacy_prefix" --ignore-scripts --no-audit --no-fund --legacy-peer-deps
+          cp "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$legacy_prefix/fs-local-original.js"
+          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$legacy_prefix" --dsh-version "$legacy_version" --record
+          echo "DSH_LEGACY_PREFIX=$legacy_prefix" >> "$GITHUB_ENV"
           cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
@@ -323,7 +333,13 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Unit tests
         run: |
-          node --test runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
+          DSH_PREFIX="$DSH_LEGACY_PREFIX" \
+          DSH_TEST_PREFIX="$DSH_LEGACY_PREFIX" \
+          DSH_INSTALL="$DSH_LEGACY_PREFIX/node_modules/@deepseek-ai/dsh" \
+          DSH_TOOLS_DIR="$DSH_LEGACY_PREFIX/node_modules/@deepseek-ai/dsh-tools" \
+          DSH_FS_LOCAL_ORIGINAL_JS="$DSH_LEGACY_PREFIX/fs-local-original.js" \
+            node --test runtime/tests/*.test.mjs
+          DSH_PREFIX="$DSH_PREFIX" node --test runtime/tests/schedule-authorization-host.mjs app/tool/engine_auth/*.test.mjs
           python3 -I runtime/tests/test_patch_dsh.py
       - name: Media and example plugins
         run: |
