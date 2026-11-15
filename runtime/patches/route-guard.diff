@@ -9,14 +9,11 @@
  import { createServer as createServer$1 } from "node:https";
  import { isIP } from "node:net";
  import { resolve } from "node:path";
-@@ -381,6 +381,7 @@
- 			const rawPath = new URL(req.url ?? "/", "http://x").pathname;
- 			const route = this.match(rawPath);
- 			if (route !== void 0) {
-+				if (await this.dshGoRejectRequest(route, req, res)) return;
- 				await route.handler(req, res);
- 				return;
- 			}
+@@ -381,1 +381,4 @@
+ 			const responder = this.responderFor(target.pathname);
++			if (typeof responder === "object" && responder !== null && "handler" in responder) {
++				if (await this.dshGoRejectRequest(responder, req, res)) return;
++			}
 @@ -454,7 +455,7 @@
  				}
  				this.upgradedSockets.add(socket);
