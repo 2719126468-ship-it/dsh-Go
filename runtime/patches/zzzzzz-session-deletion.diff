@@ -320,15 +320,13 @@
  		await this.indexHeaders(await this.listStoredHeaders());
 --- a/node_modules/@deepseek-ai/dsh-storage-json/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-storage-json/lib/index.js
-@@ -263,6 +263,19 @@
- 		return records;
- 	}
- 	publish() {
+@@ -263,2 +263,15 @@
+ 	async publish() {
 +		const seam = this.dshGoDeletion?.();
 +		if (seam !== void 0) {
 +			if (this.descriptor.name === "schedule") {
 +				const tasks = this.state.tables.get("tasks");
-+				for (const [id, task] of tasks ?? []) if (seam.deleted(task.sessionId)) tasks.delete(id);
++				for (const [id, task] of tasks ?? []) if (seam.deleted(task.sessionId) || seam.deleted(task.target?.sessionId)) tasks.delete(id);
 +			}
 +			if (this.descriptor.name === "workspace") {
 +				for (const [id, record] of this.state.tables.get("workspaces") ?? [])
@@ -338,8 +336,6 @@
 +			}
 +		}
  		const write = writeAtomic(this.path, serialize(this.descriptor.name, this.state));
- 		this.inFlight.add(write);
- 		write.catch(() => {}).finally(() => this.inFlight.delete(write));
 @@ -583,6 +596,7 @@
  			await unit.close();
  			throw new StorageError("closed", "json backend is closed");
