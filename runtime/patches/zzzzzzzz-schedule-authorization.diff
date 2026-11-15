@@ -13,10 +13,12 @@
  		stopping = false;
 +		dshGoAuthorizationAbort = new AbortController();
 
-@@ -2012,1 +2012,2 @@
+@@ -2011,3 +2011,4 @@
+ 						this.stopping = true;
 -						await this.runtime?.dispose();
 +						this.dshGoAuthorizationAbort.abort();
 +						await this.runtime?.dispose();
+ 						await this.chain;
 
 @@ -2082,1 +2082,2 @@
  		async create(sessionId, request, signal) {
