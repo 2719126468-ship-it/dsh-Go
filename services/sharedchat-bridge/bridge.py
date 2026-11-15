@@ -6,7 +6,10 @@ sharedchat-bridge — 把 sharedchat 的 codex 专用 key 变成任何 RP 客户
 下游: /v1/chat/completions (SSE + 非流式), /v1/responses (原样透传), /v1/models
 
 用法:
-  SHAREDCHAT_API_KEY=sk-xxx python3 bridge.py --port 8787 --host 0.0.0.0
+  SHAREDCHAT_API_KEY=sk-xxx python3 bridge.py --port 8787
+
+  # LAN: require a separate downstream key
+  SHAREDCHAT_API_KEY=sk-xxx BRIDGE_KEY=long-random-secret python3 bridge.py --port 8787 --host 0.0.0.0
 """
 from __future__ import annotations
 import argparse, hmac, ipaddress, json, os, re, sys, time, uuid, threading, traceback

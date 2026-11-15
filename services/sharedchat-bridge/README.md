@@ -81,7 +81,7 @@ Tavo 的「自定义（OpenAI 协议）」要求 **API 基础 URL**，它会自�
 
 1. **别填 `https://new.sharedchat.cc/codex/v1`** —— 那是 responses 协议 + 指纹校验，Tavo 直连必然失败。
 2. Tavo 的 manifest 是 `usesCleartextTraffic=true`，`http://127.0.0.1` 能直连，不用 https、不用证书。
-3. 如果 Tavo 跑在另一台设备（同一 WiFi），把 bridge 用 `--host 0.0.0.0`（默认已是）启动，URL 换成本机内网 IP，例如 `http://192.168.x.x:8787/v1`。建议同时设 `BRIDGE_KEY=你的口令`，Tavo 的 API Key 填同一个值。
+3. 如果 Tavo 跑在另一台设备（同一 WiFi），将 `BRIDGE_HOST=0.0.0.0` 并配置强随机 `BRIDGE_KEY` 后启动；未配置密钥时服务会拒绝非本机监听。URL 换成本机内网 IP，例如 `http://192.168.x.x:8787/v1`。Tavo 的 API Key 填同一个 `BRIDGE_KEY`。
 4. 模型平台里如果 Tavo 有「API 模式 / API Mode」选项，选 `openai_chat`；选 `openai_responses` 也能用（走 `/v1/responses` 透传）。
 
 ## 已知坑
