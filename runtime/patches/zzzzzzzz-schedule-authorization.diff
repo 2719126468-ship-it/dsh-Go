@@ -9,14 +9,10 @@
  import { delegationDepthOf } from "@deepseek-ai/dsh-subagent";
  import { createUserMessage } from "@deepseek-ai/dsh-llm";
  import { Temporal } from "@js-temporal/polyfill";
-@@ -1985,6 +1985,7 @@
- 		chain = Promise.resolve();
- 		runtime;
+@@ -1985,1 +1985,2 @@
  		stopping = false;
 +		dshGoAuthorizationAbort = new AbortController();
- 		/**
- 		* @param ctx - Host services owning storage, dispatch, and Session restoration.
- 		* @param config - Validated retention configuration for delivery history.
+
 @@ -2012,6 +2013,7 @@
  				try {
  					cleanup = ctx.effect(() => async () => {
