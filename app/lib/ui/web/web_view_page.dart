@@ -684,10 +684,13 @@ class _WebViewPageState extends State<WebViewPage> {
     unawaited(
       Navigator.of(context, rootNavigator: true).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => WillPopScope(
-            onWillPop: () async {
+          builder: (_) => PopScope<void>(
+            canPop: true,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop || !_showingCustomWidget) return;
+              _showingCustomWidget = false;
+              _restoreCustomWidgetSystemUi();
               onCustomWidgetHidden();
-              return false;
             },
             child: ColoredBox(
               color: Colors.black,
@@ -699,10 +702,7 @@ class _WebViewPageState extends State<WebViewPage> {
     );
   }
 
-  void _hideCustomWidget() {
-    if (!_showingCustomWidget) return;
-    _showingCustomWidget = false;
-    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+  void _restoreCustomWidgetSystemUi() {
     unawaited(
       SystemChrome.setPreferredOrientations(const [
         DeviceOrientation.portraitUp,
@@ -711,6 +711,13 @@ class _WebViewPageState extends State<WebViewPage> {
       ]),
     );
     unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+  }
+
+  void _hideCustomWidget() {
+    if (!_showingCustomWidget) return;
+    _showingCustomWidget = false;
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    _restoreCustomWidgetSystemUi();
   }
 
   void _onRendererGone(bool crashed) {
@@ -940,12 +947,7 @@ class _WebViewPageState extends State<WebViewPage> {
   void dispose() {
     if (_showingCustomWidget) {
       _showingCustomWidget = false;
-      unawaited(SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]));
-      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+      _restoreCustomWidgetSystemUi();
     }
     widget.link?._detach(this);
     _keyboardRest?.cancel();
