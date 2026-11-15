@@ -2,6 +2,20 @@
 
 每个版本先中文、后英文。发版时把对应版本的正文（不含版本标题）作为 Release 正文，见 `docs/release.md`。
 
+## 1.0.17 · 2026-11-15
+
+### 中文
+
+- **定制版配色与首次引导修复。** 首次启动保持六套基础色的单行布局；设置 › 外观展示九套预设，窄屏自动折行；`ui.json` 的 `theme.accentPreset` 同步支持朱砂、柚绿和深海。
+- **双架构定制包收口。** ARM64 与 ARM32 分别构建自己的内置运行时，并在 APK 验证阶段检查破甲预设、四套实用技能及 `dsh-our-free-model` 插件归档确实打包。任一架构构建失败或缺少定制资源，都不会生成单架构 Release。
+- **ARM32 运行时修复与边界明确。** 修复 Debian armhf merged-/usr 包路径组装；ARM32 仍使用实验性的 Debian 12 + Node 23 PRoot 引擎，不宣称与 ARM64 具有相同的真机稳定性。
+
+### English
+
+- **Custom palettes and first-run setup.** First launch keeps the six base colours on one row. Settings › Appearance exposes all nine presets and wraps them on narrow screens. `ui.json` now accepts Cinnabar, Matcha and Abyss as accent presets.
+- **Dual-ABI custom packages.** ARM64 and ARM32 each build their own bundled runtime. APK verification checks that the PoJia preset, all four utility skills and the `dsh-our-free-model` plugin archive are present. A failed ABI build or a missing custom asset blocks the Release instead of publishing a partial package.
+- **ARM32 runtime fix and support boundary.** Debian armhf merged-/usr package paths are assembled correctly. ARM32 remains an experimental Debian 12 + Node 23 PRoot runtime and is not represented as having the same device validation as ARM64.
+
 ## 1.0.16 · 2026-11-13
 
 ### 中文
