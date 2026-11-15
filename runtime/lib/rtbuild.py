@@ -357,12 +357,16 @@ def cmd_patch_dsh(args):
         patch_pins = pins["patches"].get(name, {})
         want = patch_pins.get(args.dsh_version)
         optional_files = set(patch_pins.get("optional_files", {}).get(args.dsh_version, []))
+        superseded_files = set(patch_pins.get("superseded_files", {}).get(args.dsh_version, []))
         if want is None and not args.record:
             sys.exit("patch %s has no pin for DSH %s: review the upstream files it touches, then run\n"
                      "  python3 -I runtime/lib/rtbuild.py patch-dsh --prefix <dsh-prefix> --dsh-version %s --record"
                      % (name, args.dsh_version, args.dsh_version))
         observed = {}
         for rel, hunks in diff:
+            if rel in superseded_files:
+                print("%s: upstream supersedes this file for DSH %s; skipped %s" % (name, args.dsh_version, rel))
+                continue
             path = os.path.join(args.prefix, rel)
             pin = (want or {}).get(rel)
             if not os.path.isfile(path):
