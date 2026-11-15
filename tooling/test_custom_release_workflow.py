@@ -58,6 +58,9 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.text)
         self.assertIn("  workflow_dispatch:", self.text)
 
+    def test_ci_summary_skips_when_push_branch_is_out_of_scope(self):
+        self.assertIn("if: always() && needs.changes.result != 'skipped'", self.ci)
+
     def test_custom_releases_are_serialized(self):
         self.assertIn("group: dsh-go-custom-release", self.text)
         self.assertIn("cancel-in-progress: false", self.text)
