@@ -182,6 +182,15 @@ jobs:
           npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact --legacy-peer-deps "${bundles[@]}"
           python3 -I runtime/lib/preinstall_optional_bundles.py --prefix "$prefix" --manifest runtime/preinstalled-bundles.json
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
+          node - "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync(process.argv[2], 'utf8');
+          for (const term of ['const linkFile', 'options.createIfAbsent', 'throwGuardedCreateFailure(error']) {
+            const index = source.indexOf(term);
+            console.log('--- dsh-fs-local compiled source:', term, 'at', index, '---');
+            if (index >= 0) console.log(source.slice(Math.max(0, index - 1800), Math.min(source.length, index + 4200)));
+          }
+          NODE
           # Record hashes only inside this temporary CI checkout; commit pins only after reviewing them.
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
           cat runtime/patches/pins.json
