@@ -86,6 +86,15 @@ jobs:
       - name: 依赖
         run: flutter pub get
 
+      - name: 定制层与界面回归
+        run: |
+          python3 tool/l10n_merge.py --check
+          python3 tool/guide_sync.py --check
+          flutter test --no-pub test/theme/palette_contrast_test.dart
+          flutter test --no-pub test/ui_config/schema_sync_test.dart
+          flutter test --no-pub test/settings/palette_width_test.dart
+          flutter test --no-pub test/onboarding/parallel_setup_test.dart
+
       - name: 打包 arm64
         working-directory: .
         run: |
