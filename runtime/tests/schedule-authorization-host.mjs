@@ -83,6 +83,7 @@ function fixture({ provider = true, answer = grant, delegated = false } = {}) {
     validateTarget: async () => {},
     entry: task => task,
     queueNotification: () => {},
+    deliveryLimits: () => ({ newSessionIntervalSeconds: 60 }),
     emitChanged: () => {},
     runtime: { requestDrive() {} },
   });
