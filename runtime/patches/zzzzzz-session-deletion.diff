@@ -270,7 +270,7 @@
 +			if (unit?.descriptor?.name !== "schedule" || typeof domain.table !== "function")
 +				throw Object.assign(new Error("unsupported schedule backend"), { code: "unavailable" });
 +			const tasks = domain.table("tasks");
-+			return [...tasks.entries()].some(([, task]) => task.sessionId === id);
++			return [...tasks.entries()].some(([, task]) => task.sessionId === id || task.target?.sessionId === id);
 +		}
 +		async dshGoCanDelete() {
 +			const domain = await this.getDomain();
