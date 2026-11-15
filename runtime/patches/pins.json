@@ -241,6 +241,13 @@
           "before": "172100bf8a53e45ce3cb8fb476bf8bdd51c208e28135ceca59897fab4edc7929",
           "after": "f63f894b89473af887b7f19e8b0acbb2763ccf3b0c223145406056b8b4a45130"
         }
+      },
+      "superseded_hunks": {
+        "0.2.2-rc.1": {
+          "node_modules/@deepseek-ai/dsh-schedule/lib/index.js": [
+            1
+          ]
+        }
       }
     },
     "zzzzzzz-input-recovery.diff": {
