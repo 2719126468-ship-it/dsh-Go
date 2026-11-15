@@ -262,10 +262,7 @@
  				return;
  			}
 +			this.ctx.sessionPersistence.dshGoDeletion?.assertAdmit(target.sessionId);
-@@ -2290,9 +2293,25 @@
- 				if (failure !== void 0) throw failure;
- 			});
- 		}
+@@ -2290,6 +2293,22 @@
 +		dshGoDeletionVersion = 1;
 +		async dshGoInspectDeletion(id) {
 +			const domain = await this.getDomain();
