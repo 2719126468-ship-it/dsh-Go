@@ -52,9 +52,13 @@ def main() -> int:
         found = source.find(marker, offset)
         if found < 0:
             break
-        equals = source.find("=", found + len(marker))
-        bracket = source.find("[", equals + 1) if equals >= 0 else -1
-        if equals >= 0 and bracket >= 0 and not source[equals + 1:bracket].strip():
+        equals = found + len(marker)
+        while equals < len(source) and source[equals].isspace():
+            equals += 1
+        bracket = equals + 1
+        while bracket < len(source) and source[bracket].isspace():
+            bracket += 1
+        if equals < len(source) and source[equals] == "=" and bracket < len(source) and source[bracket] == "[":
             closing = source.find("]", bracket + 1)
             if closing >= 0:
                 occurrences.append((bracket, closing))
