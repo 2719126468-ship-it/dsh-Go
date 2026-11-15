@@ -106,9 +106,7 @@
  			activity?.dispose();
 --- a/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
-@@ -65,6 +65,7 @@
- */
- /** Preserve execution-world spelling; enforcing providers resolve filesystem identity on their host. */
+@@ -67,5 +67,6 @@
  function resolveWorkspaceRoot(path) {
 +	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
  	if (!isAbsolute(path)) throw new Error("sandbox-policy: workspace root must be an absolute execution-world path");
