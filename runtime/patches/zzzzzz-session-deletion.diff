@@ -160,13 +160,11 @@
  		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
  		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-@@ -1581,5 +1594,6 @@
- 					ready = true;
-+					agent.dshGoDispose = dispose;
- 					return {
- 						agent,
- 						dispose
- 					};
+@@ -1794,3 +1794,4 @@
+ 						await loopCtx.agents.announce(agent, source, abort.signal);
+ 						assertLive();
++						agent.dshGoDispose = dispose;
+ 						return {
 --- a/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 @@ -166,6 +166,7 @@
