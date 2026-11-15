@@ -255,7 +255,7 @@ void main() {
       });
 
       testWidgets('every accent', (tester) async {
-        useView(tester, 620, 500);
+        useView(tester, 620, 700);
         await tester.pumpWidget(tileApp(_AccentSheet(brightness), brightness: brightness));
         await decodeImages(tester);
         await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/tiles_accents_$mode.png'));
