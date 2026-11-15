@@ -106,7 +106,7 @@
  			activity?.dispose();
 --- a/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
-@@ -67,5 +67,6 @@
+@@ -67,4 +67,5 @@
  function resolveWorkspaceRoot(path) {
 +	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
  	if (!isAbsolute(path)) throw new Error("sandbox-policy: workspace root must be an absolute execution-world path");
