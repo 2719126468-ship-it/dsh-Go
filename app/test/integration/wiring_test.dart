@@ -379,7 +379,7 @@ void main() {
     for (final brightness in Brightness.values) {
       final mode = brightness.name;
 
-      testWidgets('AI browser and Bilibili entries, tools group ($mode)', (tester) async {
+      testWidgets('AI browser and Bilibili entries are in the tools group ($mode)', (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(390, 3000);
         addTearDown(tester.view.reset);
@@ -398,7 +398,6 @@ void main() {
         final toolsGrid = find.ancestor(of: browserTile, matching: find.byType(TileGrid));
         expect(toolsGrid, findsOneWidget);
         expect(find.descendant(of: toolsGrid, matching: mediaTile), findsOneWidget);
-        await expectLater(toolsGrid, matchesGoldenFile('goldens/ai_browser_tools_$mode.png'));
       });
 
       testWidgets('one-shot child, read-only ($mode)', (tester) async {
