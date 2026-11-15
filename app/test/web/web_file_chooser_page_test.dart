@@ -121,7 +121,7 @@ void main() {
     expect(find.text('fullscreen sentinel'), findsNothing);
   });
 
-  testWidgets('Android video fullscreen hide callback restores the page', (tester) async {
+  testWidgets('WebView hide callback removes fullscreen without host dismissal', (tester) async {
     await pumpPage(tester);
     var hidden = false;
     web.controller.showCustomWidget!(
@@ -131,7 +131,7 @@ void main() {
     await tester.pumpAndSettle();
     web.controller.hideCustomWidget!();
     await tester.pumpAndSettle();
-    expect(hidden, isTrue);
+    expect(hidden, isFalse);
     expect(find.text('fullscreen sentinel'), findsNothing);
   });
 
