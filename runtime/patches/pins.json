@@ -251,6 +251,10 @@
             6,
             7,
             8
+          ],
+          "node_modules/@deepseek-ai/dsh-tool-schedule/lib/index.js": [
+            1,
+            2
           ]
         },
         "0.2.1-rc.4": {
@@ -262,6 +266,10 @@
             13,
             14,
             15
+          ],
+          "node_modules/@deepseek-ai/dsh-tool-schedule/lib/index.js": [
+            3,
+            4
           ]
         }
       }
