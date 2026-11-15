@@ -321,7 +321,8 @@ jobs:
           cp "runtime/locks/dsh-$legacy_version/package.json" "runtime/locks/dsh-$legacy_version/package-lock.json" "$legacy_prefix/"
           npm ci --prefix "$legacy_prefix" --ignore-scripts --no-audit --no-fund --legacy-peer-deps
           cp "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$legacy_prefix/fs-local-original.js"
-          grep -n -A14 -B5 'createIfAbsent' "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" | tail -45
+          find "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib" -maxdepth 2 -type f -print
+          grep -R -n -A14 -B5 'createIfAbsent\|linkFile(tempPath' "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib" | head -100
           node - "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" <<'NODE'
           const fs = require("node:fs");
           const source = fs.readFileSync(process.argv[2], "utf8");
