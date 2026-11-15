@@ -144,14 +144,7 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1678,3 +1678,19 @@
- 	async initializeAgent(ownerCtx, options) {
--		const { session, agentOptions, source, stored, setup, signal: callerSignal } = options;
-+		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
- 		const id = session.id;
-+		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-+		if (parentAgent !== void 0) ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(parentAgent.id);
-+	}
+@@ -1678,3 +1678,17 @@
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
 +		const agent = this.runtime.ctx.agents.get(id);
@@ -164,6 +157,12 @@
 +		agent.dshGoDeleting = true;
 +		await agent.dshGoDispose();
 +	}
+ 	async initializeAgent(ownerCtx, options) {
+-		const { session, agentOptions, source, stored, setup, signal: callerSignal } = options;
++		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
+ 		const id = session.id;
++		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
++		if (parentAgent !== void 0) ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(parentAgent.id);
 @@ -1779,6 +1799,7 @@
  			/* v8 ignore next -- a synchronous effect exhausts the generator before returning */
  			if (machine === void 0) throw new Error(`agent "${id}" lifecycle did not construct its driver`);
