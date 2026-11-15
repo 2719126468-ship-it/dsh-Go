@@ -43,12 +43,33 @@ jobs:
     outputs:
       app_version: ${{ steps.meta.outputs.app_version }}
       build_number: ${{ steps.meta.outputs.build_number }}
+      should_build: ${{ steps.scope.outputs.should_build }}
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - name: 判断本次 push 是否改动 APK 输入
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$BEFORE" =~ ^0+$ ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed_files="$(git diff --name-only "$BEFORE" "$AFTER")"
+          if grep -Eq '^(app/|runtime/|tooling/)' <<<"$changed_files"; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "No APK inputs changed; skip this release build."
+          fi
       - name: 读取应用版本并生成共享 Android versionCode
         id: meta
+        if: steps.scope.outputs.should_build == 'true'
         run: |
           version="$(python3 -c 'import re; from pathlib import Path; m=re.search(r"^version:\s*([^+\s]+)", Path("app/pubspec.yaml").read_text(), re.M); print(m.group(1) if m else "")')"
           test -n "$version" || { echo "app/pubspec.yaml has no version"; exit 1; }
@@ -57,7 +78,7 @@ jobs:
 
   arm64:
     needs: prepare
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/'))) || (github.event_name == 'workflow_dispatch' && inputs.build_arm64)
+    if: (github.event_name == 'push' && needs.prepare.outputs.should_build == 'true' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/'))) || (github.event_name == 'workflow_dispatch' && inputs.build_arm64)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     env:
@@ -216,7 +237,7 @@ jobs:
 
   arm32:
     needs: prepare
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/'))) || (github.event_name == 'workflow_dispatch' && inputs.build_arm32)
+    if: (github.event_name == 'push' && needs.prepare.outputs.should_build == 'true' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/'))) || (github.event_name == 'workflow_dispatch' && inputs.build_arm32)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     defaults:
