@@ -380,6 +380,8 @@ void main() {
 
       testWidgets('all features, every group ($mode)', (tester) async {
         // Tall enough for every group at once.
+        // These full-page snapshots are lossless WebP to keep the large images compact.
+        // After --update-goldens, convert the two generated PNGs to lossless WebP.
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(390, 3000);
         addTearDown(tester.view.reset);
@@ -387,7 +389,7 @@ void main() {
           testApp(const AllFeaturesPage(), brightness: brightness, overrides: _chatOverrides(parentId)),
         );
         await pumpFrames(tester, 8);
-        await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/all_features_full_$mode.png'));
+        await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/all_features_full_$mode.webp'));
       });
 
       testWidgets('one-shot child, read-only ($mode)', (tester) async {
