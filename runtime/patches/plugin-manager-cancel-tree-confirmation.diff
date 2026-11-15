@@ -276,18 +276,12 @@
  				result: Promise.resolve(null)
  			};
  			const stopped = () => control.abort.signal.aborted || this.abort.signal.aborted;
-@@ -2021,7 +2167,10 @@
- 					let run;
- 					let used = null;
- 					for (const [index, registry] of plan.entries()) {
+@@ -2021,1 +2167,4 @@
 -						if (index > 0) await this.restoreFiles(files);
 +						if (index > 0) {
 +							await stopOwnedRuns(control.runs);
 +							await this.restoreFiles(files);
 +						}
- 						if (stopped()) throw new InstallCancelledError();
- 						result.registries.push(registry);
- 						used = registry;
 @@ -2035,7 +2184,7 @@
  							spec,
  							...options?.saveExact === true ? ["--save-exact"] : [],
