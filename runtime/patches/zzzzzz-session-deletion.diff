@@ -148,14 +148,14 @@
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
  		/* v8 ignore next -- unreachable backstop, see above */
 @@ -1579,7 +1579,8 @@
- 			await loopCtx.agents.announce(agent, source, abort.signal);
- 			assertLive();
- 			ready = true;
-+			agent.dshGoDispose = dispose;
- 			return {
- 				agent,
- 				dispose
- 			};
+					await loopCtx.agents.announce(agent, source, abort.signal);
+					assertLive();
+					ready = true;
++					agent.dshGoDispose = dispose;
+					return {
+						agent,
+						dispose
+					};
 @@ -1940,3 +1948,15 @@
  		}
  	}
