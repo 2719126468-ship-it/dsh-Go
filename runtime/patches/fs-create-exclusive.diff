@@ -4,7 +4,7 @@
 # Node open("wx") includes O_CREAT | O_EXCL; rename would clobber a competitor.
 --- a/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js
-@@ -1,6 +1,23 @@
+@@ -1,5 +1,21 @@
  		if (options.createIfAbsent) try {
  			await linkFile(tempPath, absolutePath);
  		} catch (error) {
