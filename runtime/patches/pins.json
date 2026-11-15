@@ -271,5 +271,10 @@
       }
     }
   },
-  "schema": 1
+  "schema": 1,
+  "superseded": {
+    "0.2.2-rc.1": [
+      "file-upload-resolver-dispose.diff"
+    ]
+  }
 }
