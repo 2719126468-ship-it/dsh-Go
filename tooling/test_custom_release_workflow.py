@@ -25,6 +25,9 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
             2,
         )
 
+    def test_both_apks_are_checked_against_the_shared_version_code(self):
+        self.assertEqual(self.text.count("grep -F \\"versionCode='$BUILD_NUMBER'\\""), 2)
+
     def test_release_waits_for_both_abi_artifacts(self):
         self.assertIn("needs: [prepare, arm64, arm32]", self.text)
         self.assertIn("needs.arm64.result == 'success' && needs.arm32.result == 'success'", self.text)
