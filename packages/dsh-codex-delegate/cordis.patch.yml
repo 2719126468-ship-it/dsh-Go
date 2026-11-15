@@ -16,7 +16,7 @@
 #       handshakeTimeoutMs: 30000  # spawn + initialize budget
 #       codexPath: /data/data/com.termux/files/home/.local/bin/codex
 #       sandboxMode: danger-full-access
-#       approvalPolicy: never
+#       approvalPolicy: on-request
 #       defaultCwd: /data/data/com.termux/files/home
 #       maxOutputChars: 100000
 #       killGraceMs: 2000

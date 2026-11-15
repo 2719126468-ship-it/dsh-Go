@@ -11,6 +11,13 @@ function makeServer(request) {
   return server;
 }
 
+test("approval prompts are declined when no interactive approval UI exists", () => {
+  const server = makeServer(async () => ({}));
+  assert.deepEqual(server.answerServerRequest("ExecCommandApproval"), { decision: "decline" });
+  assert.deepEqual(server.answerServerRequest("ApplyPatchApproval"), { decision: "denied" });
+  assert.deepEqual(server.answerServerRequest("ToolRequestUserInput"), { answers: [] });
+});
+
 test("pre-aborted calls never create a thread or start a turn", async () => {
   const calls = [];
   const server = makeServer(async (method) => { calls.push(method); return { thread: { id: "T1" } }; });

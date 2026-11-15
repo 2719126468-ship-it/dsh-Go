@@ -352,9 +352,9 @@ export class CodexAppServer {
   }
 
   /**
-   * Deny-by-default answer for an unexpected server->client request.
-   * `approvalPolicy: "never"` means these should not arrive at all; answering
-   * `decline` keeps a stray one from hanging the turn.
+   * Deny-by-default answer for server->client requests.
+   * DSH's one-shot delegate has no interactive approval UI, so on-request
+   * prompts must be declined rather than left pending or silently approved.
    */
   answerServerRequest(method) {
     if (/RequestApproval|ApplyPatchApproval/.test(method)) {
