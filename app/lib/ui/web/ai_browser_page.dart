@@ -162,7 +162,11 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
   Future<void> _openAddress() async {
     final value = _address.text.trim();
     if (value.isEmpty) return;
-    final parsed = Uri.tryParse(value.contains('://') ? value : 'https://$value');
+    final looksLikeUrl = value.contains('://') ||
+        value.startsWith('localhost') ||
+        value.startsWith('127.') ||
+        (!value.contains(' ') && value.contains('.'));
+    final parsed = looksLikeUrl ? Uri.tryParse(value.contains('://') ? value : 'https://$value') : null;
     final target = parsed != null && parsed.host.isNotEmpty
         ? parsed
         : Uri.https('www.google.com', '/search', {'q': value});
