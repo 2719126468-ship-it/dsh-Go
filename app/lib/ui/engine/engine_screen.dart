@@ -76,8 +76,7 @@ class EngineScreen extends ConsumerWidget {
     final failureCard = EngineFailureCard.visibleFor(status);
     final error = status.phase == RuntimePhase.error;
     // Nothing on this phone yet: no log to show, nothing to reset.
-    final runtimeUnavailable = state.loaded && status.bundledVersion == null;
-    final missing = runtimeUnavailable || status.runtimeMissing;
+    final missing = status.runtimeMissing;
 
     return AppPage(
       title: l10n.phoneEngineTitle,
@@ -113,22 +112,12 @@ class EngineScreen extends ConsumerWidget {
       slivers: [
         SliverList.list(
           children: [
-            if (!failureCard && !runtimeUnavailable)
+            if (!failureCard)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 child: EngineActions(phase: status.phase),
               ),
             const EngineFailureCard(padding: EdgeInsets.fromLTRB(16, 0, 16, 16)),
-            if (runtimeUnavailable)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Text(
-                  l10n.localeName == 'en'
-                      ? 'This ARMv7 package is a remote client and does not include the local Linux runtime. Connect to a computer or server from Remote Hosts.'
-                      : '此 ARMv7 安装包是远程客户端，不包含本机 Linux 运行环境。请在「远程主机」中连接电脑或服务器。',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.textTertiary),
-                ),
-              ),
             const SafeModeCard(padding: EdgeInsets.fromLTRB(16, 0, 16, 16)),
             SettingsSection(
               title: l10n.hubEngineStartup,
