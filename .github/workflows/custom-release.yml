@@ -25,6 +25,12 @@ on:
 permissions:
   contents: read
 
+# Version codes use the build minute; serialize releases so no later run can
+# overtake an older build while they wait on the runner queue.
+concurrency:
+  group: dsh-go-custom-release
+  cancel-in-progress: false
+
 env:
   FLUTTER_VERSION: 3.47.7
   NODE_VERSION: 24.22.1
