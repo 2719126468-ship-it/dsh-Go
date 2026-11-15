@@ -1,17 +1,17 @@
 {
   "schema": 1,
-  "revision": 3,
+  "revision": 4,
   "updatedAt": "2026-11-15T00:00:00Z",
-  "_comment": "社区页内容。根目录 community.json 用于线上更新；此文件作为 APK 首次启动的离线副本。projects 仅是 GitHub 源码链接，不会自动安装或执行。星标数量为 updatedAt 对应日期快照。",
+  "_comment": "社区页内容。根目录 community.json 用于线上更新；此文件作为 APK 首次启动的离线副本。projects 仅是 GitHub 源码链接，不会自动安装或执行。ARM64 本机 DSH 运行时预装精选插件但默认关闭；ARM32 仅连接远程 DSH 主机。",
   "tagline": "开源项目，欢迎点星",
   "plugins": [
     {
       "name": "@liustack/modsearch",
-      "note": "免密联网搜索；默认页面抓取会经 Firecrawl 云端"
+      "note": "已随 ARM64 本机版预装，默认关闭；默认网页抓取会经 Firecrawl 云端，agy 引擎会跳过权限提示。"
     },
     {
       "name": "dsh-context",
-      "note": "浏览本机上下文组成与趋势；需核对宿主版本"
+      "note": "已随 ARM64 本机版预装，默认关闭；启用前检查上下文展示与提示词前/后缀设置。"
     }
   ],
   "prompts": [
