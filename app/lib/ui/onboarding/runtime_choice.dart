@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../performance/performance_state.dart';
+import '../../runtime/runtime_state.dart';
 import '../../runtime/local_footprint.dart';
 import '../common/pressable.dart';
 import '../theme/app_icons.dart';
@@ -56,9 +57,14 @@ class _RuntimeChoiceViewState extends ConsumerState<RuntimeChoiceView> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final footprint = ref.watch(localFootprintProvider).value;
+    final remoteOnly = ref.watch(
+      localRuntimeProvider.select((state) => state.loaded && state.status.bundledVersion == null),
+    );
     final light = ref.watch(performanceDefaultsProvider).recommendRemote;
-    final suggested = light || footprint?.suggestRemote == true ? RuntimeOption.remote : RuntimeOption.local;
-    final selected = _picked ?? suggested;
+    final suggested = remoteOnly || light || footprint?.suggestRemote == true
+        ? RuntimeOption.remote
+        : RuntimeOption.local;
+    final selected = remoteOnly ? RuntimeOption.remote : (_picked ?? suggested);
     final colors = DshColors.of(context);
 
     final String localDetail;
@@ -82,16 +88,29 @@ class _RuntimeChoiceViewState extends ConsumerState<RuntimeChoiceView> {
           message: l10n.localEnvChooseMessage,
         ),
         const SizedBox(height: 28),
-        RuntimeOptionCard(
-          key: const ValueKey('runtime-option-local'),
-          icon: AppIcons.thisPhone,
-          title: l10n.commonThisPhone,
-          detail: localDetail,
-          detailColor: localWarn ? colors.warning : null,
-          selected: selected == RuntimeOption.local,
-          onTap: () => setState(() => _picked = RuntimeOption.local),
-        ),
-        const SizedBox(height: RuntimeOptionCard.gap),
+        if (remoteOnly)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, RuntimeOptionCard.gap),
+            child: Text(
+              l10n.localeName == 'en'
+                  ? 'This 32-bit package does not include the local Linux runtime. Connect to DSH on a computer or server.'
+                  : '此 32 位安装包不包含本机 Linux 运行环境，请连接电脑或服务器上的 DSH。',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+            ),
+          )
+        else ...[
+          RuntimeOptionCard(
+            key: const ValueKey('runtime-option-local'),
+            icon: AppIcons.thisPhone,
+            title: l10n.commonThisPhone,
+            detail: localDetail,
+            detailColor: localWarn ? colors.warning : null,
+            selected: selected == RuntimeOption.local,
+            onTap: () => setState(() => _picked = RuntimeOption.local),
+          ),
+          const SizedBox(height: RuntimeOptionCard.gap),
+        ],
         RuntimeOptionCard(
           key: const ValueKey('runtime-option-remote'),
           icon: AppIcons.computer,
