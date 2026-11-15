@@ -11,7 +11,7 @@
 #   tooling/build-apk.sh --dry-run -f all      print the commands, build nothing
 #   tooling/build-apk.sh -- --dart-define=K=V  extra flags for `flutter build apk`
 #
-#   -f, --flavor arm64|x64|all       default arm64
+#   -f, --flavor arm64|arm32|x64|all default arm64
 #   --release | --debug | --profile  default --release
 #   -t, --target FILE                Dart entry point, relative to app/
 #   -n, --build-number N             use 2..2100000000 instead of the build minute (never lower than installed)
