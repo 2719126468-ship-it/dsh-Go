@@ -24,10 +24,6 @@
     {
       "name": "@ccch1mneyyy/dsh-media",
       "note": "官方图片与视频生成插件"
-    },
-    {
-      "name": "@nanmicoder/dsh-agent-teams",
-      "note": "多智能体协作；会增加 token 与后台任务开销"
     }
   ],
   "prompts": [
