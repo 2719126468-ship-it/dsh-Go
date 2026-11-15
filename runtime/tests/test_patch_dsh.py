@@ -180,7 +180,7 @@ class PatchDsh(unittest.TestCase):
                 self.assertEqual(sorted(by_file), sorted(rel for rel, _ in files), (name, version))
 
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
-                         "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm 0.2.1-rc.2 lib/index.js")
+                         "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
     def test_shipped_exclusive_create_patch_applies_and_rejects_drift(self):
         shipped = os.path.join(HERE, "..", "patches")
         name = "fs-create-exclusive.diff"
@@ -204,12 +204,12 @@ class PatchDsh(unittest.TestCase):
         result = self.run_cli("--dsh-version", version)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(sha(read(target)), pin["after"])
-        again = self.run_cli("--dsh-version", "0.2.1-rc.2")
+        again = self.run_cli("--dsh-version", version)
         self.assertEqual(again.returncode, 0, again.stdout)
         self.assertIn("already patched", again.stdout)
         with open(target, "wb") as out:
             out.write(original + b"// upstream drift\n")
-        changed = self.run_cli("--dsh-version", "0.2.1-rc.2")
+        changed = self.run_cli("--dsh-version", version)
         self.assertNotEqual(changed.returncode, 0)
         self.assertIn("differs from the vetted", changed.stdout)
         with open(target, "rb") as source:
