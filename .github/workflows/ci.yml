@@ -294,7 +294,7 @@ jobs:
           node - "$prefix/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js" <<'NODE'
           const fs = require("node:fs");
           const source = fs.readFileSync(process.argv[2], "utf8");
-          for (const token of ["send(message, target, wakeup)", "runMaintenance(job)", "wakeDriver(wakeAfterAbort = false)", "initializeAgent(ownerCtx, options)", "const { session, agentOptions", "const id = session.id", "splice(target, start, deleteCount, inserted)", "this.mutate(target, start, deleteCount, inserted, true)"]) {
+          for (const token of ["send(message, target, wakeup)", "runMaintenance(job)", "wakeDriver(wakeAfterAbort = false)", "initializeAgent(ownerCtx, options)", "const { session, agentOptions", "const id = session.id", "splice(target, start, deleteCount, inserted)", "this.mutate(target, start, deleteCount, inserted, true)", "settle(messageIds)", "recover()"]) {
             const index = source.indexOf(token);
             console.log("__DSH_GO_AGENT_LOOP_CONTEXT__ " + token + " " + JSON.stringify(
               index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1800))
