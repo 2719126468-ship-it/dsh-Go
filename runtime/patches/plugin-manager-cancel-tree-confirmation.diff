@@ -224,7 +224,7 @@
  	} finally {
  		control.settled = true;
  		clearTimeout(idleTimer);
-@@ -764,2 +883,31 @@
+@@ -764,2 +883,28 @@
 -		await rm(runRecordPath(dir), { force: true });
 -		await log.close();
 +		if (grouped) {
