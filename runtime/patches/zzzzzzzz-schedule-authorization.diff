@@ -269,8 +269,8 @@
  		message: error.message
 
 @@ -0,1 +0,2 @@
- const CALLER_ERRORS = ["subagent_session", "internal_error"] as const;
-+const CALLER_ERRORS = ["subagent_session", "authorization_required", "internal_error"] as const;
+ const CALLER_ERRORS = ["subagent_session", "internal_error"];
++const CALLER_ERRORS = ["subagent_session", "authorization_required", "internal_error"];
 
 @@ -0,1 +0,4 @@
 +    if (error instanceof Error && "code" in error && error.code === "schedule-authorization-required") {
