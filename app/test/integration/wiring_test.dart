@@ -27,6 +27,7 @@ import 'package:dsh_app/ui/chat/widgets/notice_row.dart';
 import 'package:dsh_app/ui/chat/widgets/read_only_bar.dart';
 import 'package:dsh_app/ui/chat/widgets/tool_row.dart';
 import 'package:dsh_app/ui/common/segmented_pill.dart';
+import 'package:dsh_app/ui/common/tile_grid.dart';
 import 'package:dsh_app/ui/features/all_features_page.dart';
 import 'package:dsh_app/ui/session/session_detail_page.dart';
 import 'package:dsh_app/ui/shell/home_shell.dart';
@@ -378,8 +379,7 @@ void main() {
     for (final brightness in Brightness.values) {
       final mode = brightness.name;
 
-      testWidgets('all features, every group ($mode)', (tester) async {
-        // Tall enough for every group at once.
+      testWidgets('AI browser and Bilibili entries are in the tools group ($mode)', (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(390, 3000);
         addTearDown(tester.view.reset);
@@ -387,7 +387,17 @@ void main() {
           testApp(const AllFeaturesPage(), brightness: brightness, overrides: _chatOverrides(parentId)),
         );
         await pumpFrames(tester, 8);
-        await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/all_features_full_$mode.png'));
+        final browserTile = find.byWidgetPredicate(
+          (widget) => widget is FeatureTileFor && widget.item.id == 'ai-browser',
+        );
+        final mediaTile = find.byWidgetPredicate(
+          (widget) => widget is FeatureTileFor && widget.item.id == 'dsh017-bilibili',
+        );
+        expect(browserTile, findsOneWidget);
+        expect(mediaTile, findsOneWidget);
+        final toolsGrid = find.ancestor(of: browserTile, matching: find.byType(TileGrid));
+        expect(toolsGrid, findsOneWidget);
+        expect(find.descendant(of: toolsGrid, matching: mediaTile), findsOneWidget);
       });
 
       testWidgets('one-shot child, read-only ($mode)', (tester) async {

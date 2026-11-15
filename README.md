@@ -182,6 +182,10 @@ DSH Go 提供聊天界面、本机运行环境和远程连接，是基于 [DeepS
 
 功能随主机和连接方式不同。DSHarness Remote 当前只支持图片附件，不能在 App 内打开网页版，插件管理限于开关，且不支持 DS Bot 和对话日志导出。详见[本机引擎与远程主机](docs/guide/zh/03-engine-hosts.md)。
 
+## AI 浏览器与 B站媒体
+
+「全部功能」提供 AI 浏览器（ChatGPT / Claude / 普通网址）和 DSH-017 B站媒体入口。B站媒体连接你自己的 DSH-017 服务，访问地址与普通 Token 在 App 内配置；Token 使用 Android 安全存储，并且只会发送给匹配的 DSH-017 Basic Auth 主机与认证域。媒体后端不打进 APK。屏幕读取和点按复用已有「手机操控」功能。配置与兼容边界见[接入说明](docs/integrations/dsh017-screen-click-capture.md)。
+
 ## 安装
 
 安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。仓库没有 32 位 ARM 构建。

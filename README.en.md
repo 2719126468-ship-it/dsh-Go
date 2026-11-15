@@ -182,6 +182,10 @@ DSH Go combines a chat interface, an on-device runtime and remote connections. I
 
 Capabilities depend on the host and connection. DSHarness Remote currently accepts image attachments only, does not open the web interface inside the app, limits plugin management to enabling or disabling plugins, and does not support DS Bot or conversation-log export. See [Engine and remote hosts](docs/guide/en/03-engine-hosts.md).
 
+## AI browser and Bilibili media
+
+“All features” includes an AI browser for ChatGPT, Claude and regular URLs, plus a DSH-017 Bilibili media entry. The media entry connects to your own DSH-017 service; configure its URL and regular access token in the app. The token is stored with Android secure storage and is supplied only to the matching DSH-017 Basic Auth host and realm. The media backend is not bundled into the APK. Screen reading and taps reuse DSH Go's existing Phone Control feature. See the [integration notes](docs/integrations/dsh017-screen-click-capture.md).
+
 ## Install
 
 Installation requires Android 8.0 (API 26) or later. The **arm64** package on the Releases page is for typical 64-bit Android phones; the x64 package for x86_64 devices and emulators is under “Other builds” at the end of the release notes. This repository has no 32-bit ARM build.

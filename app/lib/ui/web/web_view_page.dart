@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../../l10n/l10n.dart';
 import '../common/empty_view.dart';
@@ -37,6 +38,8 @@ class WebViewPage extends StatefulWidget {
     this.subtitle,
     this.allowOpenExternal = false,
     this.externalDisabledReason,
+    this.httpAuthUsername,
+    this.httpAuthPassword,
     this.reloadAfterBackground,
     this.lightBackground = const Color(0xFFFFFFFF),
     this.darkBackground = const Color(0xFF151517),
@@ -57,6 +60,10 @@ class WebViewPage extends StatefulWidget {
   /// disabled, with [externalDisabledReason] as its tooltip.
   final bool allowOpenExternal;
   final String? externalDisabledReason;
+
+  /// Optional HTTP Basic credentials for one trusted host (used by DSH-017).
+  final String? httpAuthUsername;
+  final String? httpAuthPassword;
 
   /// Reload when returning from the background after this long (remote pages
   /// lose their socket when Android suspends the WebView).
@@ -547,6 +554,7 @@ class _WebViewPageState extends State<WebViewPage> {
   /// The renderer died (crash, or killed in the background): the WebView is
   /// unusable and the page says so until it is reopened.
   bool _gone = false;
+  bool _showingCustomWidget = false;
 
   /// Each reopen is a new WebView (a new platform view).
   int _generation = 0;
@@ -584,6 +592,20 @@ class _WebViewPageState extends State<WebViewPage> {
           NavigationDelegate(
             // DSH Web keeps to its own origin; other pages open in the browser.
             onNavigationRequest: widget.dshWeb ? _onDshWebNavigation : null,
+            onHttpAuthRequest: widget.httpAuthUsername == null || widget.httpAuthPassword == null
+                ? null
+                : (request) {
+                    if (request.host == widget.url.host && request.realm == 'DSH017 remote access') {
+                      request.onProceed(
+                        WebViewCredential(
+                          user: widget.httpAuthUsername!,
+                          password: widget.httpAuthPassword!,
+                        ),
+                      );
+                    } else {
+                      request.onCancel();
+                    }
+                  },
             onPageStarted: (_) {
               if (!mounted || controller != _controller) return;
               _files.invalidate();
@@ -631,10 +653,71 @@ class _WebViewPageState extends State<WebViewPage> {
       ].map((f) => f.catchError((_) {})),
     );
     if (!mounted || controller != _controller) return;
+    if (controller.platform is AndroidWebViewController) {
+      final androidController = controller.platform as AndroidWebViewController;
+      await androidController.setCustomWidgetCallbacks(
+        onShowCustomWidget: (customWidget, onCustomWidgetHidden) {
+          _showCustomWidget(customWidget, onCustomWidgetHidden);
+        },
+        onHideCustomWidget: _hideCustomWidget,
+      );
+    }
     // After the navigation delegate: the guard wraps the client it set.
     await _guard.attach(controller, dark: _dark, textZoom: _textZoom);
     if (!mounted || controller != _controller) return;
     await controller.loadRequest(widget.url).catchError((_) {});
+  }
+
+  void _showCustomWidget(Widget customWidget, void Function() onCustomWidgetHidden) {
+    if (!mounted) {
+      onCustomWidgetHidden();
+      return;
+    }
+    _showingCustomWidget = true;
+    unawaited(
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]),
+    );
+    unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+    unawaited(
+      Navigator.of(context, rootNavigator: true).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => PopScope<void>(
+            canPop: true,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop || !_showingCustomWidget) return;
+              _showingCustomWidget = false;
+              _restoreCustomWidgetSystemUi();
+              onCustomWidgetHidden();
+            },
+            child: ColoredBox(
+              color: Colors.black,
+              child: SizedBox.expand(child: customWidget),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _restoreCustomWidgetSystemUi() {
+    unawaited(
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]),
+    );
+    unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+  }
+
+  void _hideCustomWidget() {
+    if (!_showingCustomWidget) return;
+    _showingCustomWidget = false;
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    _restoreCustomWidgetSystemUi();
   }
 
   void _onRendererGone(bool crashed) {
@@ -862,6 +945,10 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   void dispose() {
+    if (_showingCustomWidget) {
+      _showingCustomWidget = false;
+      _restoreCustomWidgetSystemUi();
+    }
     widget.link?._detach(this);
     _keyboardRest?.cancel();
     _files.dispose();

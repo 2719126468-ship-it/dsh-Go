@@ -36,11 +36,23 @@ class _AndroidController extends FakeWebViewController implements AndroidWebView
   _AndroidController(super.params);
 
   Future<List<String>> Function(FileSelectorParams)? selector;
+  void Function(Widget, void Function())? showCustomWidget;
+  void Function()? hideCustomWidget;
 
   @override
   Future<void> setOnShowFileSelector(Future<List<String>> Function(FileSelectorParams)? callback) async {
     calls.add('setOnShowFileSelector');
     selector = callback;
+  }
+
+  @override
+  Future<void> setCustomWidgetCallbacks({
+    required void Function(Widget, void Function())? onShowCustomWidget,
+    required void Function()? onHideCustomWidget,
+  }) async {
+    calls.add('setCustomWidgetCallbacks');
+    showCustomWidget = onShowCustomWidget;
+    hideCustomWidget = onHideCustomWidget;
   }
 
   @override
@@ -82,9 +94,46 @@ void main() {
       web.controller.calls.indexOf('setOnShowFileSelector'),
       lessThan(web.controller.calls.indexOf('loadRequest')),
     );
+    expect(web.controller.showCustomWidget, isNotNull);
+    expect(web.controller.hideCustomWidget, isNotNull);
+    expect(
+      web.controller.calls.indexOf('setCustomWidgetCallbacks'),
+      lessThan(web.controller.calls.indexOf('loadRequest')),
+    );
     web.controller.finish();
     await tester.pump();
   }
+
+
+  testWidgets('Android video fullscreen restores the page when Back is pressed', (tester) async {
+    await pumpPage(tester);
+    var hidden = false;
+    web.controller.showCustomWidget!(
+      const Text('fullscreen sentinel'),
+      () => hidden = true,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('fullscreen sentinel'), findsOneWidget);
+
+    Navigator.of(tester.element(find.text('fullscreen sentinel'))).pop();
+    await tester.pumpAndSettle();
+    expect(hidden, isTrue);
+    expect(find.text('fullscreen sentinel'), findsNothing);
+  });
+
+  testWidgets('WebView hide callback removes fullscreen without host dismissal', (tester) async {
+    await pumpPage(tester);
+    var hidden = false;
+    web.controller.showCustomWidget!(
+      const Text('fullscreen sentinel'),
+      () => hidden = true,
+    );
+    await tester.pumpAndSettle();
+    web.controller.hideCustomWidget!();
+    await tester.pumpAndSettle();
+    expect(hidden, isFalse);
+    expect(find.text('fullscreen sentinel'), findsNothing);
+  });
 
   testWidgets('opening and closing the keyboard does not dispose the upload callback', (tester) async {
     await pumpPage(tester);
