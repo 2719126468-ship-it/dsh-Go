@@ -22,8 +22,9 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
                 self.assertIn(f'tooling/build-apk.sh -f {flavor} -n "$BUILD_NUMBER"', self.text)
         self.assertEqual(
             self.text.count("BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}"),
-            2,
+            4,  # build and manifest verification steps for both ABIs
         )
+        self.assertEqual(self.text.count("python3 tooling/build_number.py"), 1)
 
     def test_both_apks_are_checked_against_the_shared_version_code(self):
         self.assertEqual(self.text.count("grep -F \\"versionCode='$BUILD_NUMBER'\\""), 2)
