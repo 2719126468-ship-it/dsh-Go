@@ -54,8 +54,8 @@
  	* @returns its effective absolute directory.
  	*/
  	get(session) {
--		return this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
-+		const directory = this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
+-		return this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
++		const directory = this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
 +		return globalThis[Symbol.for("dsh.go.direct")]?.toHost(directory) ?? directory;
  	}
  	/**
