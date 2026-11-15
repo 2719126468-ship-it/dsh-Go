@@ -208,6 +208,16 @@ jobs:
             ));
           }
           NODE
+          node - "$prefix/node_modules/@deepseek-ai/dsh-working-directory/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["get(session)", "sessionProjections.stateOf", "defaultDirectory"]) {
+            const index = source.indexOf(token);
+            console.log("__DSH_GO_WORKING_DIRECTORY_CONTEXT__ " + token + " " + JSON.stringify(
+              index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1500))
+            ));
+          }
+          NODE
           # Record hashes only inside this temporary CI checkout; commit pins only after reviewing them.
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
           cat runtime/patches/pins.json
