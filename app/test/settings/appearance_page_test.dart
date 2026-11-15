@@ -218,7 +218,7 @@ void main() {
     );
   });
 
-  testWidgets('swatch row and mode tiles are symmetric in their card', (tester) async {
+  testWidgets('nine presets wrap cleanly and remain separately tappable', (tester) async {
     await _pumpApp(tester);
     final card = tester.getRect(
       find.ancestor(of: find.byType(PalettePicker), matching: find.byType(GlassSurface)).first,
@@ -227,16 +227,17 @@ void main() {
       for (final p in [...AppAccent.presets.map((p) => p.label), '自定义'])
         tester.getRect(find.descendant(of: find.bySemanticsLabel('配色：$p'), matching: find.byType(CustomPaint)).first),
     ];
-    expect(discs.first.left - card.left, moreOrLessEquals(PickerGrid.inset, epsilon: 0.6));
-    expect(card.right - discs.last.right, moreOrLessEquals(PickerGrid.inset, epsilon: 0.6));
-    // 16 under the card's own 4 at the top, like every other picker.
-    expect(discs.first.top - card.top, moreOrLessEquals(PickerGrid.inset + 4, epsilon: 0.6));
-    final gaps = [for (var i = 1; i < discs.length; i++) discs[i].center.dx - discs[i - 1].center.dx];
-    for (final g in gaps) {
-      expect(g, moreOrLessEquals(gaps.first, epsilon: 0.6));
-    }
+    expect(discs.map((d) => d.center.dy).toSet().length, greaterThan(1));
     for (final d in discs) {
-      expect(d.center.dy, moreOrLessEquals(discs.first.center.dy, epsilon: 0.01));
+      expect(d.left, greaterThanOrEqualTo(card.left + PickerGrid.inset - 0.6));
+      expect(d.right, lessThanOrEqualTo(card.right - PickerGrid.inset + 0.6));
+      expect(d.top, greaterThanOrEqualTo(card.top));
+      expect(d.bottom, lessThanOrEqualTo(card.bottom));
+    }
+    for (var i = 0; i < discs.length; i++) {
+      for (var j = i + 1; j < discs.length; j++) {
+        expect(discs[i].overlaps(discs[j]), isFalse, reason: 'swatches $i and $j stay separately tappable');
+      }
     }
 
     final modeCard = tester.getRect(
