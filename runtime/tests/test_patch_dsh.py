@@ -181,9 +181,12 @@ class PatchDsh(unittest.TestCase):
             for version, by_file in ((version, value) for version, value in patch_pins.items()
                                      if version != "optional_files"):
                 optional = set(patch_pins.get("optional_files", {}).get(version, []))
+                superseded = set(patch_pins.get("superseded_files", {}).get(version, []))
                 self.assertTrue(set(by_file).issubset(diff_files), (name, version))
                 self.assertTrue(optional.issubset(diff_files), (name, version))
-                self.assertEqual(diff_files, set(by_file) | optional, (name, version))
+                self.assertTrue(superseded.issubset(diff_files), (name, version))
+                self.assertTrue(optional.isdisjoint(superseded), (name, version))
+                self.assertEqual(diff_files, set(by_file) | optional | superseded, (name, version))
 
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm 0.2.1-rc.2 lib/index.js")
