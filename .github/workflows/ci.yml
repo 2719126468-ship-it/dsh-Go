@@ -232,7 +232,7 @@ jobs:
           done
       - name: Route guard and native bridge against a real host
         run: |
-          bash runtime/tests/run-guard-tests.sh "$DSH_PREFIX"
+          bash runtime/tests/run-guard-tests.sh "$DSH_PREFIX" --guard bridge
           bash runtime/tests/run-native-tests.sh "$DSH_PREFIX"
       - name: Commit verified DSH locks and patch pins
         if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
