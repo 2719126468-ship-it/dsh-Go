@@ -274,15 +274,10 @@
  						if (stopped()) throw new InstallCancelledError();
  						result.registries.push(registry);
  						used = registry;
-@@ -2035,7 +2184,7 @@
- 							spec,
- 							...options?.saveExact === true ? ["--save-exact"] : [],
- 							...registryArguments(registry)
+@@ -2035,2 +2184,2 @@
 -						], control.abort.signal, requestId);
 +						], control.abort.signal, requestId, control.runs);
  						result.packageResult = run;
- 						if (stopped()) throw new InstallCancelledError();
- 						if (run.incompatible !== void 0) throw new ManagementFailure("incompatible-version", run.incompatible);
 @@ -2077,12 +2226,20 @@
  					for (const file of bundlePatchPaths(dir, manifest.dsh.bundle)) loadOverlayPatches("dsh", file);
  					version = manifest.version;
