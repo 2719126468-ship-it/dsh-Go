@@ -257,11 +257,11 @@
 --- a/node_modules/@deepseek-ai/dsh-schedule/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-schedule/lib/index.js
 @@ -2700,4 +2700,5 @@
- 		if (target.kind === "new") {
- 			this.requireSessionCreation();
- 			return;
- 		}
-+		this.ctx.sessionPersistence.dshGoDeletion?.assertAdmit(target.sessionId);
+ 			if (target.kind === "new") {
+ 				this.requireSessionCreation();
+ 				return;
+ 			}
++			this.ctx.sessionPersistence.dshGoDeletion?.assertAdmit(target.sessionId);
 @@ -2290,9 +2293,25 @@
  				if (failure !== void 0) throw failure;
  			});
