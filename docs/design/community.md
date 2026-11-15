@@ -37,9 +37,10 @@
 
 1. **论坛**概览卡（`CommunityPage(onOpenForum: …)`，论坛客户端接好后由集成步骤传入；不传时这里是项目卡：品牌图形、「dsh-go」、一句 tagline，点开 GitHub）。
 2. **精选插件**：维护者在 JSON 里写包名和一句推荐语；在 dshfind 目录里查到的才显示，「获取」打开插件市场原有的详情弹层（带信任提示，装到当前主机），状态（获取 / 更新 / 已安装 / 安装中）和插件市场一致。目录打不开时显示一行「插件目录没打开 · 点一下重试」。
-3. **玩法**：两列磁贴，点一下回到聊天、开一个新对话，把提示词放进输入框**但不发送**（复用「让 DSH 帮我修」的 `repairDraftProvider`）。
-4. **交流群**：QQ / 微信 / Telegram / 论坛等行，点开弹层：大二维码、群号（「复制群号」）、「打开」。
-5. **更新动态**：最新在前，最多 8 条，有链接的可点。
+3. **GitHub 热门项目**：展示维护者精选的仓库、星标快照、许可证和兼容说明；只打开 GitHub 源码页，不下载、安装或执行第三方代码。
+4. **玩法**：两列磁贴，点一下回到聊天、开一个新对话，把提示词放进输入框**但不发送**（复用「让 DSH 帮我修」的 `repairDraftProvider`）。
+5. **交流群**：QQ / 微信 / Telegram / 论坛等行，点开弹层：大二维码、群号（「复制群号」）、「打开」。
+6. **更新动态**：最新在前，最多 8 条，有链接的可点。
 
 **内容从哪来**（与应用内更新同一个思路）：
 
@@ -48,8 +49,8 @@
   → 先用：缓存（上次下载成功的） 或 内置 assets/community/community.json，取 revision 大的
   → 距上次联网 ≥ 6 小时：依次问
        自建源（--dart-define=DSH_COMMUNITY_FEED=https://…，配了才有）
-       raw.githubusercontent.com/ccch1mneyyy/dsh-go/main/community.json
-       cdn.jsdelivr.net/gh/ccch1mneyyy/dsh-go@main/community.json
+       raw.githubusercontent.com/2719126468-ship-it/dsh-Go/main/community.json
+       cdn.jsdelivr.net/gh/2719126468-ship-it/dsh-Go@main/community.json
        fastly.jsdelivr.net/gh/…（同上）
      上次成功的源排第一；第一个给出合法 JSON 的为准
   → revision 更大才替换并写缓存（CDN 上的旧副本不会把新内容盖回去）
@@ -68,6 +69,7 @@
   "updatedAt": "2026-10-24T00:00:00Z",
   "tagline": "开源项目，欢迎点星",
   "plugins": [{ "name": "@liustack/modsearch", "note": "免费的联网搜索" }],
+  "projects": [{ "repository": "dsh-market/dsh-market", "stars": 12447, "license": "MIT", "note": { "zh": "…", "en": "…" }, "compatibility": { "zh": "…", "en": "…" } }],
   "prompts": [{ "title": "读懂报错", "summary": "原因、修法和验证", "icon": "bug", "prompt": "…报错如下：\n\n" }],
   "groups": [{ "kind": "qq", "title": "QQ 交流群", "subtitle": "群号 123456789", "url": "https://qm.qq.com/q/…", "qr": "", "copy": "123456789" }],
   "updates": [{ "date": "2026-10-24", "title": "…", "summary": "…", "url": "https://…" }]
@@ -78,6 +80,9 @@
 |---|---|
 | `revision` | **每次修改都 +1**。App 只接受比手上更大的 |
 | `plugins[].name` | npm 包名，必须在 dshfind 目录里能查到，否则不显示 |
+| `projects[].repository` | `owner/repo` 格式；只生成 `https://github.com/owner/repo` 链接，不安装项目代码 |
+| `projects[].stars` / `license` | GitHub 星标快照与仓库许可证；每次内容更新时刷新星标数 |
+| `projects[].note` / `compatibility` | 必须同时提供 `zh` / `en`，分别说明用途和当前宿主限制 |
 | `prompts[].icon` | `code` `doc` `bug` `chart` `school` `travel` `search` `image` `write` `translate` `terminal` `mail` `calendar`，其他值显示通用图标 |
 | `groups[].kind` | `qq` `wechat` `telegram` `discord` `forum` `github`，决定图标 |
 | `groups[].qr` | 二维码内容，缺省用 `url`；`url` `qr` `copy` 全空的项不显示 |
@@ -152,3 +157,8 @@
 - 「保存图片」落在 `下载/DSH/` 而不是 `Pictures/`，多数相册能看到；要进「相机胶卷」类相册需要给 `FilesPlugin.kt` 加一个写 `MediaStore.Images` 的方法。
 - 长回答截断靠估算，极端排版（大量表格、长公式）可能比估算高，由硬上限兜底淡出。
 - 未在真机上验证：系统分享面板接收 PNG、各家相册是否显示 `下载/DSH`、大图（2× 长图）的内存占用。
+
+
+## 2026-11-15：GitHub 项目发现
+
+`community.json` revision 2 新增 `projects`。项目卡只展示 GitHub 仓库链接、星标快照、MIT 许可证和维护者写明的适配限制；App 不会自动克隆、安装或执行这些仓库。当前精选包含 Web 插件市场、余额挂件、侧边栏、多智能体、B 站助手和视觉工具箱。侧边栏需按当前 DSH `0.2.2-rc.1` 固定旧版；B 站助手可执行账号写操作；视觉工具箱需要宿主端 Python 依赖且 ARM32 未验证。此分区是源码发现目录，不是安全认证或真机兼容背书。
