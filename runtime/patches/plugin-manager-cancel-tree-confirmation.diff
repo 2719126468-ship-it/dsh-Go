@@ -283,7 +283,7 @@
 +							await this.restoreFiles(files);
 +						}
 @@ -2035,7 +2184,7 @@
- 							spec,
+ 							installSpec,
  							...options?.saveExact === true ? ["--save-exact"] : [],
  							...registryArguments(registry)
 -						], control.abort.signal, requestId);
