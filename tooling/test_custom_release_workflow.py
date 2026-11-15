@@ -67,7 +67,7 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('EVENT_NAME: ${{ github.event_name }}', self.text)
         self.assertIn('BEFORE: ${{ github.event.before }}', self.text)
         self.assertIn("git diff --name-only \"$BEFORE\" \"$AFTER\"", self.text)
-        self.assertIn("grep -Eq '^(app/|runtime/|tooling/(build-apk\\.sh|build_number\\.py)$)'", self.text)
+        self.assertIn("grep -Eq '^(runtime/|tooling/(build-apk\\.sh|build_number\\.py)$|app/(lib/|android/|assets/|tool/|pubspec\\.yaml$|pubspec\\.lock$))'", self.text)
         self.assertIn("needs.prepare.outputs.should_build == 'true'", self.text)
 
     def test_release_tag_is_unique_per_workflow_run(self):
