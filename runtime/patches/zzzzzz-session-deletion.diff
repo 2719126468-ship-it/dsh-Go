@@ -141,9 +141,21 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1453,5 +1453,18 @@
- 	 * @returns the initialized Agent and its shared disposer.
- 	 */
+@@ -1681,3 +1687,4 @@
+ 	prepare(ownerCtx, id, options, session, callerSignal, handle, parentAgent) {
+ 		assertAgentOptions(options);
+ 		ownerCtx.fiber.assertActive();
++		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
+ 		/* v8 ignore next -- unreachable backstop, see above */
+@@ -1779,3 +1786,4 @@
+ 			/* v8 ignore next -- a synchronous effect exhausts the generator before returning */
+ 			if (machine === void 0) throw new Error(`agent "${id}" lifecycle did not construct its driver`);
+ 			const agent = machine;
++			agent.dshGoDispose = dispose;
+ 			assertLive();
+@@ -1940,2 +1948,14 @@
+ 		}
+ 	}
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
 +		const agent = this.runtime.ctx.agents.get(id);
@@ -156,15 +168,7 @@
 +		agent.dshGoDeleting = true;
 +		await agent.dshGoDispose();
 +	}
- 	async initializeAgent(ownerCtx, options) {
- 		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
- 		const id = session.id;
-+		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-@@ -1794,3 +1794,4 @@
- 						await loopCtx.agents.announce(agent, source, abort.signal);
- 						assertLive();
-+						agent.dshGoDispose = dispose;
- 						return {
+ 	async initializeAgent(prepared, initialize) {
 --- a/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 @@ -166,6 +166,7 @@
