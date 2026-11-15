@@ -120,12 +120,23 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
     var value = url.text.trim();
     if (value.isNotEmpty && !value.contains('://')) value = 'https://$value';
     final parsed = Uri.tryParse(value);
-    if (parsed == null || parsed.host.isEmpty || !const ['http', 'https'].contains(parsed.scheme)) {
+    final loopback = parsed?.host == '127.0.0.1' || parsed?.host == 'localhost';
+    if (parsed == null ||
+        parsed.host.isEmpty ||
+        !const ['http', 'https'].contains(parsed.scheme) ||
+        (parsed.scheme == 'http' && !loopback)) {
       url.dispose();
       token.dispose();
       if (mounted) {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text(_text('请输入有效的 HTTP/HTTPS 地址', 'Enter a valid HTTP/HTTPS URL'))),
+          SnackBar(
+            content: Text(
+              _text(
+                '请输入有效地址；远程服务必须使用 HTTPS，HTTP 仅支持 localhost / 127.0.0.1。',
+                'Enter a valid URL. Remote hosts must use HTTPS; HTTP is limited to localhost / 127.0.0.1.',
+              ),
+            ),
+          ),
         );
       }
       return false;
