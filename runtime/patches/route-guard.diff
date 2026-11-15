@@ -22,7 +22,7 @@
  						this.ctx.logger.warn(error instanceof Error ? error : new Error(String(error)));
  						socket.destroy();
  					});
-@@ -1,2 +1,28 @@
+@@ -1,2 +1,29 @@
 	responderFor(pathname) {
 		return this.match(pathname) ?? this.fallback;
 	static dshGoOpenRoutes = new Set(["exact /connect", "exact /oauth/callback"]);
