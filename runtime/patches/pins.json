@@ -105,16 +105,16 @@
           "after": "0b0ba56c33ca2e4f67a33066136f937489001ae39237c082b65f020ae7d37976"
         },
         "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": {
-          "before": "2d05f943a25e2971bc0b964868a4031dcae378c01d8b928a21ec09f17952fc5f",
-          "after": "2439dc55dc7df8864ff69862153020b45cb07171790a25ec62c5798cc1dacb54"
+          "before": "373e05c8250d25dda983ccf6e214a55e3792a211d1a7b883affcd66de47b5bf8",
+          "after": "df71c64c6bc82f1184d0dadbd2d6fa9ccd91dd70b9534ff42313ccc643988e4f"
         }
       }
     },
     "zzzzz-plugin-config-bundles.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": {
-          "before": "2439dc55dc7df8864ff69862153020b45cb07171790a25ec62c5798cc1dacb54",
-          "after": "413c538d3c38c8e5bac86dd420935dc6d062eaf236fb1d4c2a62a17859603279"
+          "before": "df71c64c6bc82f1184d0dadbd2d6fa9ccd91dd70b9534ff42313ccc643988e4f",
+          "after": "a5cd28c80d0c7ec956eb73df6b2492674f792ba0a15b19dc27e5b1abf61a52e2"
         }
       }
     },
