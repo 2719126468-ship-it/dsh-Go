@@ -347,8 +347,12 @@ def cmd_patch_dsh(args):
                 if rel in terminal and terminal[rel] != pin["before"]:
                     sys.exit("%s: broken patch hash chain for %s" % (name, rel))
                 terminal[rel] = pin["after"]
+    superseded = set(pins.get("superseded", {}).get(args.dsh_version, []))
     applied = []
     for name in names:
+        if name in superseded:
+            print("%s: superseded upstream for DSH %s; no local patch applied" % (name, args.dsh_version))
+            continue
         diff = parse_unified_diff(open(os.path.join(args.patches, name)).read())
         want = pins["patches"].get(name, {}).get(args.dsh_version)
         if want is None and not args.record:
