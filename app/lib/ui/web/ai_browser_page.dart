@@ -147,13 +147,21 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
       return false;
     }
 
+    final accessToken = token.text.trim();
+    if (accessToken.isEmpty) {
+      url.dispose();
+      token.dispose();
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(content: Text(_text('请输入 DSH-017 普通 Token。', 'Enter the regular DSH-017 access token.'))),
+        );
+      }
+      return false;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_mediaUrlKey, parsed.toString());
-    if (token.text.isEmpty) {
-      await _secureStorage.delete(key: _mediaTokenKey);
-    } else {
-      await _secureStorage.write(key: _mediaTokenKey, value: token.text);
-    }
+    await _secureStorage.write(key: _mediaTokenKey, value: accessToken);
     url.dispose();
     token.dispose();
     if (!mounted) return false;
@@ -183,13 +191,17 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
       await _loadMediaConfig();
       if (!mounted) return;
     }
-    if (_mediaUrl.isEmpty && !await _editMediaConfig()) return;
-    final token = await _secureStorage.read(key: _mediaTokenKey);
-    if (!mounted || _mediaUrl.isEmpty) return;
+    var token = await _secureStorage.read(key: _mediaTokenKey);
+    if (!mounted) return;
+    if (_mediaUrl.isEmpty || token == null || token.isEmpty) {
+      if (!await _editMediaConfig()) return;
+      token = await _secureStorage.read(key: _mediaTokenKey);
+    }
+    if (!mounted || _mediaUrl.isEmpty || token == null || token.isEmpty) return;
     _openPage(
       Uri.parse(_mediaUrl),
       _text('DSH-017 · B站媒体', 'DSH-017 · Bilibili'),
-      httpAuthUsername: token == null || token.isEmpty ? null : 'dsh017',
+      httpAuthUsername: 'dsh017',
       httpAuthPassword: token,
     );
   }
