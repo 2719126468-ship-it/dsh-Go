@@ -28,7 +28,7 @@
 +			}
  		}
 
-@@ -0,5 +0,22 @@
+@@ -0,5 +0,21 @@
  		if (createIfAbsent !== void 0) try {
  			await linkFile(tempPath, absolutePath);
  		} catch (error) {
