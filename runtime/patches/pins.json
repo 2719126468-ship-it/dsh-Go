@@ -310,5 +310,17 @@
       "file-upload-resolver-dispose.diff",
       "plugin-manager-active-run-guard.diff"
     ]
+  },
+  "superseded_hunks": {
+    "0.2.2-rc.1": {
+      "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": [
+        1
+      ]
+    },
+    "0.2.1-rc.4": {
+      "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": [
+        2
+      ]
+    }
   }
 }
