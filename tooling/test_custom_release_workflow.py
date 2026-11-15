@@ -16,9 +16,13 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         cls.ci = CI_WORKFLOW.read_text(encoding="utf-8")
         cls.goldens = GOLDENS_WORKFLOW.read_text(encoding="utf-8")
 
-    def test_shared_build_number_is_generated_once(self):
-        self.assertIn("build_number: ${{ steps.number.outputs.build_number }}", self.text)
+    def test_shared_build_number_and_default_app_version_are_prepared_once(self):
+        self.assertIn("app_version: ${{ steps.meta.outputs.app_version }}", self.text)
+        self.assertIn("build_number: ${{ steps.meta.outputs.build_number }}", self.text)
+        self.assertIn('Path("app/pubspec.yaml").read_text()', self.text)
         self.assertIn('echo "build_number=$(python3 tooling/build_number.py)" >> "$GITHUB_OUTPUT"', self.text)
+        self.assertEqual(self.text.count("needs.prepare.outputs.app_version"), 2)
+        self.assertNotIn("ver=1.0.17", self.text)
 
     def test_both_abis_consume_the_same_build_number(self):
         for flavor in ("arm64", "arm32"):
