@@ -182,9 +182,13 @@ DSH Go combines a chat interface, an on-device runtime and remote connections. I
 
 Capabilities depend on the host and connection. DSHarness Remote currently accepts image attachments only, does not open the web interface inside the app, limits plugin management to enabling or disabling plugins, and does not support DS Bot or conversation-log export. See [Engine and remote hosts](docs/guide/en/03-engine-hosts.md).
 
+## AI browser and Bilibili media
+
+“All features” includes an AI browser (ChatGPT, Claude and regular URLs) and a DSH-017 Bilibili media entry. The media entry connects to your own DSH-017 server; configure its URL and regular access token in the app. The media backend is not bundled into the APK. Screen reading and taps reuse the existing Phone Control feature. See the [integration notes](docs/integrations/dsh017-screen-click-capture.md).
+
 ## Install
 
-Installation requires Android 8.0 (API 26) or later. The **arm64** package on the Releases page is for typical 64-bit Android phones; the x64 package for x86_64 devices and emulators is under “Other builds” at the end of the release notes. This repository has no 32-bit ARM build.
+Installation requires Android 8.0 (API 26) or later. The **arm64** package on the Releases page is for typical 64-bit Android phones; the x64 package for x86_64 devices and emulators is under “Other builds” at the end of the release notes. **32-bit ARMv7 phones can use the arm32 remote-client package** built by the repository's [Custom release workflow](https://github.com/2719126468-ship-it/dsh-Go/actions/workflows/custom-release.yml). It supports the AI browser, Bilibili media and remote hosts, but does not bundle a local Linux runtime; the 64-bit ARM64 package retains the local runtime.
 
 1. Download the APK for your device architecture from [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) or the [download page](https://go.dshtui.com/download), and follow Android's prompt to allow that installation source.
 2. On first launch, choose an on-device runtime or a remote host.
