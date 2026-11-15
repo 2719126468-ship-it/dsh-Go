@@ -37,6 +37,8 @@ class WebViewPage extends StatefulWidget {
     this.subtitle,
     this.allowOpenExternal = false,
     this.externalDisabledReason,
+    this.httpAuthUsername,
+    this.httpAuthPassword,
     this.reloadAfterBackground,
     this.lightBackground = const Color(0xFFFFFFFF),
     this.darkBackground = const Color(0xFF151517),
@@ -57,6 +59,10 @@ class WebViewPage extends StatefulWidget {
   /// disabled, with [externalDisabledReason] as its tooltip.
   final bool allowOpenExternal;
   final String? externalDisabledReason;
+
+  /// Optional HTTP Basic credentials for one trusted host (used by DSH-017).
+  final String? httpAuthUsername;
+  final String? httpAuthPassword;
 
   /// Reload when returning from the background after this long (remote pages
   /// lose their socket when Android suspends the WebView).
@@ -584,6 +590,20 @@ class _WebViewPageState extends State<WebViewPage> {
           NavigationDelegate(
             // DSH Web keeps to its own origin; other pages open in the browser.
             onNavigationRequest: widget.dshWeb ? _onDshWebNavigation : null,
+            onHttpAuthRequest: widget.httpAuthUsername == null || widget.httpAuthPassword == null
+                ? null
+                : (request) {
+                    if (request.host == widget.url.host) {
+                      request.onProceed(
+                        WebViewCredential(
+                          user: widget.httpAuthUsername!,
+                          password: widget.httpAuthPassword!,
+                        ),
+                      );
+                    } else {
+                      request.onCancel();
+                    }
+                  },
             onPageStarted: (_) {
               if (!mounted || controller != _controller) return;
               _files.invalidate();
