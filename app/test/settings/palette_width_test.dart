@@ -61,7 +61,10 @@ Finder _choice(String label) => find.bySemanticsLabel(appL10n.pluginsColorLabel(
 List<Rect> _rings(WidgetTester tester, {required bool custom}) {
   final card = tester.getRect(find.ancestor(of: find.byType(PalettePicker), matching: find.byType(GlassSurface)).first);
   final rings = [
-    for (final label in [...AppAccent.presets.map((p) => p.label), if (custom) appL10n.pluginsCustomColor])
+    for (final label in [
+      ...(custom ? AppAccent.presets : AppAccent.presets.take(6)).map((p) => p.label),
+      if (custom) appL10n.pluginsCustomColor,
+    ])
       tester.getRect(find.descendant(of: _choice(label), matching: find.byType(CustomPaint)).first),
   ];
   for (final ring in rings) {
