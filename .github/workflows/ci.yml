@@ -166,6 +166,22 @@ jobs:
     steps:
       - *checkout
       - *node
+      - name: Generate pinned ARM DSH lockfiles
+        run: |
+          version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
+          out="$RUNNER_TEMP/dsh-locks"
+          mkdir -p "$out/dsh-$version" "$out/dsh-$version-android"
+          npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          npm install --prefix "$out/dsh-$version-android" --cpu=arm --os=linux --libc=android --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          test -s "$out/dsh-$version/package-lock.json"
+          test -s "$out/dsh-$version-android/package-lock.json"
+      - name: Upload generated DSH lockfiles
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dsh-arm-lockfiles
+          path: ${{ runner.temp }}/dsh-locks/
+          if-no-files-found: error
+          retention-days: 3
       - name: Install a throwaway patched DSH
         run: |
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
