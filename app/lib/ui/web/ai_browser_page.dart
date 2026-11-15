@@ -179,7 +179,10 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
   }
 
   Future<void> _openMedia() async {
-    if (!_loaded) return;
+    if (!_loaded) {
+      await _loadMediaConfig();
+      if (!mounted) return;
+    }
     if (_mediaUrl.isEmpty && !await _editMediaConfig()) return;
     final token = await _secureStorage.read(key: _mediaTokenKey);
     if (!mounted || _mediaUrl.isEmpty) return;
