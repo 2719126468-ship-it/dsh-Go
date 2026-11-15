@@ -141,9 +141,7 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1678,7 +1684,21 @@
- 	* BEFORE publication, so a mid-setup unload rolls everything back; `signal`
- 	* fuses caller cancellation with lifecycle teardown for setup awaits.
+@@ -1678,3 +1678,18 @@
  	*/
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
@@ -157,12 +155,10 @@
 +		agent.dshGoDeleting = true;
 +		await agent.dshGoDispose();
 +	}
- 	prepare(ownerCtx, id, options, session, callerSignal, handle, parentAgent) {
++	async initializeAgent(ownerCtx, options) {
++		const { session } = options;
++		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-+		if (parentAgent !== void 0) ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(parentAgent.id);
- 		assertAgentOptions(options);
- 		ownerCtx.fiber.assertActive();
- 		/* v8 ignore next -- unreachable backstop, see above */
 @@ -1779,6 +1799,7 @@
  			/* v8 ignore next -- a synchronous effect exhausts the generator before returning */
  			if (machine === void 0) throw new Error(`agent "${id}" lifecycle did not construct its driver`);
