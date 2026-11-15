@@ -218,9 +218,18 @@
  					exitCode = 1;
  					const restoration = repaired.exitCode === 0 ? "restored package.json, pnpm-lock.yaml, and node_modules" : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'";
  					const diagnostic = `\ndsh: installation rejected: ${warnings.join("\n")}\ndsh: ${restoration}.\n`;
-@@ -761,11 +879,38 @@
+@@ -761,20 +879,47 @@
  					append(Buffer.from(diagnostic));
- 				} else if (options.activateNewBundles !== false) await reconcile(before, dir, context.installAnchor, options);
+ 				} else if (options.activateNewBundles !== false) {
+ 					const unsupported = await reconcile(before, dir, context.installAnchor, options);
+ 					if (unsupported.length > 0) {
+ 						exitCode = 1;
+ 						const diagnostic = `\\ndsh: bundle activation rejected: ${unsupported.join("\\n")}\\ndsh: installed dependencies remain; bundle selection is unchanged. Use a supported Host or remove the unwanted dependencies with 'dsh plugin remove <package>'.\\n`;
+ 						await log.write(diagnostic);
+ 						options.onOutput?.(diagnostic, "stderr");
+ 						append(Buffer.from(diagnostic));
+ 					}
+ 				}
  			}
 +			completed = true;
  		} finally {
