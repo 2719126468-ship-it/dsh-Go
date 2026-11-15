@@ -59,16 +59,6 @@
  	}
  	/**
  	* Validate the current directory and restore the original project when it disappeared.
-@@ -74,7 +74,8 @@
- 	* @returns its effective absolute directory.
- 	*/
- 	get(session) {
--		return this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
-+		const directory = this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
-+		return globalThis[Symbol.for("dsh.go.direct")]?.toHost(directory) ?? directory;
- 	}
- 	/**
- 	* Validate the current directory and restore the original project when it disappeared.
 --- a/node_modules/@deepseek-ai/dsh-home-paths/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-home-paths/lib/index.js
 @@ -82,7 +82,8 @@
