@@ -302,7 +302,7 @@ jobs:
 
   ci-ok:
     name: CI OK
-    if: always()
+    if: always() && needs.changes.result != 'skipped'
     needs: [changes, checks, flutter, dart, runtime, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
