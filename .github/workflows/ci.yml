@@ -172,6 +172,15 @@ jobs:
           prefix="$RUNNER_TEMP/dsh"
           mkdir "$prefix"
           npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          echo '--- run-tree ---'
+          grep -n -A14 -B6 'function treeAlive' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/run-tree.js" || true
+          echo '--- operations activeRecordedRun / preflight / child / warning repair ---'
+          for pattern in 'async function activeRecordedRun' 'preflight.length' 'const child = execa' 'cancelSignal:' 'warnings.length > 0' 'const repairing = execa'; do
+            grep -n -A34 -B10 "$pattern" "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js" | head -n 80 || true
+          done
+          echo '--- manager install/change ---'
+          grep -n -A24 -B10 'stage: "install"' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 65 || true
+          grep -n -A30 -B8 'async change(' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 75 || true
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
           cat runtime/patches/pins.json
