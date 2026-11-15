@@ -141,7 +141,7 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1678,1 +1678,16 @@
+@@ -1678,2 +1678,17 @@
  	*/
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
@@ -155,7 +155,7 @@
 +		agent.dshGoDeleting = true;
 +		await agent.dshGoDispose();
 +	}
-+	async initializeAgent(ownerCtx, options) {
+ 	async initializeAgent(ownerCtx, options) {
 +		const { session } = options;
 +		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
