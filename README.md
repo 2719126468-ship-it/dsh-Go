@@ -294,6 +294,22 @@ DSH_BETA_TOKEN_FILE= bash tooling/build-apk.sh -f x64 --keep-daemon
 DSH_BETA_TOKEN_FILE= bash tooling/build-apk.sh --dry-run -f all
 ```
 
+## Codex 套件
+
+仓库里还带一套与 App 解耦的 Codex 工具链：`services/codex-web/`（手机浏览器里的本地 Codex 界面）、
+`services/sharedchat-bridge/`（Responses API → OpenAI 兼容桥）、`packages/dsh-codex-delegate/`（DSH 插件）
+和 `tooling/codex-capture/`（上游抓包复放探针）。它们不进 APK，可单独运行：
+
+```bash
+node services/codex-web/server.js                # 127.0.0.1:3081
+(cd services/codex-web && npm test)              # 零依赖单测
+bash services/sharedchat-bridge/start.sh         # 8787，先在 .env 里填 key
+```
+
+CI 在 `ci.yml` 的 `Codex suite` job 里跑；APK 由 `.github/workflows/apk-build.yml` 在 PR 上编译成 artifact，
+本地没有 Flutter/Android SDK 也能出包。完整说明见 [docs/codex-suite.md](docs/codex-suite.md)。
+
+
 ## 目录
 
 | 路径 | 内容 |

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#212121">
+<meta name="color-scheme" content="dark light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Codex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/app.css">
+<title>Codex</title>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ 一级图标导航 rail（52px） ============ -->
+<nav class="rail" id="rail" aria-label="主导航">
+    <button class="rail-btn rail-brand" id="rail-brand" title="OpenAI Codex" aria-label="OpenAI Codex">
+      <svg class="codex-mark" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><g class="mk-light"><path d="M19.503 0H4.496A4.496 4.496 0 000 4.496v15.007A4.496 4.496 0 004.496 24h15.007A4.496 4.496 0 0024 19.503V4.496A4.496 4.496 0 0019.503 0z" fill="#ffffff"/><path d="M9.064 3.344a4.578 4.578 0 012.285-.312c1 .115 1.891.54 2.673 1.275.01.01.024.017.037.021a.09.09 0 00.043 0 4.55 4.55 0 013.046.275l.047.022.116.057a4.581 4.581 0 012.188 2.399c.209.51.313 1.041.315 1.595a4.24 4.24 0 01-.134 1.223.123.123 0 00.030.115c.594.607.988 1.330 1.183 2.170.289 1.425-.007 2.710-.887 3.854l-.136.166a4.548 4.548 0 01-2.201 1.388.123.123 0 00-.081.076c-.191.551-.383 1.023-.740 1.494-.900 1.187-2.222 1.846-3.711 1.838-1.187-.006-2.239-.440-3.157-1.302a.107.107 0 00-.105-.024c-.388.125-.780.143-1.204.138a4.441 4.441 0 01-1.945-.466 4.544 4.544 0 01-1.610-1.335c-.152-.202-.303-.392-.414-.617a5.81 5.81 0 01-.370-.961 4.582 4.582 0 01-.014-2.298.124.124 0 00.006-.056.085.085 0 00-.027-.048 4.467 4.467 0 01-1.034-1.651 3.896 3.896 0 01-.251-1.192 5.189 5.189 0 01.141-1.600c.337-1.112.982-1.985 1.933-2.618.212-.141.413-.251.601-.330.215-.089.430-.164.646-.227a.098.098 0 00.065-.066 4.51 4.51 0 01.829-1.615 4.535 4.535 0 011.837-1.388zm3.482 10.565a.637.637 0 000 1.272h3.636a.637.637 0 100-1.272h-3.636zM8.462 9.230a.637.637 0 00-1.106.631l1.272 2.224-1.266 2.136a.636.636 0 101.095.649l1.454-2.455a.636.636 0 00.005-.640L8.462 9.230z" fill="url(#cg-rail)"/></g><g class="mk-dark"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.720 3.564 1.700a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.030.154.076c1.357.703 2.330 1.770 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.180 1.631.167.167 0 00.040.155 5.982 5.982 0 011.578 2.891c.385 1.901-.010 3.615-1.183 5.140l-.182.220a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.210-1.736a.145.145 0 00-.140-.032c-.518.167-1.040.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.740 7.740 0 01-.495-1.283 6.110 6.110 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.380-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.450-1.484 1.309-2.648 2.577-3.493.282-.188.550-.334.802-.438.286-.120.573-.220.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.310C6.315 1.464 7.132.846 8.086.457zm-.804 7.850a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.460.864l1.940-3.272a.849.849 0 00.007-.854l-1.940-3.393zm5.446 6.240a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z"/></g><defs><linearGradient id="cg-rail" gradientUnits="userSpaceOnUse" x1="12" x2="12" y1="3" y2="21"><stop stop-color="#B1A7FF"/><stop offset=".5" stop-color="#7A9DFF"/><stop offset="1" stop-color="#3941FF"/></linearGradient></defs></svg>
+    </button>
+    <button class="rail-btn" id="rail-new" title="新会话" aria-label="新会话">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+    <button class="rail-btn" id="rail-search" title="搜索会话" aria-label="搜索会话">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m15.6 15.6 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+    <button class="rail-btn" id="rail-library" title="工作目录" aria-label="工作目录">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h3.1l1.7 2h8.2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="rail-grow"></div>
+    <button class="rail-btn" id="rail-theme" title="切换主题" aria-label="切换主题">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 13.2A8.2 8.2 0 1 1 10.8 4a6.6 6.6 0 0 0 9.2 9.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="rail-btn" id="rail-settings" title="设置" aria-label="设置">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3.2v2M12 18.8v2M4.8 6.4l1.4 1.4M17.8 16.2l1.4 1.4M19.2 6.4l-1.4 1.4M6.2 16.2l-1.4 1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </nav>
+
+  <!-- ============ 会话列表 panel（260px） ============ -->
+  <aside class="panel" id="panel" aria-label="会话列表">
+    <div class="panel-head">
+      <button class="icon-btn panel-collapse" id="panel-collapse" title="折叠侧栏（Ctrl+B）" aria-label="折叠侧栏">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 4.5v15" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <span class="panel-title">Codex</span>
+      <button class="icon-btn" id="panel-new" title="新会话" aria-label="新会话">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn panel-settings only-narrow" id="panel-settings" title="设置与主题" aria-label="设置与主题">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19 12a7 7 0 0 0-.1-1.2l1.9-1.5-1.9-3.3-2.3.9a7 7 0 0 0-2-1.2L14.2 3H9.8L9.4 5.7a7 7 0 0 0-2 1.2l-2.3-.9L3.2 9.3 5.1 10.8A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-1.9 1.5 1.9 3.3 2.3-.9a7 7 0 0 0 2 1.2l.4 2.7h4.4l.4-2.7a7 7 0 0 0 2-1.2l2.3.9 1.9-3.3-1.9-1.5c.1-.4.1-.8.1-1.2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="icon-btn panel-close" id="panel-close" title="关闭" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="panel-search">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="11" cy="11" r="6.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m15.6 15.6 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <input id="thread-search" type="search" placeholder="搜索会话" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="panel-list" id="panel-list"></div>
+    <div class="panel-foot" id="panel-foot"></div>
+  </aside>
+
+  <!-- ============ 主舞台 ============ -->
+  <div class="stage">
+    <header class="topbar" id="topbar">
+      <button class="icon-btn only-narrow" id="btn-menu" title="会话列表" aria-label="会话列表">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+      <div class="topbar-title">
+        <div class="thread-title" id="thread-title">新会话</div>
+        <div class="thread-sub" id="thread-sub"></div>
+      </div>
+      <div class="topbar-actions">
+        <span class="conn-pill" id="conn-pill" data-state="connected">
+          <i class="conn-dot"></i><span id="conn-label">已连接</span>
+        </span>
+        <button class="icon-btn only-wide" id="btn-side" title="右侧面板（Ctrl+\\）" aria-label="右侧面板">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15.5 4.5v15" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button class="pill-btn" id="btn-cwd" title="工作目录">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h3.2l1.8 2h7A2 2 0 0 1 19.5 9.5v7a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span id="top-cwd-label">~</span>
+        </button>
+        <button class="pill-btn" id="btn-mode" title="权限模式">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 3.5 19 6.4v5.2c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span id="top-mode-label">全权限</span>
+        </button>
+        <button class="icon-btn" id="btn-share" title="复制本会话链接" aria-label="复制本会话链接">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 13.5 15 10M9 10.5 15 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="7.5" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16.5" cy="8.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16.5" cy="15.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="scroller" id="scroller">
+      <div class="thread" id="thread">
+        <div class="hero" id="hero">
+          <div class="hero-badge">
+            <svg class="codex-mark" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><g class="mk-light"><path d="M19.503 0H4.496A4.496 4.496 0 000 4.496v15.007A4.496 4.496 0 004.496 24h15.007A4.496 4.496 0 0024 19.503V4.496A4.496 4.496 0 0019.503 0z" fill="#ffffff"/><path d="M9.064 3.344a4.578 4.578 0 012.285-.312c1 .115 1.891.54 2.673 1.275.01.01.024.017.037.021a.09.09 0 00.043 0 4.55 4.55 0 013.046.275l.047.022.116.057a4.581 4.581 0 012.188 2.399c.209.51.313 1.041.315 1.595a4.24 4.24 0 01-.134 1.223.123.123 0 00.030.115c.594.607.988 1.330 1.183 2.170.289 1.425-.007 2.710-.887 3.854l-.136.166a4.548 4.548 0 01-2.201 1.388.123.123 0 00-.081.076c-.191.551-.383 1.023-.740 1.494-.900 1.187-2.222 1.846-3.711 1.838-1.187-.006-2.239-.440-3.157-1.302a.107.107 0 00-.105-.024c-.388.125-.780.143-1.204.138a4.441 4.441 0 01-1.945-.466 4.544 4.544 0 01-1.610-1.335c-.152-.202-.303-.392-.414-.617a5.81 5.81 0 01-.370-.961 4.582 4.582 0 01-.014-2.298.124.124 0 00.006-.056.085.085 0 00-.027-.048 4.467 4.467 0 01-1.034-1.651 3.896 3.896 0 01-.251-1.192 5.189 5.189 0 01.141-1.600c.337-1.112.982-1.985 1.933-2.618.212-.141.413-.251.601-.330.215-.089.430-.164.646-.227a.098.098 0 00.065-.066 4.51 4.51 0 01.829-1.615 4.535 4.535 0 011.837-1.388zm3.482 10.565a.637.637 0 000 1.272h3.636a.637.637 0 100-1.272h-3.636zM8.462 9.230a.637.637 0 00-1.106.631l1.272 2.224-1.266 2.136a.636.636 0 101.095.649l1.454-2.455a.636.636 0 00.005-.640L8.462 9.230z" fill="url(#cg-hero)"/></g><g class="mk-dark"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.720 3.564 1.700a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.030.154.076c1.357.703 2.330 1.770 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.180 1.631.167.167 0 00.040.155 5.982 5.982 0 011.578 2.891c.385 1.901-.010 3.615-1.183 5.140l-.182.220a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.210-1.736a.145.145 0 00-.140-.032c-.518.167-1.040.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.740 7.740 0 01-.495-1.283 6.110 6.110 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.380-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.450-1.484 1.309-2.648 2.577-3.493.282-.188.550-.334.802-.438.286-.120.573-.220.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.310C6.315 1.464 7.132.846 8.086.457zm-.804 7.850a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.460.864l1.940-3.272a.849.849 0 00.007-.854l-1.940-3.393zm5.446 6.240a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z"/></g><defs><linearGradient id="cg-hero" gradientUnits="userSpaceOnUse" x1="12" x2="12" y1="3" y2="21"><stop stop-color="#B1A7FF"/><stop offset=".5" stop-color="#7A9DFF"/><stop offset="1" stop-color="#3941FF"/></linearGradient></defs></svg>
+          </div>
+          <h1 class="hero-title" id="hero-title">今天想做什么？</h1>
+          <p class="hero-sub" id="hero-sub">在下面描述任务，Codex 会读代码、跑命令、改文件，并把每一步给你看。</p>
+          <div class="suggest-grid" id="suggest-grid"></div>
+        </div>
+      </div>
+    </main>
+
+    <button class="to-bottom" id="to-bottom" title="回到底部" aria-label="回到底部" hidden>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <div class="dock">
+      <div class="activity" id="activity">
+        <span class="activity-dot" id="activity-dot"></span>
+        <span class="activity-text" id="activity-text"></span>
+        <span class="activity-grow"></span>
+        <span class="usage" id="usage">
+          <span class="usage-bar"><i id="usage-fill"></i></span>
+          <span class="usage-text" id="usage-text"></span>
+        </span>
+      </div>
+
+      <div class="env-warn" id="env-warn"></div>
+
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="attach-row" id="attach-row"></div>
+        <textarea id="input" rows="1" placeholder="给 Codex 发消息…" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>
+        <input type="file" id="attach-file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" multiple hidden>
+        <div class="composer-foot">
+          <button type="button" class="attach-btn" id="attach" title="添加图片" aria-label="添加图片">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="model-pill" id="model-pill" title="选择模型与推理强度">
+            <span id="model-pill-label">模型</span>
+            <svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button type="button" class="mode-pill" id="mode-pill" title="权限模式">
+            <span id="mode-pill-label">全权限</span>
+          </button>
+          <button type="button" class="cwd-pill" id="cwd-pill" title="工作目录">
+            <span id="cwd-pill-label">~</span>
+          </button>
+          <button type="button" class="queue-pill" id="queue-pill" title="当前轮次队列" hidden>
+            <span id="queue-label">1/1 就绪</span>
+          </button>
+          <button type="button" class="skill-pill" id="skill-pill" title="技能">
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M13.5 3.5 6 13h4.5L9 20.5 17 11h-4.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <span>技能</span>
+          </button>
+          <span class="composer-grow"></span>
+          <span class="composer-hint">Enter 发送 · Shift+Enter 换行</span>
+          <button type="button" class="stop-btn" id="stop-btn" title="停止这一轮（Ctrl+.）" aria-label="停止" hidden>
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
+          </button>
+          <button type="submit" class="send-btn" id="send" data-state="idle" aria-label="发送" disabled>
+            <span class="send-ico send-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="send-ico send-stop" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="12" height="12"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <div class="footnote" id="footnote"></div>
+    </div>
+
+  </div>
+
+    <aside class="codeside" id="codeside" hidden aria-label="右侧面板">
+      <div class="codeside-tabs" id="codeside-tabs">
+        <button class="codeside-tab tab-chat" data-tab="chat" id="tab-chat" title="会话（Ctrl+0）">会话</button>
+        <button class="codeside-tab" data-tab="files" title="文件（Ctrl+1）">文件</button>
+        <button class="codeside-tab" data-tab="terminal" title="终端（Ctrl+2）">终端</button>
+        <button class="codeside-tab" data-tab="diff" title="变更（Ctrl+3）">变更</button>
+        <button class="codeside-tab" data-tab="context" title="上下文（Ctrl+4）">上下文</button>
+        <span class="codeside-grow"></span>
+        <button class="icon-btn codeside-close" id="codeside-close" title="收起（Ctrl+反斜杠）" aria-label="收起右侧面板">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="codeside-body">
+        <div class="codeside-pane" id="pane-files">
+          <div class="codeside-head">
+            <span class="codeside-path" id="files-path">…</span>
+            <button class="mini-btn" id="files-up">↑</button>
+          </div>
+          <div class="codeside-scroll" id="files-body"></div>
+        </div>
+        <div class="codeside-pane" id="pane-terminal" hidden>
+          <div class="codeside-scroll" id="terminal-body"></div>
+        </div>
+        <div class="codeside-pane" id="pane-diff" hidden>
+          <div class="codeside-head">
+            <span class="codeside-path" id="diff-stat">本轮改动</span>
+            <button class="mini-btn" id="diff-refresh">刷新</button>
+          </div>
+          <div class="codeside-scroll" id="diff-body"></div>
+        </div>
+        <div class="codeside-pane" id="pane-context" hidden>
+          <div class="codeside-scroll" id="context-body"></div>
+        </div>
+      </div>
+    </aside>
+</div>
+
+
+
+<!-- ============ 浮层 ============ -->
+<div class="menu" id="model-menu" role="dialog" aria-label="选择模型"></div>
+<div class="menu" id="mode-menu" role="dialog" aria-label="权限模式"></div>
+
+<div class="sheet-backdrop" id="dir-backdrop"></div>
+<div class="sheet" id="dir-sheet" role="dialog" aria-label="选择工作目录">
+  <div class="sheet-head">
+    <button class="mini-btn" id="dir-up">↑ 上级</button>
+    <span class="sheet-grow"></span>
+    <button class="icon-btn" id="dir-close" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sheet-path" id="dir-path"></div>
+  <div class="sheet-body" id="dir-body"></div>
+  <div class="sheet-foot">
+    <button class="primary-btn wide" id="dir-choose">选择当前目录</button>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<div class="toast" id="toast"></div>
+<div class="updatebar" id="updatebar">
+  <span>界面已更新</span>
+  <button class="mini-btn" id="updatereload">点此刷新</button>
+</div>
+
+<script src="/markdown.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
