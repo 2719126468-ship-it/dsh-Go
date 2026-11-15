@@ -1,4 +1,4 @@
-// Every palette (the six presets, custom picks across the hue circle, odd
+// Every palette (the nine presets, custom picks across the hue circle, odd
 // picks) keeps the contrast rules of docs/design/polish-guide.md §1.1, in
 // light and dark. Mist stays byte-identical to the original Mist Glass tokens.
 
@@ -63,8 +63,8 @@ void main() {
 
   test('presets: unique ids and names, mist first', () {
     expect(AppAccent.presets.first, AppAccent.mist);
-    expect(AppAccent.presets.map((p) => p.id).toSet(), hasLength(6));
-    expect(AppAccent.presets.map((p) => p.label), ['雾蓝', '黛青', '暮紫', '松石', '琥珀', '石墨']);
+    expect(AppAccent.presets.map((p) => p.id).toSet(), hasLength(9));
+    expect(AppAccent.presets.map((p) => p.label), ['雾蓝', '黛青', '暮紫', '松石', '琥珀', '石墨', '朱砂', '柚绿', '深海']);
     expect(AppAccent.preset('nope'), AppAccent.mist);
     expect(AppAccent.preset('amber'), AppAccent.amber);
   });
