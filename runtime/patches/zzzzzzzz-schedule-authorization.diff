@@ -203,8 +203,8 @@
 +			const denied = () => new RemoteError("schedule-authorization-required", "This task requires a separate, explicit user authorization. Rejection, cancellation, timeout, or an unavailable confirmation interface does not authorize it.");
 +			const questions = this.ctx.get("userQuestions");
 +			if (this.stopping || signal?.aborted || questions === void 0) throw denied();
-+			const refusal = this.reminderTargetRefusal(sessionId);
-+			if (refusal !== void 0) throw denied();
++			const actor = this.ctx.agents.get(sessionId);
++			if (actor === void 0 || delegationDepthOf(actor) > 0) throw denied();
 +			// Loading an idle Session routes the confirmation; it does not send a model prompt.
 +			const resolved = await this.ctx.sessionController.resolveAgent(sessionId);
 +			if ("error" in resolved || this.stopping || signal?.aborted) throw denied();
