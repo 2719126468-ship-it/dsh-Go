@@ -62,11 +62,11 @@
  	/** Whether either pending-message list contains work. */
  	get hasPending() {
  		const state = this.current();
-@@ -158,6 +165,25 @@
+@@ -158,7 +165,25 @@
  	*/
  	splice(target, start, deleteCount, inserted) {
  		return this.mutate(target, start, deleteCount, inserted, true);
-+	}
+ 	}
 +	/** Persist explicit plugin consumption without inventing a new event type. */
 +	settle(messageIds) {
 +		if (messageIds.length === 0) return;
