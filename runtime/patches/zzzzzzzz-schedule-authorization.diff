@@ -13,11 +13,10 @@
  		stopping = false;
 +		dshGoAuthorizationAbort = new AbortController();
 
-@@ -2012,3 +2013,4 @@
- 					cleanup = ctx.effect(() => async () => {
- 						this.stopping = true;
+@@ -2012,1 +2012,2 @@
+-						await this.runtime?.dispose();
 +						this.dshGoAuthorizationAbort.abort();
- 						await this.runtime?.dispose();
++						await this.runtime?.dispose();
 
 @@ -2082,1 +2082,2 @@
  		async create(sessionId, request, signal) {
