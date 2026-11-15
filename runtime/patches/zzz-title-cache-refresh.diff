@@ -138,7 +138,7 @@
  			await this.host.unit.putRecord(this.tableName, key, value);
  			this.records.set(key, value);
  			this.emitPut(key, value);
-@@ -264,5 +285,6 @@
+@@ -264,4 +285,5 @@
  	delete(key) {
  		return this.host.enqueue(async () => {
  			if (!this.records.has(key)) return false;
