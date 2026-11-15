@@ -5,11 +5,10 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../update/update_config.dart' show updateRepo;
 import '../update/update_http.dart';
 
-/// The 社区 hub's content: picked plugins, prompt ideas, group links and
-/// news, curated by the maintainers in `community.json` at the root of the
+/// The 社区 hub's content: picked plugins, GitHub projects, prompt ideas,
+/// group links and news, curated in `community.json` at the repository root.
 /// project repository (docs/design/community.md). Nothing here is
 /// written by users and nothing is uploaded.
 ///
@@ -23,6 +22,7 @@ import '../update/update_http.dart';
 
 const communityAsset = 'assets/community/community.json';
 const communitySchema = 1;
+const communityRepo = '2719126468-ship-it/dsh-Go';
 
 /// How often the hub asks the network (opening the page more often is free).
 const communityRefreshInterval = Duration(hours: 6);
@@ -38,9 +38,9 @@ const _feedDefine = String.fromEnvironment('DSH_COMMUNITY_FEED');
 /// reachable where GitHub is not).
 List<CommunitySource> defaultCommunitySources() => [
   if (_feedDefine.isNotEmpty) ?_selfHosted(_feedDefine),
-  CommunitySource('github', Uri.parse('https://raw.githubusercontent.com/$updateRepo/main/community.json')),
-  CommunitySource('jsdelivr', Uri.parse('https://cdn.jsdelivr.net/gh/$updateRepo@main/community.json')),
-  CommunitySource('fastly', Uri.parse('https://fastly.jsdelivr.net/gh/$updateRepo@main/community.json')),
+  CommunitySource('github', Uri.parse('https://raw.githubusercontent.com/$communityRepo/main/community.json')),
+  CommunitySource('jsdelivr', Uri.parse('https://cdn.jsdelivr.net/gh/$communityRepo@main/community.json')),
+  CommunitySource('fastly', Uri.parse('https://fastly.jsdelivr.net/gh/$communityRepo@main/community.json')),
 ];
 
 CommunitySource? _selfHosted(String url) => switch (Uri.tryParse(url)) {
@@ -73,6 +73,34 @@ class CommunityPlugin {
 
 /// A prompt idea: opens a new conversation with [prompt] in the composer,
 /// not sent.
+class CommunityLocalizedText {
+  const CommunityLocalizedText({required this.zh, required this.en});
+
+  final String zh;
+  final String en;
+
+  String resolve(String locale) => locale == 'zh' ? zh : en;
+}
+
+/// A source repository listed for discovery, not installed or executed by the app.
+class CommunityProject {
+  const CommunityProject({
+    required this.repository,
+    required this.stars,
+    required this.license,
+    required this.note,
+    required this.compatibility,
+  });
+
+  final String repository;
+  final int stars;
+  final String license;
+  final CommunityLocalizedText note;
+  final CommunityLocalizedText compatibility;
+
+  String get url => 'https://github.com/$repository';
+}
+
 class CommunityPrompt {
   const CommunityPrompt({required this.title, required this.prompt, this.summary, this.icon});
 
@@ -123,6 +151,7 @@ class CommunityFeed {
     this.updatedAt,
     this.tagline,
     this.plugins = const [],
+    this.projects = const [],
     this.prompts = const [],
     this.groups = const [],
     this.updates = const [],
@@ -135,13 +164,14 @@ class CommunityFeed {
   /// The overview card's second line.
   final String? tagline;
   final List<CommunityPlugin> plugins;
+  final List<CommunityProject> projects;
   final List<CommunityPrompt> prompts;
   final List<CommunityGroup> groups;
   final List<CommunityUpdate> updates;
 
   static const empty = CommunityFeed(revision: 0);
 
-  bool get isEmpty => plugins.isEmpty && prompts.isEmpty && groups.isEmpty && updates.isEmpty;
+  bool get isEmpty => plugins.isEmpty && projects.isEmpty && prompts.isEmpty && groups.isEmpty && updates.isEmpty;
 
   /// Reads [text]. A wrong schema or shape throws [FormatException]; single
   /// entries that are malformed (or link anywhere but https) are dropped.
@@ -166,6 +196,24 @@ class CommunityFeed {
         final name = _text(m['name'], 214);
         if (name == null || !_packageName.hasMatch(name)) return null;
         return CommunityPlugin(name: name, note: _text(m['note'], 60));
+      }),
+      projects: list('projects', (m) {
+        final repository = _text(m['repository'], 120);
+        final stars = m['stars'];
+        final license = _text(m['license'], 24);
+        final note = _localized(m['note'], 120);
+        final compatibility = _localized(m['compatibility'], 140);
+        if (repository == null || !_repository.hasMatch(repository) || stars is! int || stars < 0 ||
+            license == null || note == null || compatibility == null) {
+          return null;
+        }
+        return CommunityProject(
+          repository: repository,
+          stars: stars,
+          license: license,
+          note: note,
+          compatibility: compatibility,
+        );
       }),
       prompts: list('prompts', (m) {
         final title = _text(m['title'], 24);
@@ -205,6 +253,15 @@ class CommunityFeed {
   }
 
   static final _packageName = RegExp(r'^(?:@[a-z0-9][\w.-]*/)?[a-z0-9][\w.-]*$');
+  static final _repository = RegExp(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$');
+
+  static CommunityLocalizedText? _localized(Object? value, int max) {
+    if (value is! Map<String, Object?>) return null;
+    final zh = _text(value['zh'], max);
+    final en = _text(value['en'], max);
+    if (zh == null || en == null) return null;
+    return CommunityLocalizedText(zh: zh, en: en);
+  }
 
   static String? _text(Object? value, int max, {bool multiline = false}) {
     if (value is! String || value.trim().isEmpty) return null;
