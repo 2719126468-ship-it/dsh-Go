@@ -187,10 +187,9 @@
 +				}
 +			}
  			return this.serialize(async () => {
-@@ -0,2 +0,3 @@
- 			if (request.expectedUpdatedAt !== void 0 && request.expectedUpdatedAt !== (current.updatedAt ?? null)) return { id: request.id, code: "schedule_conflict" };
+@@ -0,1 +0,2 @@
 +			if (reviewedUpdatedAt !== void 0 && (current.updatedAt ?? null) !== reviewedUpdatedAt) return { id: request.id, code: "schedule_conflict" };
- 			if (request.action === "delete") {
+ 			const task = revisedTask(current, request.patch, target, actorSessionId, Date.now());
 @@ -0,2 +0,3 @@
  			const task = revisedTask(current, request.patch, target, actorSessionId, Date.now());
 +			if (request.patch.active !== false) this.dshGoAssertFuture(task.record);
