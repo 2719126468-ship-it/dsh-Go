@@ -150,7 +150,7 @@ class _Projects extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).languageCode;
     final chinese = locale == 'zh';
-    final stars = (int count) => count >= 1000 ? '${(count / 1000).toStringAsFixed(1)}k' : '$count';
+    String formatStars(int count) => count >= 1000 ? '${(count / 1000).toStringAsFixed(1)}k' : '$count';
     return SettingsSection(
       title: chinese ? 'GitHub 热门项目' : 'Popular GitHub projects',
       footer: Text(
