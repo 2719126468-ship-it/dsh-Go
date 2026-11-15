@@ -166,7 +166,6 @@ class _Projects extends StatelessWidget {
             subtitle: '${project.note.resolve(locale)} · ${project.compatibility.resolve(locale)}',
             subtitleMaxLines: 3,
             meta: '${stars(project.stars)} ★ · ${project.license}',
-            chevron: false,
             onTap: () => unawaited(openCommunityLink(context, project.url)),
           ),
       ],
