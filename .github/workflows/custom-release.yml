@@ -112,7 +112,8 @@ jobs:
             grep -Fxq "$asset" "$RUNNER_TEMP/apk-assets-arm64.txt" || { echo "missing custom asset: $asset"; exit 1; }
           done
           unzip -p "$APK" assets/flutter_assets/assets/custom/plugins.zip > "$RUNNER_TEMP/dsh-go-custom-plugins-arm64.zip"
-          unzip -Z1 "$RUNNER_TEMP/dsh-go-custom-plugins-arm64.zip" | grep -Fxq "dsh-our-free-model/package.json"
+          plugin_entries=$(unzip -Z1 "$RUNNER_TEMP/dsh-go-custom-plugins-arm64.zip")
+          grep -Fxq "dsh-our-free-model/package.json" <<<"$plugin_entries"
 
       - name: 校验签名
         working-directory: .
@@ -207,7 +208,8 @@ jobs:
             grep -Fxq "$asset" "$RUNNER_TEMP/apk-assets-arm32.txt" || { echo "missing custom asset: $asset"; exit 1; }
           done
           unzip -p "$APK" assets/flutter_assets/assets/custom/plugins.zip > "$RUNNER_TEMP/dsh-go-custom-plugins-arm32.zip"
-          unzip -Z1 "$RUNNER_TEMP/dsh-go-custom-plugins-arm32.zip" | grep -Fxq "dsh-our-free-model/package.json"
+          plugin_entries=$(unzip -Z1 "$RUNNER_TEMP/dsh-go-custom-plugins-arm32.zip")
+          grep -Fxq "dsh-our-free-model/package.json" <<<"$plugin_entries"
 
       - name: 校验签名
         working-directory: .
