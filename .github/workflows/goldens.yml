@@ -25,7 +25,7 @@ env:
 
 jobs:
   render:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/') || github.ref == 'refs/heads/trigger-dsh-go-validation'
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     env:
