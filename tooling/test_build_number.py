@@ -91,17 +91,18 @@ class BuildApkDryRunTest(unittest.TestCase):
     def run_script(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["bash", str(SCRIPT), "--dry-run", *args], capture_output=True, text=True)
 
-    def test_both_flavors_share_one_build_number(self):
+    def test_every_flavor_shares_one_build_number(self):
         out = self.run_script("-f", "all").stdout
         commands = [line for line in out.splitlines() if "flutter build apk" in line]
-        self.assertEqual(len(commands), 2)
+        self.assertEqual(len(commands), 3)
         codes = {re.search(r"--build-number (\d+)", c).group(1) for c in commands}
         self.assertEqual(len(codes), 1)
         code = int(codes.pop())
         now = datetime.datetime.now(UTC_OFFSET)
         self.assertLess(abs((decode(code) - now).total_seconds()), 180)
         self.assertIn("--flavor arm64 --target-platform android-arm64", commands[0])
-        self.assertIn("--flavor x64 --target-platform android-x64", commands[1])
+        self.assertIn("--flavor arm32 --target-platform android-arm", commands[1])
+        self.assertIn("--flavor x64 --target-platform android-x64", commands[2])
         for c in commands:
             self.assertRegex(c, rf"--build-name (\S+) --build-number {code} --dart-define=DSH_APP_VERSION=\1\+{code}")
         self.assertIn("gradlew --stop", out)
