@@ -191,7 +191,7 @@ jobs:
           node - "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" <<'NODE'
           const fs = require("node:fs");
           const source = fs.readFileSync(process.argv[2], "utf8");
-          for (const token of ["await rm(runRecordPath(dir)", "options.activateNewBundles", "control.settled = true", "this.restoreFiles(files)", "installedFrom.set(name, used)", "registryArguments(registry)", "control.abort.signal, requestId"]) {
+          for (const token of ["await rm(runRecordPath(dir)", "options.activateNewBundles", "control.settled = true", "this.restoreFiles(files)", "installedFrom.set(name, used)", "registryArguments(registry)", "control.abort.signal, requestId", "webServer.listen", "Longest-prefix-wins", "responderFor(pathname)"]) {
             const index = source.lastIndexOf(token);
             console.log("__DSH_GO_PLUGIN_MANAGER_CONTEXT__ " + token + " " + JSON.stringify(
               index < 0 ? null : source.slice(Math.max(0, index - 280), Math.min(source.length, index + 500))
