@@ -254,11 +254,11 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
               onSubmitted: (_) => _openAddress(),
               decoration: InputDecoration(
                 hintText: _text('输入网址或搜索关键词', 'Enter a URL or search term'),
-                prefixIcon: const Icon(Icons.language),
+                prefixIcon: const Icon(AppIcons.web),
                 suffixIcon: IconButton(
                   tooltip: _text('打开', 'Open'),
                   onPressed: _openAddress,
-                  icon: const Icon(Icons.arrow_forward),
+                  icon: const Icon(AppIcons.forward),
                 ),
               ),
             ),
