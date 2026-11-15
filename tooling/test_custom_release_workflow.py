@@ -48,6 +48,10 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("branches: ['work/**', 'custom/**']", self.goldens)
         self.assertIn("      - custom/**", self.text)
 
+    def test_custom_releases_are_serialized(self):
+        self.assertIn("group: dsh-go-custom-release", self.text)
+        self.assertIn("cancel-in-progress: false", self.text)
+
     def test_release_tag_is_unique_per_workflow_run(self):
         self.assertIn('tag="custom-${ver}-${GITHUB_RUN_ID}"', self.text)
 
