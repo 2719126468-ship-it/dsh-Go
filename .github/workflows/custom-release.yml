@@ -97,6 +97,23 @@ jobs:
           # 与 pin 不完全一致时直接跳过，不让一个可选库挡住出包。
           DSH_SKIP_TAWCROOT: '1'
 
+      - name: 校验定制资源已打入 APK（arm64）
+        working-directory: .
+        run: |
+          APK=$(ls app/build/app/outputs/flutter-apk/*arm64*release*.apk | head -1)
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-assets-arm64.txt"
+          for asset in \
+            assets/flutter_assets/assets/custom/presets/pojia.patch.yml \
+            assets/flutter_assets/assets/custom/skills/apk-sign/SKILL.md \
+            assets/flutter_assets/assets/custom/skills/dev-loop/SKILL.md \
+            assets/flutter_assets/assets/custom/skills/phone-control/SKILL.md \
+            assets/flutter_assets/assets/custom/skills/runtime-triage/SKILL.md \
+            assets/flutter_assets/assets/custom/plugins.zip; do
+            grep -Fxq "$asset" "$RUNNER_TEMP/apk-assets-arm64.txt" || { echo "missing custom asset: $asset"; exit 1; }
+          done
+          unzip -p "$APK" assets/flutter_assets/assets/custom/plugins.zip > "$RUNNER_TEMP/dsh-go-custom-plugins-arm64.zip"
+          unzip -Z1 "$RUNNER_TEMP/dsh-go-custom-plugins-arm64.zip" | grep -Fxq "dsh-our-free-model/package.json"
+
       - name: 校验签名
         working-directory: .
         run: |
@@ -172,6 +189,23 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
 
+      - name: 校验定制资源已打入 APK（arm32）
+        working-directory: .
+        run: |
+          APK=$(ls app/build/app/outputs/flutter-apk/*arm32*release*.apk | head -1)
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-assets-arm32.txt"
+          for asset in \
+            assets/flutter_assets/assets/custom/presets/pojia.patch.yml \
+            assets/flutter_assets/assets/custom/skills/apk-sign/SKILL.md \
+            assets/flutter_assets/assets/custom/skills/dev-loop/SKILL.md \
+            assets/flutter_assets/assets/custom/skills/phone-control/SKILL.md \
+            assets/flutter_assets/assets/custom/skills/runtime-triage/SKILL.md \
+            assets/flutter_assets/assets/custom/plugins.zip; do
+            grep -Fxq "$asset" "$RUNNER_TEMP/apk-assets-arm32.txt" || { echo "missing custom asset: $asset"; exit 1; }
+          done
+          unzip -p "$APK" assets/flutter_assets/assets/custom/plugins.zip > "$RUNNER_TEMP/dsh-go-custom-plugins-arm32.zip"
+          unzip -Z1 "$RUNNER_TEMP/dsh-go-custom-plugins-arm32.zip" | grep -Fxq "dsh-our-free-model/package.json"
+
       - name: 校验签名
         working-directory: .
         run: |
@@ -197,7 +231,8 @@ jobs:
 
   bundle:
     needs: [arm64, arm32]
-    if: always() && (needs.arm64.result == 'success' || needs.arm32.result == 'success')
+    # 双架构是定制版的发行契约；任一构建失败或被跳过，都不创建半套 Release。
+    if: needs.arm64.result == 'success' && needs.arm32.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -212,8 +247,12 @@ jobs:
           [ -n "$ver" ] || ver=1.0.16
           a64=$(find dist -path '*arm64*' -name '*.apk' | head -1)
           a32=$(find dist -path '*arm32*' -name '*.apk' | head -1)
-          [ -z "$a64" ] || cp "$a64" "out/dsh-go-${ver}-arm64.apk"
-          [ -z "$a32" ] || cp "$a32" "out/dsh-go-${ver}-arm32.apk"
+          test -n "$a64" || { echo "arm64 artifact missing; refusing partial release"; exit 1; }
+          test -n "$a32" || { echo "arm32 artifact missing; refusing partial release"; exit 1; }
+          cp "$a64" "out/dsh-go-${ver}-arm64.apk"
+          cp "$a32" "out/dsh-go-${ver}-arm32.apk"
+          test -s "out/dsh-go-${ver}-arm64.apk"
+          test -s "out/dsh-go-${ver}-arm32.apk"
           cd out && sha256sum *.apk | tee SHA256SUMS && cat SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
