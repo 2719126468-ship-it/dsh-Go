@@ -52,6 +52,12 @@ android {
             dimension = "abi"
             ndk { abiFilters += "arm64-v8a" }
         }
+        // ARMv7 is a portable client: Node.js 24 has no 32-bit Linux build,
+        // so this flavor intentionally ships no bundled local runtime.
+        create("arm32") {
+            dimension = "abi"
+            ndk { abiFilters += "armeabi-v7a" }
+        }
         create("x64") {
             dimension = "abi"
             ndk { abiFilters += "x86_64" }
