@@ -155,7 +155,11 @@ jobs:
           grep -qi "certificate SHA-256 digest: 2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444" verify.txt
           ! grep -q "CN=Android Debug" verify.txt
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
-          "$AAPT" dump badging "$APK" | grep -F "native-code: 'arm64-v8a'"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          grep -F "versionCode='$BUILD_NUMBER'" <<<"$BADGING"
+          grep -F "native-code: 'arm64-v8a'" <<<"$BADGING"
+        env:
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
 
       - name: 清理密钥
         if: always()
@@ -255,7 +259,11 @@ jobs:
           grep -qi "certificate SHA-256 digest: 2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444" verify32.txt
           ! grep -q "CN=Android Debug" verify32.txt
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
-          "$AAPT" dump badging "$APK" | grep -F "native-code: 'armeabi-v7a'"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          grep -F "versionCode='$BUILD_NUMBER'" <<<"$BADGING"
+          grep -F "native-code: 'armeabi-v7a'" <<<"$BADGING"
+        env:
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
 
       - name: 清理密钥
         if: always()
