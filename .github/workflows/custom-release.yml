@@ -274,10 +274,11 @@ jobs:
           [ -n "$ver" ] || ver=1.0.17
           tag="custom-${ver}-$(date -u +%Y%m%d%H%M)"
           {
-            echo "破甲预设 + 实用技能 + dsh-our-free-model + 三套皮肤 + 固定签名（v1/v2/v3）。"
+            echo "破甲预设 + 四套实用技能 + dsh-our-free-model + 九套配色 + 固定签名（v1/v2/v3）。"
             echo
-            echo "- arm64：Android 8+ 64 位，含本机 Linux 引擎"
-            echo "- arm32：Android 8+ 32 位，带实验性本机引擎（Debian armhf + Node v23.11.1）"
+            echo "- arm64 与 arm32 APK 均检查了破甲预设、技能和免费模型插件是否真实打入包内"
+            echo "- arm64：Android 8+ 64 位，含 Ubuntu 本机 Linux 引擎"
+            echo "- arm32：Android 8+ 32 位，含实验性 Debian armhf + Node v23.11.1 PRoot 引擎；尚需 32 位真机验收"
             echo
             echo "证书 SHA-256：2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444"
           } > notes.md
