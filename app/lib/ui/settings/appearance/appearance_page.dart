@@ -435,7 +435,7 @@ class _PhonePainter extends CustomPainter {
 class PalettePicker extends ConsumerWidget {
   const PalettePicker({super.key, this.custom = true});
 
-  /// The seventh slot, a hue wheel for a colour of one's own.
+  /// The optional final slot, a hue wheel for a colour of one's own.
   final bool custom;
 
   /// How tall the row is at this text size. It lays out with a
