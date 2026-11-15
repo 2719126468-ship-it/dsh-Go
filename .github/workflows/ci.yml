@@ -321,6 +321,14 @@ jobs:
           cp "runtime/locks/dsh-$legacy_version/package.json" "runtime/locks/dsh-$legacy_version/package-lock.json" "$legacy_prefix/"
           npm ci --prefix "$legacy_prefix" --ignore-scripts --no-audit --no-fund --legacy-peer-deps
           cp "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$legacy_prefix/fs-local-original.js"
+          node - "$legacy_prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          for (const token of ["if (createIfAbsent", "await linkFile(tempPath, absolutePath)", "throwGuardedCreateFailure(error, absolutePath, createIfAbsent.displayPath"]) {
+            const at = source.indexOf(token);
+            console.log("__DSH_GO_LEGACY_FS_CONTEXT__", token, JSON.stringify(at < 0 ? "" : source.slice(Math.max(0, at - 300), at + 1100)));
+          }
+          NODE
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$legacy_prefix" --dsh-version "$legacy_version" --record
           echo "DSH_LEGACY_PREFIX=$legacy_prefix" >> "$GITHUB_ENV"
           cat runtime/patches/pins.json
