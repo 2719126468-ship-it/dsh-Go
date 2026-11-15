@@ -62,6 +62,14 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("group: dsh-go-custom-release", self.text)
         self.assertIn("cancel-in-progress: false", self.text)
 
+    def test_workflow_only_pushes_do_not_queue_duplicate_apk_releases(self):
+        self.assertIn("should_build: ${{ steps.scope.outputs.should_build }}", self.text)
+        self.assertIn('EVENT_NAME: ${{ github.event_name }}', self.text)
+        self.assertIn('BEFORE: ${{ github.event.before }}', self.text)
+        self.assertIn("git diff --name-only \"$BEFORE\" \"$AFTER\"", self.text)
+        self.assertIn("grep -Eq '^(app/|runtime/|tooling/)'", self.text)
+        self.assertIn("needs.prepare.outputs.should_build == 'true'", self.text)
+
     def test_release_tag_is_unique_per_workflow_run(self):
         self.assertIn('tag="custom-${ver}-${GITHUB_RUN_ID}"', self.text)
 
