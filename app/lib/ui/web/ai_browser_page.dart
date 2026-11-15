@@ -56,6 +56,10 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
   }
 
   Future<bool> _editMediaConfig() async {
+    if (!_loaded) {
+      await _loadMediaConfig();
+      if (!mounted) return false;
+    }
     final url = TextEditingController(text: _mediaUrl);
     final token = TextEditingController(text: await _secureStorage.read(key: _mediaTokenKey) ?? '');
     if (!mounted) {
@@ -181,9 +185,11 @@ class _AiBrowserPageState extends State<AiBrowserPage> {
         value.startsWith('127.') ||
         (!value.contains(' ') && value.contains('.'));
     final parsed = looksLikeUrl ? Uri.tryParse(value.contains('://') ? value : 'https://$value') : null;
-    final target = parsed != null && parsed.host.isNotEmpty
-        ? parsed
-        : Uri.https('www.google.com', '/search', {'q': value});
+    final isWebUrl = parsed != null &&
+        parsed.host.isNotEmpty &&
+        parsed.userInfo.isEmpty &&
+        const ['http', 'https'].contains(parsed.scheme);
+    final target = isWebUrl ? parsed : Uri.https('www.google.com', '/search', {'q': value});
     _openPage(target, target.host);
   }
 
