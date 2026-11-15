@@ -46,7 +46,7 @@ jobs:
       - name: 读取应用版本并生成共享 Android versionCode
         id: meta
         run: |
-          version="$(sed -n 's/^version: *\\([^+[:space:]]*\\).*/\\1/p' app/pubspec.yaml | head -1)"
+          version="$(python3 -c 'import re; from pathlib import Path; m=re.search(r"^version:\s*([^+\s]+)", Path("app/pubspec.yaml").read_text(), re.M); print(m.group(1) if m else "")')"
           test -n "$version" || { echo "app/pubspec.yaml has no version"; exit 1; }
           echo "app_version=$version" >> "$GITHUB_OUTPUT"
           echo "build_number=$(python3 tooling/build_number.py)" >> "$GITHUB_OUTPUT"
