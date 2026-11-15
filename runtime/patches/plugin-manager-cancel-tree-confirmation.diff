@@ -224,7 +224,7 @@
  					const unsupported = await reconcile(before, dir, context.installAnchor, options);
  					if (unsupported.length > 0) {
  						exitCode = 1;
- 						const diagnostic = `\\ndsh: bundle activation rejected: ${unsupported.join("\\n")}\\ndsh: installed dependencies remain; bundle selection is unchanged. Use a supported Host or remove the unwanted dependencies with 'dsh plugin remove <package>'.\\n`;
+ 						const diagnostic = `\ndsh: bundle activation rejected: ${unsupported.join("\n")}\ndsh: installed dependencies remain; bundle selection is unchanged. Use a supported Host or remove the unwanted dependencies with 'dsh plugin remove <package>'.\n`;
  						await log.write(diagnostic);
  						options.onOutput?.(diagnostic, "stderr");
  						append(Buffer.from(diagnostic));
