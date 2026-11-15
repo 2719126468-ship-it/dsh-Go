@@ -10,9 +10,9 @@
  import { isIP } from "node:net";
  import { resolve } from "node:path";
 @@ -1,2 +1,3 @@
- 		const target = new URL(req.url ?? "/", "http://x");
- 		const responder = this.responderFor(target.pathname);
-+		if (typeof responder === "object" && "kind" in responder && await this.dshGoRejectRequest(responder, req, res)) return;
+ 			const target = new URL(req.url ?? "/", "http://x");
+ 			const responder = this.responderFor(target.pathname);
++			if (typeof responder === "object" && "kind" in responder && await this.dshGoRejectRequest(responder, req, res)) return;
 @@ -454,7 +455,7 @@
  				}
  				this.upgradedSockets.add(socket);
