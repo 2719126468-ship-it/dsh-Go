@@ -190,8 +190,7 @@
 @@ -0,1 +0,2 @@
 +			if (reviewedUpdatedAt !== void 0 && (current.updatedAt ?? null) !== reviewedUpdatedAt) return { id: request.id, code: "schedule_conflict" };
  			const task = revisedTask(current, request.patch, target, actorSessionId, Date.now());
-@@ -0,2 +0,3 @@
- 			const task = revisedTask(current, request.patch, target, actorSessionId, Date.now());
+@@ -0,1 +0,2 @@
 +			if (request.patch.active !== false) this.dshGoAssertFuture(task.record);
  			await tasks.put(request.id, task);
 @@ -0,1 +0,53 @@
