@@ -12,7 +12,7 @@
  	const absoluteCwd = isAbsolute(cwd) ? cwd : `${process.cwd()}${sep}${cwd}`;
  	const raw = isAbsolute(path) ? path : `${absoluteCwd}${sep}${path}`;
  	const physicalSpelling = /(?:^|[\\/])\.\.(?:[\\/]|$)/u.test(raw) ? raw : resolve(cwd, path);
-@@ -169,10 +172,16 @@
+@@ -169,9 +172,15 @@
  async function resolveLocalTarget(cwd, path) {
  	if (path.trim().length === 0) throw new FsError("file_path must be a non-empty string", "FS_NOT_FOUND");
  	const displayPath = localDisplayPath(cwd, path);
@@ -29,10 +29,6 @@
 +			targetKey: FsTargetKey(checkDirect(await realpath$1(displayPath)))
  		};
  	} catch (error) {
-@@ -74,1 +74,2 @@
--		return this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
-+		const directory = this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
-+		return globalThis[Symbol.for("dsh.go.direct")]?.toHost(directory) ?? directory;
 @@ -183,7 +192,7 @@
  	const missing = [basename(displayPath)];
  	let ancestor = dirname(displayPath);
@@ -53,6 +49,16 @@
  		/* v8 ignore next -- native Windows coverage exercises the FsError raised by the repair above. */
 --- a/node_modules/@deepseek-ai/dsh-working-directory/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-working-directory/lib/index.js
+@@ -74,7 +74,8 @@
+ 	* @returns its effective absolute directory.
+ 	*/
+ 	get(session) {
+-		return this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
++		const directory = this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
++		return globalThis[Symbol.for("dsh.go.direct")]?.toHost(directory) ?? directory;
+ 	}
+ 	/**
+ 	* Validate the current directory and restore the original project when it disappeared.
 @@ -74,7 +74,8 @@
  	* @returns its effective absolute directory.
  	*/
