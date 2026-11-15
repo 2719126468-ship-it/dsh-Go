@@ -12,6 +12,23 @@
  	const absoluteCwd = isAbsolute(cwd) ? cwd : `${process.cwd()}${sep}${cwd}`;
  	const raw = isAbsolute(path) ? path : `${absoluteCwd}${sep}${path}`;
  	const physicalSpelling = /(?:^|[\\/])\.\.(?:[\\/]|$)/u.test(raw) ? raw : resolve(cwd, path);
+@@ -169,10 +172,16 @@
+ async function resolveLocalTarget(cwd, path) {
+ 	if (path.trim().length === 0) throw new FsError("file_path must be a non-empty string", "FS_NOT_FOUND");
+ 	const displayPath = localDisplayPath(cwd, path);
++	const direct = globalThis[Symbol.for("dsh.go.direct")];
++	const checkDirect = (resolved) => {
++		if (direct && (direct.requiresProot(resolved) || !direct.containsExecutionPath(resolved))) throw new FsError("this file needs compatible launch; stop the engine and turn off Direct engine", "FS_IO_ERROR");
++		return resolved;
++	};
++	checkDirect(displayPath);
+ 	try {
+ 		return {
+ 			displayPath,
+-			targetKey: FsTargetKey(await realpath$1(displayPath))
++			targetKey: FsTargetKey(checkDirect(await realpath$1(displayPath)))
+ 		};
+ 	} catch (error) {
 @@ -74,1 +74,2 @@
 -		return this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
 +		const directory = this.workingDirectoryProjectionHandle.stateOf(session) ?? this.defaultDirectory;
