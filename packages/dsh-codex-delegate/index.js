@@ -56,8 +56,8 @@ const DEFAULTS = {
    * Android, so Codex must run unsandboxed here.
    */
   sandboxMode: "danger-full-access",
-  /** AskForApproval: untrusted | on-request | never. */
-  approvalPolicy: "never",
+  /** AskForApproval: untrusted | on-request | never. Default to interactive approval. */
+  approvalPolicy: "on-request",
   /** Working directory used when the caller omits `cwd`. */
   defaultCwd: "",
   /** Hard cap on the text handed back to the model. */

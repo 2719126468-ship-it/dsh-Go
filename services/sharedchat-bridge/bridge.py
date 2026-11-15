@@ -9,7 +9,7 @@ sharedchat-bridge — 把 sharedchat 的 codex 专用 key 变成任何 RP 客户
   SHAREDCHAT_API_KEY=sk-xxx python3 bridge.py --port 8787 --host 0.0.0.0
 """
 from __future__ import annotations
-import argparse, json, os, re, sys, time, uuid, threading, traceback
+import argparse, hmac, ipaddress, json, os, re, sys, time, uuid, threading, traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 import requests
@@ -19,7 +19,7 @@ UPSTREAM = os.environ.get("SHAREDCHAT_BASE", "https://new.sharedchat.cc/codex/v1
 API_KEY = os.environ.get("SHAREDCHAT_API_KEY", "").strip()
 DEFAULT_MODEL = os.environ.get("SHAREDCHAT_MODEL", "gpt-5.6-sol")
 INSTALL_ID = os.environ.get("SHAREDCHAT_INSTALL_ID", "b6f1a0c2-7d34-4e18-9a55-2c9f0d1e7a63")
-LOCAL_KEY = os.environ.get("BRIDGE_KEY", "").strip()          # 可选: 下游鉴权, 空=不校验
+LOCAL_KEY = os.environ.get("BRIDGE_KEY", "").strip()          # 非本机监听时强制配置
 TIMEOUT = float(os.environ.get("BRIDGE_TIMEOUT", "300"))
 VERBOSE = os.environ.get("BRIDGE_VERBOSE", "1") == "1"
 
@@ -289,10 +289,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _auth_ok(self) -> bool:
         if not LOCAL_KEY:
-            return True
+            return True  # main() 已保证无密钥时只能绑定 loopback
         h = self.headers.get("Authorization", "")
         key = h[7:].strip() if h.lower().startswith("bearer ") else self.headers.get("x-api-key", "")
-        return key == LOCAL_KEY
+        return hmac.compare_digest(key, LOCAL_KEY)
 
     def _body(self) -> dict:
         if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
@@ -335,6 +335,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        if not self._auth_ok():
+            self._err(401, "bad local key", "authentication_error"); return
         path = urlparse(self.path).path.rstrip("/")
         if path in ("/v1/models", "/models"):
             now = int(time.time())
@@ -528,11 +530,22 @@ class Handler(BaseHTTPRequestHandler):
         if VERBOSE:
             log("HTTP", fmt % args)
 
+def is_loopback_host(host: str) -> bool:
+    """Only loopback addresses may run without a downstream API key."""
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.split("%", 1)[0]).is_loopback
+    except ValueError:
+        return False
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--host", default=os.environ.get("BRIDGE_HOST", "0.0.0.0"))
+    ap.add_argument("--host", default=os.environ.get("BRIDGE_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("BRIDGE_PORT", "8787")))
     a = ap.parse_args()
+    if not is_loopback_host(a.host) and not LOCAL_KEY:
+        ap.error("非本机监听必须设置 BRIDGE_KEY；默认仅允许绑定 127.0.0.1")
     if not API_KEY:
         print("!! 需要 SHAREDCHAT_API_KEY", file=sys.stderr)
     print(f"sharedchat-bridge  →  {UPSTREAM}")

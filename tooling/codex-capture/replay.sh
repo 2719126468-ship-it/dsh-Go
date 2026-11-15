@@ -1,3 +1,25 @@
 #!/usr/bin/env bash
-# 复放某次抓包：需要导出的环境变量 SHAREDCHAT_API_KEY；body.json 由 cap.py 抓包产生。
-curl -s -m 90 -o out.txt -w '%{http_code}\n' https://new.sharedchat.cc/codex/v1/responses -H 'x-codex-beta-features: remote_compaction_v2' -H 'x-codex-window-id: 01a14961-e593-71b3-a397-95629119cfce:0' -H 'x-codex-turn-metadata: {"installation_id":"eaa417a7-3337-489d-bbdb-3169738a020f","session_id":"01a14961-e593-71b3-a397-95629119cfce","thread_id":"01a14961-e593-71b3-a397-95629119cfce","agent_name":"/root","turn_id":"01a14961-e778-7160-81c8-af58943f2b9c","window_id":"01a14961-e593-71b3-a397-95629119cfce:0","window_number":0,"context_window_id":"01a14961-e5b6-77a1-9df2-5cf70c3c1198","request_kind":"turn","root_turn_id":"01a14961-e778-7160-81c8-af58943f2b9c","thread_source":"user","turn_trigger":"exec","sandbox":"none","sandbox_mode":"danger-full-access","auto_review_enabled":false,"node_repl_auto_review_required":false,"node_repl_disabled":false,"turn_started_at_unix_ms":1792232515486,"analytics_enabled":true,"model":"gpt-5.6-sol","reasoning_effort":"low"}' -H 'x-openai-internal-codex-responses-lite: true' -H 'x-client-request-id: 01a14961-e593-71b3-a397-95629119cfce' -H 'session-id: 01a14961-e593-71b3-a397-95629119cfce' -H 'thread-id: 01a14961-e593-71b3-a397-95629119cfce' -H 'accept: text/event-stream' -H 'content-type: application/json' -H 'authorization: Bearer ${SHAREDCHAT_API_KEY:?set SHAREDCHAT_API_KEY}' -H 'originator: codex_exec' -H 'user-agent: codex_exec/0.162.1 (Linux Unknown; aarch64) dumb (codex_exec; 0.162.1)' --data-binary @body.json
+# Replay body.json with fresh session identifiers; do not reuse captured session metadata.
+set -euo pipefail
+: "${SHAREDCHAT_API_KEY:?set SHAREDCHAT_API_KEY}"
+BASE="${SHAREDCHAT_BASE:-https://new.sharedchat.cc/codex/v1}"
+SESSION_ID="${SESSION_ID:-$(python3 -c 'import uuid; print(uuid.uuid4())')}"
+TURN_ID="${TURN_ID:-$(python3 -c 'import uuid; print(uuid.uuid4())')}"
+INSTALL_ID="${SHAREDCHAT_INSTALL_ID:-$(python3 -c 'import uuid; print(uuid.uuid4())')}"
+CONTEXT_ID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+WINDOW_ID="${SESSION_ID}:0"
+TURN_METADATA="$(SESSION_ID="$SESSION_ID" TURN_ID="$TURN_ID" INSTALL_ID="$INSTALL_ID" WINDOW_ID="$WINDOW_ID" CONTEXT_ID="$CONTEXT_ID" python3 -c 'import json,os,time; print(json.dumps({"installation_id":os.environ["INSTALL_ID"],"session_id":os.environ["SESSION_ID"],"thread_id":os.environ["SESSION_ID"],"agent_name":"codex-replay","turn_id":os.environ["TURN_ID"],"window_id":os.environ["WINDOW_ID"],"window_number":0,"context_window_id":os.environ["CONTEXT_ID"],"request_kind":"turn","root_turn_id":os.environ["TURN_ID"],"thread_source":"user","turn_trigger":"exec","sandbox":"none","sandbox_mode":"danger-full-access","auto_review_enabled":False,"node_repl_auto_review_required":False,"node_repl_disabled":False,"turn_started_at_unix_ms":int(time.time()*1000),"analytics_enabled":False,"model":os.environ.get("SHAREDCHAT_MODEL","gpt-5.6-sol"),"reasoning_effort":"low"},separators=(",",":")))' )"
+curl -sS -m 90 -o out.txt -w '%{http_code}\n' "${BASE%/}/responses" \
+  -H 'x-codex-beta-features: remote_compaction_v2' \
+  -H "x-codex-window-id: ${WINDOW_ID}" \
+  -H "x-codex-turn-metadata: ${TURN_METADATA}" \
+  -H 'x-openai-internal-codex-responses-lite: true' \
+  -H "x-client-request-id: ${SESSION_ID}" \
+  -H "session-id: ${SESSION_ID}" \
+  -H "thread-id: ${SESSION_ID}" \
+  -H 'accept: text/event-stream' \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer ${SHAREDCHAT_API_KEY}" \
+  -H 'originator: codex_exec' \
+  -H 'user-agent: codex_exec/0.162.1 (Linux; aarch64) dumb (codex_exec; 0.162.1)' \
+  --data-binary @body.json

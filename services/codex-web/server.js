@@ -278,7 +278,7 @@ const MODES = {
     short: "全权限",
     desc: "全权限，可改系统文件、联网",
     sandbox: "danger-full-access",
-    approval: "never",
+    approval: "on-request",
     policy: () => ({ type: "dangerFullAccess" }),
   },
 };
@@ -286,12 +286,12 @@ const MODES = {
 /**
  * 审批策略（与沙箱正交）。
  *
- * `auto` = 跟随当前沙箱档的默认值（只读/可写 → on-request，全权限 → never）。
- * 显式选 `on-request` 能让"全权限 + 每一步都问我"这种组合成立 —— 这也正是
+ * `auto` = 跟随当前沙箱档的默认值。Android 无可用 OS 沙箱时，全权限也默认按需审批。
+ * 只有用户显式选择 `never` 才会关闭审批；显式选 `on-request` 能让
  * 本机唯一能真正看到审批卡片的配置（Android 跑不了 bubblewrap，另两档起不来）。
  */
 const APPROVALS = {
-  auto: { label: "跟随沙箱档", short: "自动", desc: "只读/可写档会停下来问你，全权限档不问" },
+  auto: { label: "跟随沙箱档", short: "自动", desc: "使用当前权限档的安全默认审批策略" },
   "on-request": { label: "按需确认", short: "按需", desc: "Codex 想越界操作时弹卡片等你点" },
   untrusted: { label: "严格", short: "严格", desc: "非受信操作一律先问" },
   never: { label: "从不询问", short: "不问", desc: "全自动，不打断" },

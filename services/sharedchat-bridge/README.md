@@ -99,8 +99,8 @@ Tavo 的「自定义（OpenAI 协议）」要求 **API 基础 URL**，它会自�
 | `SHAREDCHAT_BASE` | `https://new.sharedchat.cc/codex/v1` | 上游 |
 | `SHAREDCHAT_MODEL` | `gpt-5.6-sol` | 默认模型 |
 | `SHAREDCHAT_INSTALL_ID` | 固定 UUID | 指纹；换成任意非空字符串也行 |
-| `BRIDGE_KEY` | 空 | 非空则校验下游 Authorization |
-| `BRIDGE_PORT` / `BRIDGE_HOST` | 8787 / 0.0.0.0 | 监听 |
+| `BRIDGE_KEY` | 空 | 监听非 loopback 地址时必填；校验下游 Authorization / x-api-key |
+| `BRIDGE_PORT` / `BRIDGE_HOST` | 8787 / 127.0.0.1 | 监听；非本机地址必须配置 BRIDGE_KEY |
 | `BRIDGE_TIMEOUT` | 300 | 上游超时秒 |
 | `BRIDGE_DEFAULT_INSTRUCTIONS` | 中性 RP 提示 | 客户端没给 system 时用 |
 

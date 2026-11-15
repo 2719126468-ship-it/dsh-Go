@@ -220,11 +220,12 @@ jobs:
         run: |
           python3 -m py_compile services/sharedchat-bridge/bridge.py
           for file in services/sharedchat-bridge/*.sh; do bash -n "$file"; done
-      - name: Delegate plugin parses
+      - name: Delegate plugin parses and cancellation tests
         run: |
-          for file in packages/dsh-codex-delegate/index.js packages/dsh-codex-delegate/src/*.js; do
+          for file in packages/dsh-codex-delegate/index.js packages/dsh-codex-delegate/src/*.js packages/dsh-codex-delegate/test/*.js; do
             node --check "$file"
           done
+          node --test packages/dsh-codex-delegate/test/*.test.js
       - name: Capture probes parse
         run: |
           for file in tooling/codex-capture/*.py; do python3 -m py_compile "$file"; done

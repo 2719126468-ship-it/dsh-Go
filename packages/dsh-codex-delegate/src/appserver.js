@@ -408,7 +408,9 @@ export class CodexAppServer {
   }
 
   async runTurnInner({ prompt, cwd, timeoutMs, signal }) {
+    if (signal?.aborted) return { ok: false, timedOut: false, status: "aborted", output: "(call cancelled)" };
     await this.ensure();
+    if (signal?.aborted) return { ok: false, timedOut: false, status: "aborted", output: "(call cancelled)" };
 
     // Thread setup is charged to the handshake budget, not to the turn budget.
     // Charging it to the turn made the first call after an idle shutdown — which
@@ -421,6 +423,7 @@ export class CodexAppServer {
 
     const threadId = started?.thread?.id;
     if (!threadId) throw new Error("thread/start 未返回 thread id");
+    if (signal?.aborted) return { ok: false, timedOut: false, status: "aborted", output: "(call cancelled)" };
 
     const deadline = Date.now() + timeoutMs;
     const remaining = () => Math.max(1000, deadline - Date.now());
@@ -431,9 +434,16 @@ export class CodexAppServer {
     this.turns.set(threadId, turn);
 
     let aborted = false;
+    let turnStartSent = false;
+    let interruptSent = false;
+    const interruptStartedTurn = () => {
+      if (!turnStartSent || interruptSent) return;
+      interruptSent = true;
+      this.request("turn/interrupt", { threadId }, 5000).catch(() => {});
+    };
     const onAbort = () => {
       aborted = true;
-      this.request("turn/interrupt", { threadId }, 5000).catch(() => {});
+      interruptStartedTurn();
       turn.settle({ status: "aborted" });
     };
     if (signal) {
@@ -442,10 +452,18 @@ export class CodexAppServer {
     }
 
     try {
+      if (aborted || signal?.aborted) {
+        turn.settle({ status: "aborted" });
+        return { ok: false, timedOut: false, status: "aborted", output: "(call cancelled)" };
+      }
+      // Mark before writing the request: an abort during the start handshake must
+      // enqueue its interrupt after turn/start, never before it.
+      turnStartSent = true;
       await this.request("turn/start", {
         threadId,
         input: [{ type: "text", text: prompt }],
       }, remaining());
+      if (aborted) interruptStartedTurn();
 
       const finished = await turn.promise;
       const text = turn.text();
