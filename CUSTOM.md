@@ -112,4 +112,4 @@ bash runtime/build-runtime.sh x86_64 && tooling/build-apk.sh -f x64
 - 不要改 `versionCode` 生成规则（构建分钟编码），否则覆盖安装会变成降级。
 - 不要在没有对应 `runtime/out/<abi>` 的情况下打 release 包：三个 flavor 都会被 `check_runtime_bundle.py` 逐个校验，缺哪个拦哪个。
 - arm32 的本机引擎是实验性的：真机验证（`dsh web` 能否起来、会话写入是否被 flock 降级锁卡住、v23 的 API 面）之前，不要在发布说明里把它写成稳定能力。
-- CI 的 arm32 job 目前只跑 `flutter build apk`（绕过 build-apk.sh，所以没有 preflight，也不会失败，但包里**没有引擎**）。要打带引擎的 arm32 包，得像 arm64 job 那样先加一步 `bash runtime/build-runtime.sh armeabi-v7a`；workflow 不在本任务改动范围内。
+- 定制发布工作流的 arm32 job 已与 arm64 一样先执行 `bash runtime/build-runtime.sh armeabi-v7a`，再通过 `tooling/build-apk.sh -f arm32` 做运行时 preflight；arm32 仍是实验性本机引擎，不能等同于 arm64 稳定性。双架构 Release 必须两边都成功，不能把缺少本机引擎的 APK 当成完整定制版。
