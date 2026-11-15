@@ -224,7 +224,7 @@ jobs:
           node - "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" <<'NODE'
           const fs = require("node:fs");
           const source = fs.readFileSync(process.argv[2], "utf8");
-          for (const token of ["function localDisplayPath(cwd, path)", "async function resolveLocalTarget(cwd, path)", "const displayPath = localDisplayPath(cwd, path)", "realpath$1(displayPath)"]) {
+          for (const token of ["function localDisplayPath(cwd, path)", "async function resolveLocalTarget(cwd, path)", "const displayPath = localDisplayPath(cwd, path)", "realpath$1(displayPath)", "await linkFile(tempPath, absolutePath)", "throwGuardedCreateFailure(error, absolutePath, displayPath, inspectPublicationTarget)"]) {
             const index = source.indexOf(token);
             console.log("__DSH_GO_FS_LOCAL_CONTEXT__ " + token + " " + JSON.stringify(
               index < 0 ? null : source.slice(Math.max(0, index - 350), Math.min(source.length, index + 1800))
