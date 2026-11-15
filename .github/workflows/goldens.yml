@@ -11,7 +11,8 @@ on:
         default: test
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 concurrency:
   group: goldens-${{ github.ref }}
@@ -37,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -96,7 +97,8 @@ jobs:
           from pathlib import Path
           repo = Path(subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip())
           changes = subprocess.check_output(['git', 'status', '--porcelain=v1', '-z',
-                                             '--untracked-files=all', '--no-renames', '--', 'test'])
+                                             '--untracked-files=all', '--no-renames', '--', 'app/test'],
+                                            cwd=repo)
           out = Path(os.environ['RUNNER_TEMP']) / 'golden-updates'
           out.mkdir()
           rendered = []
@@ -127,3 +129,48 @@ jobs:
           path: ${{ runner.temp }}/golden-updates/
           if-no-files-found: error
           retention-days: 7
+
+      - name: Commit verified palette golden baselines
+        id: golden_commit
+        if: github.event_name == 'push' && steps.render.outcome == 'success'
+        working-directory: .
+        run: |
+          expected=(
+            app/test/settings/goldens/appearance_dark.png
+            app/test/settings/goldens/appearance_light.png
+            app/test/settings/goldens/appearance_custom_dark.png
+            app/test/settings/goldens/appearance_custom_light.png
+            app/test/settings/goldens/en_appearance_light.png
+            app/test/tiles/goldens/tiles_accents_dark.png
+            app/test/tiles/goldens/tiles_accents_light.png
+          )
+          actual="$(git status --porcelain=v1 --untracked-files=all -- app/test | sed -E 's/^...//')"
+          while IFS= read -r path; do
+            [[ -z "$path" ]] && continue
+            allowed=false
+            for expected_path in "${expected[@]}"; do
+              if [[ "$path" == "$expected_path" ]]; then allowed=true; break; fi
+            done
+            if [[ "$allowed" != true ]]; then
+              echo "Refusing unexpected golden update: $path"
+              exit 1
+            fi
+          done <<< "$actual"
+
+          git add -- "${expected[@]}"
+          if git diff --cached --quiet; then
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            echo "No palette golden updates to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(goldens): refresh nine-accent palette snapshots"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run CI against committed golden baselines
+        if: steps.golden_commit.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "${GITHUB_REF_NAME}"

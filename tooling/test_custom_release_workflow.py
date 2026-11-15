@@ -70,6 +70,25 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("grep -Eq '^(runtime/|tooling/(build-apk\\.sh|build_number\\.py)$|app/(lib/|android/|assets/|tool/|pubspec\\.yaml$|pubspec\\.lock$))'", self.text)
         self.assertIn("needs.prepare.outputs.should_build == 'true'", self.text)
 
+    def test_golden_collector_uses_repo_relative_paths_and_safe_palette_allowlist(self):
+        self.assertIn("'app/test'],", self.goldens)
+        self.assertIn("cwd=repo)", self.goldens)
+        self.assertIn("contents: write", self.goldens)
+        self.assertIn("actions: write", self.goldens)
+        self.assertIn("Commit verified palette golden baselines", self.goldens)
+        self.assertIn("Run CI against committed golden baselines", self.goldens)
+        for name in (
+            "appearance_dark.png",
+            "appearance_light.png",
+            "appearance_custom_dark.png",
+            "appearance_custom_light.png",
+            "en_appearance_light.png",
+            "tiles_accents_dark.png",
+            "tiles_accents_light.png",
+        ):
+            with self.subTest(golden=name):
+                self.assertIn(name, self.goldens)
+
     def test_release_tag_is_unique_per_workflow_run(self):
         self.assertIn('tag="custom-${ver}-${GITHUB_RUN_ID}"', self.text)
 
