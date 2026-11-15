@@ -3,7 +3,7 @@
 # 本工作流只编 debug/profile 包：不做签名、不嵌内测通道令牌、不要求任何 secret，
 # 因此 fork、PR、本地克隆都能直接跑。带固定签名的正式包走 custom-release.yml。
 #
-#   PR：改动 app / runtime / tooling / sdk / packages 时自动跑一次 arm64 debug 包。
+#   PR：自动构建 arm32 debug 包（包含 Ubuntu armhf 本机运行时）；手动可选其它 flavor。
 #   手动：workflow_dispatch 可选 flavor 与 mode。
 name: APK build
 
@@ -45,7 +45,7 @@ env:
 
 jobs:
   apk:
-    name: APK ${{ inputs.flavor || 'arm64' }} ${{ inputs.mode || 'debug' }}
+    name: APK ${{ inputs.flavor || (github.event_name == 'pull_request' && 'arm32' || 'arm64') }} ${{ inputs.mode || 'debug' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -73,6 +73,13 @@ jobs:
           channel: stable
           cache: true
 
+      - name: 构建 ARM32 Ubuntu armhf 本机运行时
+        if: inputs.flavor == 'arm32' || github.event_name == 'pull_request'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -qq gpgv xz-utils file
+          bash runtime/build-runtime.sh armeabi-v7a
+
       - name: Flutter 依赖与 local.properties
         working-directory: app
         run: |
@@ -82,12 +89,12 @@ jobs:
       - name: 编译 APK
         run: |
           chmod +x tooling/build-apk.sh
-          tooling/build-apk.sh --${{ inputs.mode || 'debug' }} -f ${{ inputs.flavor || 'arm64' }}
+          tooling/build-apk.sh --${{ inputs.mode || 'debug' }} -f ${{ inputs.flavor || (github.event_name == 'pull_request' && 'arm32' || 'arm64') }}
 
       - name: 校验产物
         id: apk
         run: |
-          apk=$(ls app/build/app/outputs/flutter-apk/*-${{ inputs.mode || 'debug' }}.apk | head -1)
+          apk=$(find app/build/app/outputs/flutter-apk -maxdepth 1 -type f -name '*-${{ inputs.mode || 'debug' }}.apk' | sort | tail -1)
           test -s "$apk" || { echo "没有产出 APK" && exit 1; }
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
           ls -lh "$apk"
@@ -106,7 +113,7 @@ jobs:
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: dsh-go-apk-${{ inputs.flavor || 'arm64' }}-${{ inputs.mode || 'debug' }}
+          name: dsh-go-apk-${{ inputs.flavor || (github.event_name == 'pull_request' && 'arm32' || 'arm64') }}-${{ inputs.mode || 'debug' }}
           path: ${{ steps.apk.outputs.apk }}
           if-no-files-found: error
           retention-days: 7
