@@ -142,11 +142,13 @@ print('{"ok": true}')
 
     def deb_inputs_entry(self):
         source = SCRIPT.read_text()
-        start = source.index('  ubuntu_extra_debs "$ubuntu_arch" "$base"')
+        start = source.index('  ubuntu_extra_debs "$base_arch" "$base" "$distro"')
         end = source.index('  local python;', start)
         # Exercise the shipped caller too: redirect, read the list, reject empty.
+        # TEST_DISTRO covers the Debian row (single origin, no launchpad fallback).
         return ('exercise() {\n'
-                '  local ubuntu_arch="$TEST_ARCH" base=/unused-base work="$FETCH_TEST_ROOT/work"\n'
+                '  local base_arch="$TEST_ARCH" distro="${TEST_DISTRO:-ubuntu}"\n'
+                '  local base=/unused-base work="$FETCH_TEST_ROOT/work"\n'
                 '  mkdir -p "$work"\n' + source[start:end]
                 + '  printf "%s\\n" "${extra_debs[@]}"\n}\nexercise')
 
@@ -321,9 +323,9 @@ os.replace(sys.argv[1], sys.argv[2])
             name = f"node-v24.22.1-linux-{arch}.tar.xz"
             cases.append((f"node_dist {arch}", name,
                           f"https://npmmirror.com/mirrors/node/v24.22.1/{name}", None))
-        for arch in ("aarch64", "x86_64"):
-            name = f"cpython-3.12.15+20261021-{arch}-unknown-linux-gnu-install_only_stripped.tar.gz"
-            cases.append((f"python_dist {arch}", name,
+        for triple in ("aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu", "armv7-unknown-linux-gnueabihf"):
+            name = f"cpython-3.12.15+20261021-{triple}-install_only_stripped.tar.gz"
+            cases.append((f"python_dist {triple}", name,
                           f"https://registry.npmmirror.com/-/binary/python-build-standalone/20261021/{name}",
                           f"https://github.com/astral-sh/python-build-standalone/releases/download/20261021/{name}"))
         for call, name, primary, backup in cases:
@@ -629,7 +631,7 @@ os.execv(os.environ["LOCK_TEST_MV"], ["mv", *sys.argv[1:]])
         primary = "https://registry.npmmirror.com/-/binary/python-build-standalone/fixture/" + name
         self.routes = {official + "/SHA256SUMS": [0, f"{self.sha}  {name}\n"],
                        primary: [22, "partial"], official + "/" + name: [0, self.payload]}
-        result = self.run_shell('PYTHON_VERSION=fixture\nPBS_RELEASE=fixture\nvalue="$(python_dist x86_64)"\nprintf "%s" "$value"')
+        result = self.run_shell('PYTHON_VERSION=fixture\nPBS_RELEASE=fixture\nvalue="$(python_dist x86_64-unknown-linux-gnu)"\nprintf "%s" "$value"')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(Path(result.stdout).read_text(), self.payload)
         self.assertEqual(self.calls(), [official + "/SHA256SUMS", primary, official + "/" + name])

@@ -401,6 +401,86 @@ class BaseCache(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, 'too many archive links'):
             rt.base_compatibility(entries, with_python=True)
 
+class MergedUsrDeb(unittest.TestCase):
+    """Debian armhf is merged-usr: packages still ship lib/... members the base resolves
+    through a lib -> usr/lib symlink. Assembly stores one real file under usr/ and records
+    that resolved path in dpkg, never a member lying under the symlink."""
+
+    @staticmethod
+    def tar_gz(rows):
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            for name, body, mode in rows:
+                item = tarfile.TarInfo(name)
+                if body is None:
+                    item.type = tarfile.DIRTYPE
+                    item.mode = 0o755
+                    tar.addfile(item)
+                else:
+                    data = body.encode()
+                    item.mode = mode
+                    item.size = len(data)
+                    tar.addfile(item, io.BytesIO(data))
+        return buf.getvalue()
+
+    @staticmethod
+    def ar(parts):
+        # GNU ar header: name(16) mtime(12) uid(6) gid(6) mode(8) size(10) then "`\n",
+        # so the size field really starts at byte 48 the way read_deb parses it.
+        out = b"!<arch>\n"
+        for name, body in parts:
+            header = (name.encode().ljust(16)[:16] + b"0".ljust(12) + b"0".ljust(6) + b"0".ljust(6)
+                      + b"100644".ljust(8) + str(len(body)).encode().ljust(10) + b"`\n")
+            out += header + body
+            if len(body) % 2:
+                out += b"\n"
+        return out
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.base = self.root / "debian-armhf.tar.gz"
+        archive(self.base, [
+            ("usr/lib/os-release", "file", 'ID=debian\nVERSION_ID="12"\n', 0o644),
+            ("var/lib/dpkg/status", "file", "Package: base-files\nVersion: 12\n\n", 0o644),
+            ("lib", "symlink", "usr/lib", 0o777),
+            ("bin", "symlink", "usr/bin", 0o777),
+            ("sbin", "symlink", "usr/sbin", 0o777),
+        ])
+        self.node = self.root / "node.tar.gz"
+        archive(self.node, [("node/bin/node", "file", "node fixture", 0o755)])
+        self.dsh = self.root / "dsh"
+        (self.dsh / "node_modules").mkdir(parents=True)
+        (self.dsh / "node_modules" / "x.js").write_text("synthetic engine input")
+        control = b"Package: libfoo\nVersion: 1.0\nArchitecture: armhf\nMaintainer: t\nDescription: t\n"
+        data = self.tar_gz([("lib", None, None), ("lib/arm-linux-gnueabihf", None, None),
+                            ("lib/arm-linux-gnueabihf/libfoo.so", "payload", 0o644)])
+        self.deb = self.root / "libfoo_1.0_armhf.deb"
+        self.deb.write_bytes(self.ar([("control.tar.gz", self.tar_gz([("control", control.decode(), 0o644)])),
+                                      ("data.tar.gz", data)]))
+
+    def test_deb_member_under_a_merged_usr_link_lands_in_usr(self):
+        out = self.root / "rootfs.tar.gz"
+        report = self.root / "report.json"
+        versions = json.dumps(dict(runtimeVersion="fixture", abi="armeabi-v7a",
+                                   ubuntuVersion="12.15", nodeVersion="23.11.1", dshVersion="t",
+                                   pnpmVersion="t", prootVersion="t", tallocVersion="t",
+                                   androidShmemVersion="t", dshGoBridge="t"))
+        result = subprocess.run([sys.executable, "-I", str(HERE / "lib/rtbuild.py"), "assemble",
+                                 "--abi", "armeabi-v7a", "--base", str(self.base),
+                                 "--node", str(self.node), "--dsh-prefix", str(self.dsh),
+                                 "--deb", str(self.deb), "--out", str(out),
+                                 "--report", str(report), "--runtime-info", versions,
+                                 "--compress", "gz", "--threads", "1"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        packed = members(out)
+        self.assertIn("usr/lib/arm-linux-gnueabihf/libfoo.so", packed)
+        self.assertNotIn("lib/arm-linux-gnueabihf/libfoo.so", packed)
+        listed = packed["var/lib/dpkg/info/libfoo.list"][3].decode()
+        self.assertIn("/usr/lib/arm-linux-gnueabihf/libfoo.so", listed)
+        self.assertNotIn("\n/lib/arm-linux-gnueabihf", listed)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

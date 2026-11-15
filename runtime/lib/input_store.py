@@ -43,7 +43,12 @@ def shell_inputs(repo):
         match = re.fullmatch(r"\s*\[([^\]]+)\]=([0-9a-f]{64})(?:\s+#.*)?\s*", line)
         if match is None:
             raise InputError("unsupported/unparsed PIN entry in build-runtime.sh")
-        pins[match[1]] = match[2]
+        # bash expands $VAR inside a declare -A key, so the key seen by fetch is the
+        # expanded one. Match that here, or the pin reads as missing at build time.
+        name = re.sub(r"\$([A-Z][A-Z0-9_]*)", lambda m: values.get(m.group(1), m.group(0)), match[1])
+        if "$" in name:
+            raise InputError("PIN entry key references an unset variable: " + name)
+        pins[name] = match[2]
     return values, pins
 
 
@@ -114,14 +119,27 @@ def inventory(repo, npm_locks=None, all_locks=False):
             "license": None, "license_note": "inspect original copyright/COPYING and corresponding source before redistribution",
         })
 
-    for abi, ubuntu, node, termux in (("arm64-v8a", "arm64", "arm64", "aarch64"),
-                                     ("x86_64", "amd64", "x64", "x86_64")):
-        name = "ubuntu-base-" + values["UBUNTU_VERSION"] + "-base-" + ubuntu + ".tar.gz"
-        pinned(name, [values["UBUNTU_MIRROR"] + "/" + name], abi, "ubuntu_base")
-        name = "node-v" + values["NODE_VERSION"] + "-linux-" + node + ".tar.xz"
-        pinned(name, [values["NODE_MIRROR"] + "/v" + values["NODE_VERSION"] + "/" + name],
-               abi, "node_guest_and_x64_build_host" if node == "x64" else "node_guest")
-        name = "cpython-" + values["PYTHON_VERSION"] + "+" + values["PBS_RELEASE"] + "-" + termux + "-unknown-linux-gnu-install_only_stripped.tar.gz"
+    # One row per shipped ABI: base image, Node build, CPython triple, Termux arch and the
+    # distro package closure. armeabi-v7a is Debian armhf + Node v23.11.1 (no 32-bit v24 build).
+    for abi, distro, base_arch, node_arch, node_version, python_triple, termux, lock_name, archive_key in (
+            ("arm64-v8a", "ubuntu", "arm64", "arm64", "NODE_VERSION", "aarch64-unknown-linux-gnu", "aarch64",
+             "ubuntu-noble-arm64.json", "UBUNTU_ARCHIVE_ARM64"),
+            ("x86_64", "ubuntu", "amd64", "x64", "NODE_VERSION", "x86_64-unknown-linux-gnu", "x86_64",
+             "ubuntu-noble-amd64.json", "UBUNTU_ARCHIVE_AMD64"),
+            ("armeabi-v7a", "debian", "armhf", "armv7l", "NODE_VERSION_ARM32", "armv7-unknown-linux-gnueabihf", "arm",
+             "debian-bookworm-armhf.json", None)):
+        version = values[node_version]
+        if distro == "debian":
+            name = "debian-base-" + values["DEBIAN_VERSION"] + "-" + base_arch + ".tar.gz"
+            pinned(name, [values["DEBIAN_ROOTFS_URL"] + "/rootfs.tar.gz"], abi, "debian_base")
+        else:
+            name = "ubuntu-base-" + values["UBUNTU_VERSION"] + "-base-" + base_arch + ".tar.gz"
+            pinned(name, [values["UBUNTU_MIRROR"] + "/" + name], abi, "ubuntu_base")
+        name = "node-v" + version + "-linux-" + node_arch + ".tar.xz"
+        pinned(name, [values["NODE_MIRROR"] + "/v" + version + "/" + name],
+               abi, "node_guest_and_x64_build_host" if node_arch == "x64" else "node_guest")
+        name = ("cpython-" + values["PYTHON_VERSION"] + "+" + values["PBS_RELEASE"] + "-" + python_triple +
+                "-install_only_stripped.tar.gz")
         pinned(name, [values[key] + "/" + values["PBS_RELEASE"] + "/" + name
                       for key in ("PBS_MIRROR", "PBS_OFFICIAL")], abi, "python")
         for package, version_key, pool in (("proot", "PROOT_VERSION", "p"),
@@ -129,12 +147,13 @@ def inventory(repo, npm_locks=None, all_locks=False):
                                            ("libandroid-shmem", "SHMEM_VERSION", "liba")):
             name = package + "_" + values[version_key] + "_" + termux + ".deb"
             pinned(name, [values["TERMUX_REPO"] + "/pool/main/" + pool + "/" + package + "/" + name], abi, "termux_jni")
-        lock = repo / ("runtime/locks/ubuntu-noble-" + ubuntu + ".json")
-        mirror = values["UBUNTU_ARCHIVE_" + ("AMD64" if ubuntu == "amd64" else "ARM64")]
+        lock = repo / ("runtime/locks/" + lock_name)
+        mirror = values[archive_key] if archive_key else values["DEBIAN_MIRROR"]
         for index, package in enumerate(json.loads(lock.read_text(encoding="utf-8"))["packages"]):
             name = Path(package["filename"]).name
             urls = [mirror + "/" + package["filename"]]
-            if "UBUNTU_DEB_FALLBACK" in values:
+            # launchpad only serves Ubuntu; Debian's current pool is the single origin.
+            if archive_key and "UBUNTU_DEB_FALLBACK" in values:
                 urls.append(values["UBUNTU_DEB_FALLBACK"] + "/" + name)
             add_object(objects, "sha256", package["sha256"], urls, {
                 "kind": "ubuntu_deb", "name": name, "version": package["version"], "abi": abi,

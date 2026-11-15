@@ -1319,6 +1319,22 @@ def cmd_assemble(args):
         entries[p] = Entry("file", mode, data=src.data, origin="ubuntu")
         report["convertedHardlinks"].append("%s -> %s" % (p, target))
 
+    # Debian 的 armhf rootfs 是 merged-usr：bin/lib/sbin 都是指向 usr/ 的符号链接，而它的
+    # 软件包仍把多架构 .so 放在 lib/ 下。第 6 步会拒绝任何位于符号链接之下的成员，所以这些
+    # 路径先穿过链接解析再入库：树里只留 usr/lib/... 一份真实文件，dpkg 的 list 也记这个路径。
+    usr_links = {}
+    for name in ("bin", "lib", "sbin"):
+        entry = entries.get(name)
+        if entry is not None and entry.kind == "symlink" and entry.link.startswith("usr/"):
+            usr_links[name] = entry.link
+
+    def through_usr(path):
+        head, _, rest = path.partition("/")
+        target = usr_links.get(head)
+        if target is None or not rest:
+            return path
+        return posixpath.normpath(posixpath.join(target, rest))
+
     # 1b. extra Architecture: all packages (e.g. tzdata), registered in the dpkg database
     for deb in args.deb or []:
         ctl_tar, data_tar = read_deb(deb)
@@ -1329,7 +1345,7 @@ def cmd_assemble(args):
         listed = ["/."]
         with tarfile.open(fileobj=io.BytesIO(data_tar), mode="r:") as t:
             for m in t:
-                p = norm_member(m.name)
+                p = through_usr(norm_member(m.name))
                 if not p:
                     continue
                 if base_drop(p):
@@ -1342,7 +1358,7 @@ def cmd_assemble(args):
                 elif m.issym():
                     entries[p] = Entry("symlink", 0o777, link=m.linkname, origin="deb")
                 elif m.islnk():  # hard link -> independent copy (target precedes it in the tar)
-                    src = entries.get(norm_member(m.linkname))
+                    src = entries.get(through_usr(norm_member(m.linkname)))
                     if src is None or src.kind != "file":
                         raise SystemExit("hard link %s -> %s without target in %s" % (m.name, m.linkname, deb))
                     entries[p] = Entry("file", m.mode, data=src.data, origin="deb")

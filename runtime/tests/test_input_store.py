@@ -42,19 +42,23 @@ class InputStoreTest(unittest.TestCase):
         path.write_bytes(payload)
         return path
 
-    def test_current_inventory_covers_two_abis_host_and_all_npm_locks(self):
+    def test_current_inventory_covers_three_abis_host_and_all_npm_locks(self):
         current = store.inventory(REPO)
         historical = store.inventory(REPO, all_locks=True)
-        self.assertEqual(len(current), 723)
-        self.assertEqual(len(historical), 1061)
+        self.assertEqual(len(current), 756)
+        self.assertEqual(len(historical), 1094)
         npm = [obj for obj in current if obj["algorithm"] == "sha512"]
         self.assertEqual(len(npm), 661)
         self.assertEqual(sum(len(obj["refs"]) for obj in npm), 662)
         self.assertEqual(sum(ref["optional"] for obj in npm for ref in obj["refs"]), 78)
         refs = [ref for obj in current for ref in obj["refs"]]
         self.assertEqual({ref["abi"] for ref in refs if ref["kind"] == "termux_jni"},
-                         {"arm64-v8a", "x86_64"})
+                         {"arm64-v8a", "armeabi-v7a", "x86_64"})
         self.assertEqual(sum(ref["kind"] == "node_guest_and_x64_build_host" for ref in refs), 1)
+        # armeabi-v7a is the Debian row: one base, one Node v23 guest, one armv7l CPython.
+        for kind, want in (("debian_base", 1), ("ubuntu_base", 2), ("python", 3)):
+            self.assertEqual(sum(ref["kind"] == kind for ref in refs), want, kind)
+        self.assertEqual(sum(ref["kind"] == "node_guest" and ref["abi"] == "armeabi-v7a" for ref in refs), 1)
         self.assertTrue(all("license" in ref and ref["source"] for ref in refs))
 
     def test_inventory_reads_changed_pin_and_selected_lock(self):
@@ -67,7 +71,7 @@ class InputStoreTest(unittest.TestCase):
         shutil.copytree(REPO / "runtime/locks", repo / "runtime/locks")
         lock = repo / "runtime/locks/pnpm-11.28.5/package-lock.json"
         selected = store.inventory(repo, [lock])
-        self.assertEqual(len(selected), 63)
+        self.assertEqual(len(selected), 96)
         self.assertIn("sha256-" + "f" * 64, {obj["key"] for obj in selected})
         self.assertNotIn("sha256-" + old, {obj["key"] for obj in selected})
 
@@ -132,7 +136,7 @@ class InputStoreTest(unittest.TestCase):
         for path in defaults:
             path.unlink()
         # Explicit selection replaces default npm locks; it is not a full-default claim.
-        self.assertEqual(len(store.inventory(repo, [selected])), 63)
+        self.assertEqual(len(store.inventory(repo, [selected])), 96)
 
     def test_collect_original_bytes_under_extensionless_digest_name(self):
         source = self.file("origin.data", b"original archive bytes")
