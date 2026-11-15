@@ -5,7 +5,7 @@
  var ApiSessionList = class {
  	ctx;
  	workSliceMs;
-	listMetadata;
+ 	listMetadata;
 +	// Read-only fallback summaries for the current cold set; persistence owns revisions.
 +	coldHints = new Map();
  	/**
