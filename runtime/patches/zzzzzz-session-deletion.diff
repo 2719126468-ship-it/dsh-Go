@@ -141,8 +141,9 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1678,2 +1678,17 @@
- 	*/
+@@ -1453,8 +1453,23 @@
+ 	 * @returns the initialized Agent and its shared disposer.
+ 	 */
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
 +		const agent = this.runtime.ctx.agents.get(id);
@@ -156,8 +157,8 @@
 +		await agent.dshGoDispose();
 +	}
  	async initializeAgent(ownerCtx, options) {
-+		const { session } = options;
-+		const id = session.id;
+ 		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
+ 		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
 @@ -1581,5 +1581,6 @@
  					ready = true;
