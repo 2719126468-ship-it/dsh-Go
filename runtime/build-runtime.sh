@@ -333,6 +333,21 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir
 
 # pnpm for the guest (zero dependencies, plain JS). Same lock-then-`npm ci` scheme as DSH; the
 # lock's integrity must equal PNPM_INTEGRITY, so a regenerated lock cannot swap the tarball.
+install_preinstalled_bundles() {  # $1 = npm cpu, $2 = DSH npm prefix
+  local cpu="$1" prefix="$2" bin; bin="$(host_npm)"
+  local -a npm_flags=() specs=()
+  npm_prefix_flags "$cpu" "$prefix"
+  mapfile -t specs < <(python3 -I -c 'import json,sys; [print(p["name"] + "@" + p["version"]) for p in json.load(open(sys.argv[1]))["packages"]]' "$HERE/preinstalled-bundles.json")
+  [[ ${#specs[@]} -gt 0 ]] || die "no preinstalled DSH bundles declared"
+  log "preinstalling optional DSH bundles: ${specs[*]} (lifecycle scripts disabled)"
+  PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact --legacy-peer-deps "${specs[@]}"
+  mkdir -p "$LOCKS/dsh-$DSH_VERSION"
+  cp "$prefix/package.json" "$LOCKS/dsh-$DSH_VERSION/package.json"
+  cp "$prefix/package-lock.json" "$LOCKS/dsh-$DSH_VERSION/package-lock.json.tmp"
+  mv "$LOCKS/dsh-$DSH_VERSION/package-lock.json.tmp" "$LOCKS/dsh-$DSH_VERSION/package-lock.json"
+  python3 -I "$HERE/lib/preinstall_optional_bundles.py" --prefix "$prefix" --manifest "$HERE/preinstalled-bundles.json"
+}
+
 install_pnpm() {  # $1 = npm cpu, $2 = prefix dir
   local cpu="$1" prefix="$2" bin; bin="$(host_npm)"
   local lockdir="$LOCKS/pnpm-$PNPM_VERSION"
@@ -452,6 +467,7 @@ PYEOF
   # -- DSH --
   local prefix="$work/dsh-prefix"
   install_dsh "$npm_cpu" "$prefix"
+  install_preinstalled_bundles "$npm_cpu" "$prefix"
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
   "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
     --out "$work/dsh-patches.json" >&2
@@ -470,6 +486,7 @@ PYEOF
       sha256 "$base"; sha256 "$node"; sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
       sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
       sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"
+      sha256 "$HERE/preinstalled-bundles.json"; sha256 "$HERE/lib/preinstall_optional_bundles.py"
       (cd "$HERE" && find patches bridge boot direct session-deletion -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
     } | sha256sum | cut -c1-12 )"
   local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${NODE_VERSION}-ubuntu${UBUNTU_VERSION}-${inputs_sha}"
