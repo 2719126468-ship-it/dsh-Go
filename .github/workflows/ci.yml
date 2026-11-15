@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, 'work/**']
+    branches: [main, 'work/**', 'custom/**']
   workflow_dispatch:
 
 permissions:
