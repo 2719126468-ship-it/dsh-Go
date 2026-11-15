@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../performance/performance_state.dart';
-import '../../runtime/runtime_state.dart';
 import '../../runtime/local_footprint.dart';
+import '../../runtime/runtime_state.dart';
 import '../common/pressable.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
