@@ -13,7 +13,7 @@ on:
         type: boolean
         default: true
       build_arm32:
-        description: '构建 arm32（Android 8.1 32 位，仅远端客户端）'
+        description: '构建 arm32（Android 8.1+ 32 位 ARM，含本机 Linux 引擎）'
         required: false
         type: boolean
         default: true
@@ -132,6 +132,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: 构建 ARMHF 本机运行时
+        working-directory: .
+        run: |
+          sudo apt-get install -y -qq gpgv xz-utils file
+          bash runtime/build-runtime.sh armeabi-v7a
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -155,12 +161,11 @@ jobs:
         run: flutter pub get
 
       - name: 打包 arm32
-        run: |
-          flutter build apk --release --flavor arm32 --target-platform android-arm \
-            --build-number "$(python3 ../tooling/build_number.py)" \
-            ${VERSION:+--build-name "$VERSION"}
+        working-directory: .
+        run: tooling/build-apk.sh -f arm32 ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
+          DSH_SKIP_TAWCROOT: '1'
 
       - name: 校验签名
         working-directory: .
@@ -220,7 +225,7 @@ jobs:
             echo "破甲预设 + 实用技能 + dsh-our-free-model + 三套皮肤 + 固定签名（v1/v2/v3）。"
             echo
             echo "- arm64：Android 8+ 64 位，含本机 Linux 引擎"
-            echo "- arm32：Android 8+ 32 位，仅远端主机客户端（Node 无 32 位 v24）"
+            echo "- arm32：Android 8.1+ 32 位 ARM，本机 Ubuntu armhf + Termux/Bionic Node 24.22.3"
             echo
             echo "证书 SHA-256：2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444"
           } > notes.md

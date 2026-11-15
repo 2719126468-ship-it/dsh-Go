@@ -2,6 +2,8 @@
 
 DSH can run right on this phone (this phone's engine), or on your computer or server with your phone connecting to it. Chats, workspaces and plugins belong to each host.
 
+Android 8.1 (API 27) 32-bit ARM devices use the `arm32` package with an Ubuntu armhf userspace and Termux/Bionic Node.js 24.22.3 (Android API 24+). Optional npm packages that ship only glibc-native addons are omitted. The source-only `portable` flavor remains remote-only.
+
 ## This phone or remote
 
 The first time you open the app, choose where DSH runs:

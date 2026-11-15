@@ -6,12 +6,12 @@
 #
 #   tooling/build-apk.sh                       release, arm64 (phone)
 #   tooling/build-apk.sh -f x64                release, x64 (emulator)
-#   tooling/build-apk.sh -f all                both flavors with one build number (local testing only)
+#   tooling/build-apk.sh -f all                all three flavors with one build number (local testing only)
 #   tooling/build-apk.sh --debug -f x64 -t lib/dev/runtime_probe_main.dart
 #   tooling/build-apk.sh --dry-run -f all      print the commands, build nothing
 #   tooling/build-apk.sh -- --dart-define=K=V  extra flags for `flutter build apk`
 #
-#   -f, --flavor arm64|x64|all       default arm64
+#   -f, --flavor arm64|arm32|x64|portable|all       default arm64
 #   --release | --debug | --profile  default --release
 #   -t, --target FILE                Dart entry point, relative to app/
 #   -n, --build-number N             use 2..2100000000 instead of the build minute (never lower than installed)
@@ -95,9 +95,8 @@ when=$(python3 "$ROOT/tooling/build_number.py" --decode "$code" 2>/dev/null || e
 
 platform_of() { case "$1" in arm64) echo android-arm64 ;; arm32) echo android-arm ;; x64) echo android-x64 ;; esac; }
 
-# arm32 不带 Linux 运行时（Node 自 v24 起没有 32 位 Linux 构建），
-# 因此打包前不对它做 runtime/out 的完整性检查。
-flavor_has_runtime() { [[ "$1" != arm32 ]]; }
+# `portable` is the legacy remote-only ARM32 package. Normal `arm32` builds ship the local runtime.
+flavor_has_runtime() { [[ "$1" != portable ]]; }
 
 # Beta channel token: handed to flutter in a JSON file (600, shredded on exit),
 # so it never shows up in the commands printed here.
@@ -132,14 +131,23 @@ if ((dry)); then
   exit 0
 fi
 
-# Check every selected flavor before starting any build or writing build config.
-# Debug/profile may intentionally exercise UI without a bundled runtime.
+runtime_abi_of() {
+  case "$1" in
+    arm64) echo arm64-v8a ;;
+    arm32) echo armeabi-v7a ;;
+    x64) echo x86_64 ;;
+  esac
+}
+
+# Check every selected local-engine flavor before starting any build or writing build config.
+# The portable ARM32 flavor intentionally skips the runtime and remains remote-only.
 if [[ $mode == release ]]; then
-  runtime_flavors=()
-  for f in "${flavors[@]}"; do flavor_has_runtime "$f" && runtime_flavors+=("$f"); done
-  if ((${#runtime_flavors[@]})); then
-    python3 -I "$ROOT/tooling/check_runtime_bundle.py" "${runtime_flavors[@]}"
-  fi
+  for f in "${flavors[@]}"; do
+    flavor_has_runtime "$f" || continue
+    abi="$(runtime_abi_of "$f")"
+    [[ -s "$ROOT/runtime/out/$abi/assets/runtime/manifest.json" ]] ||
+      die "$f: runtime bundle missing; run bash runtime/build-runtime.sh $abi"
+  done
 fi
 
 # Toolchain: use what's on PATH; the gitignored tooling/env.sh is the fallback.
@@ -161,12 +169,16 @@ if ((beta)); then
 fi
 
 # libtawcroot.so for the opt-in tawcroot launch method, from the pinned tawc commit.
-# Release builds must carry it; other builds go on without it (the option shows unavailable).
-if ! python3 -I "$ROOT/runtime/tawcroot/build.py"; then
-  [[ $mode == release ]] && die "tawcroot: libtawcroot.so did not build"
-  rm -rf "$ROOT/runtime/out-tawcroot" # never package an older build's library
-  echo "build-apk: building without libtawcroot.so; the tawcroot launch option will be unavailable" >&2
+# Release builds must carry it unless a flavor explicitly skips the optional method.
+if [[ "${DSH_SKIP_TAWCROOT:-0}" != 1 ]]; then
+  if ! python3 -I "$ROOT/runtime/tawcroot/build.py"; then
+    [[ $mode == release ]] && die "tawcroot: libtawcroot.so did not build"
+    rm -rf "$ROOT/runtime/out-tawcroot"
+    echo "build-apk: building without libtawcroot.so; the tawcroot launch option will be unavailable" >&2
+  fi
 fi
+
+# aapt2 to read back what was built (optional).
 
 # aapt2 to read back what was built (optional).
 aapt2=$(command -v aapt2 || true)

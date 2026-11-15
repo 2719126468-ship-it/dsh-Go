@@ -171,15 +171,16 @@ jobs:
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
           prefix="$RUNNER_TEMP/dsh"
           mkdir "$prefix"
-          cp "runtime/locks/dsh-$version/package.json" "runtime/locks/dsh-$version/package-lock.json" "$prefix/"
-          npm ci --prefix "$prefix" --ignore-scripts --no-audit --no-fund
+          npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
-          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version"
+          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
             echo "DSH_TEST_PREFIX=$prefix"
             echo "DSH_INSTALL=$prefix/node_modules/@deepseek-ai/dsh"
             echo "DSH_TOOLS_DIR=$prefix/node_modules/@deepseek-ai/dsh-tools"
+          echo "DSH_VERSION=$version"
             echo "DSH_FS_LOCAL_ORIGINAL_JS=$prefix/fs-local-original.js"
           } >> "$GITHUB_ENV"
       - name: Unit tests

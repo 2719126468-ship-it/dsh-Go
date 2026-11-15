@@ -52,6 +52,10 @@ android {
             dimension = "abi"
             ndk { abiFilters += "arm64-v8a" }
         }
+        create("arm32") {
+            dimension = "abi"
+            ndk { abiFilters += "armeabi-v7a" }
+        }
         create("x64") {
             dimension = "abi"
             ndk { abiFilters += "x86_64" }
@@ -62,6 +66,10 @@ android {
         getByName("arm64") {
             assets.srcDir(File(runtimeOut, "arm64-v8a/assets"))
             jniLibs.srcDir(File(runtimeOut, "arm64-v8a/jniLibs"))
+        }
+        getByName("arm32") {
+            assets.srcDir(File(runtimeOut, "armeabi-v7a/assets"))
+            jniLibs.srcDir(File(runtimeOut, "armeabi-v7a/jniLibs"))
         }
         getByName("x64") {
             assets.srcDir(File(runtimeOut, "x86_64/assets"))

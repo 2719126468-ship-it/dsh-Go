@@ -186,7 +186,8 @@ class PatchDsh(unittest.TestCase):
         name = "fs-create-exclusive.diff"
         rel = "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js"
         pins = load(os.path.join(shipped, "pins.json"))
-        pin = pins["patches"][name]["0.2.1-rc.2"][rel]
+        version = os.environ.get("DSH_VERSION", "0.2.1-rc.2")
+        pin = pins["patches"][name][version][rel]
         with open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb") as source:
             original = source.read()
         self.assertEqual(hashlib.sha256(original).hexdigest(), pin["before"])
@@ -200,7 +201,7 @@ class PatchDsh(unittest.TestCase):
         with open(os.path.join(self.patches, "pins.json"), "w") as out:
             json.dump({"schema": 1, "patches": {name: pins["patches"][name]}}, out)
 
-        result = self.run_cli("--dsh-version", "0.2.1-rc.2")
+        result = self.run_cli("--dsh-version", version)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(sha(read(target)), pin["after"])
         again = self.run_cli("--dsh-version", "0.2.1-rc.2")
