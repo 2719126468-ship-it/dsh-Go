@@ -10,7 +10,7 @@
  	static inject = ["loader", "profileContext"];
  	constructor(ownerContext) {
  		super(ownerContext, "configEditor");
-@@ -100,9 +102,11 @@
+@@ -100,8 +102,10 @@
  				if (!this.entries().includes(entry)) throw new Error("Configuration entry changed during reload");
  				const current = structuredClone(entry.options.config ?? {});
  				const inherited = this.inherited(entry, loadProfileDirectory("dsh", this.ownerContext.profileContext.dir, this.ownerContext.profileContext.installAnchor));
