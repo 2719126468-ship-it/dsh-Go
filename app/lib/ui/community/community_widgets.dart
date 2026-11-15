@@ -89,7 +89,8 @@ class CommunityPluginRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final plugin = entry?.plugin;
+    final marketEntry = entry;
+    final plugin = marketEntry?.plugin;
     final bundles = ref.watch(installedPluginsProvider.select((s) => s.value));
     final bundled = bundles?.where((bundle) => bundle.name == pick.name && isDshGoPreinstalledBundle(bundle)).firstOrNull;
     final job = plugin == null ? null : ref.watch(pluginInstallsProvider.select((jobs) => jobs[plugin.name]));
@@ -100,8 +101,8 @@ class CommunityPluginRow extends ConsumerWidget {
     void open() {
       if (bundled != null) {
         unawaited(showBundleSheet(context, bundled));
-      } else if (entry != null) {
-        unawaited(showMarketPluginSheet(context, entry));
+      } else if (marketEntry != null) {
+        unawaited(showMarketPluginSheet(context, marketEntry));
       }
     }
 
@@ -119,9 +120,9 @@ class CommunityPluginRow extends ConsumerWidget {
             : marketInstallStatus(plugin, bundles),
         job: job,
         installedLabel: bundled == null ? null : (chinese ? '管理' : 'Manage'),
-        onPressed: bundled != null || entry != null ? open : null,
+        onPressed: bundled != null || marketEntry != null ? open : null,
       ),
-      onTap: bundled != null || entry != null ? open : null,
+      onTap: bundled != null || marketEntry != null ? open : null,
     );
   }
 }
