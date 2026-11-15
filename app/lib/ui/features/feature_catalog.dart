@@ -34,6 +34,7 @@ import '../share_code/profile_share_sheet.dart';
 import '../shell/session_search_page.dart';
 import '../terminal/terminal_page.dart';
 import '../theme/app_icons.dart';
+import '../web/ai_browser_page.dart';
 import '../web/web_target.dart';
 import '../workspace/workspaces_page.dart';
 import 'feature_widgets.dart' show openSessionInChat;
@@ -371,6 +372,24 @@ final featureSections = <FeatureSection>[
       icon: AppIcons.workspace,
       tile: FeatureKind.workspace,
       native: (_) => const WorkspacesPage(),
+    ),
+    FeatureItem.localized(
+      id: 'ai-browser',
+      title: (l10n) => l10n.localeName == 'en' ? 'AI Browser' : 'AI 浏览器',
+      summary: (l10n) => l10n.localeName == 'en'
+          ? 'ChatGPT, Claude and web browsing'
+          : 'ChatGPT、Claude 与网页浏览',
+      icon: AppIcons.browser,
+      native: (_) => const AiBrowserPage(),
+    ),
+    FeatureItem.localized(
+      id: 'dsh017-bilibili',
+      title: (l10n) => l10n.localeName == 'en' ? 'Bilibili media' : 'B站媒体',
+      summary: (l10n) => l10n.localeName == 'en'
+          ? 'Search and play through DSH-017'
+          : '通过 DSH-017 搜索与播放',
+      icon: AppIcons.mediaPlay,
+      native: (_) => const AiBrowserPage(mediaOnly: true),
     ),
     FeatureItem.localized(
       id: 'web',
