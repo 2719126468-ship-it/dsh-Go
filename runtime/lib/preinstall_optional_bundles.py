@@ -37,7 +37,7 @@ def main() -> int:
         raise SystemExit(f"DSH optional-bundle catalog not found: {catalog}")
 
     source = catalog.read_text(encoding="utf-8")
-    pattern = re.compile(r"(?P<head>(?:const|let|var)\\s+)?OPTIONAL_BUNDLES\\s*=\\s*\\[(?P<body>.*?)\\]", re.S)
+    pattern = re.compile(r"OPTIONAL_BUNDLES\\s*=\\s*\\[(?P<body>.*?)\\]", re.S)
     matches = list(pattern.finditer(source))
     if len(matches) != 1:
         raise SystemExit(f"expected one OPTIONAL_BUNDLES array in {catalog}, found {len(matches)}")
@@ -53,7 +53,6 @@ def main() -> int:
         temporary.write_text(source, encoding="utf-8")
         temporary.replace(catalog)
 
-    # Fail closed if the package list cannot be found after the edit.
     written = catalog.read_text(encoding="utf-8")
     for name in names:
         if not re.search(rf"['\"]{re.escape(name)}['\"]", written):
