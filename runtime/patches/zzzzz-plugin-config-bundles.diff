@@ -1,4 +1,4 @@
-# DSH rc4 after R6: await config authorizers inside the existing HMR/profile locks.
+# DSH 0.2.x: await config authorizers while holding the existing HMR/profile locks.
 --- a/node_modules/@deepseek-ai/dsh-config-editor/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-config-editor/lib/index.js
 @@ -13,6 +13,8 @@
@@ -21,6 +21,5 @@
 +				// Existing synchronous change callbacks keep their return-value contract.
 +				const next = await change(current, inherited);
 +				if (!this.entries().includes(entry) || entry.fiber !== fiber || fiber?.state !== 2) throw new Error("Configuration plugin is no longer active");
- 				const resolved = fiber.ctx.waterfall(fiber, "internal/config", next, () => next);
- 				resolveConfig(fiber.runtime, resolved);
+ 				fiber.resolveConfig(next);
  				let before;
