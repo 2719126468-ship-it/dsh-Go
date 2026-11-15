@@ -176,8 +176,14 @@ class PatchDsh(unittest.TestCase):
         for name in sorted(n for n in os.listdir(shipped) if n.endswith(".diff")):
             files = rtbuild.parse_unified_diff(read(os.path.join(shipped, name)))
             self.assertTrue(files and all(hunks for _, hunks in files), name)
-            for version, by_file in pins["patches"][name].items():
-                self.assertEqual(sorted(by_file), sorted(rel for rel, _ in files), (name, version))
+            diff_files = {rel for rel, _ in files}
+            patch_pins = pins["patches"][name]
+            for version, by_file in ((version, value) for version, value in patch_pins.items()
+                                     if version != "optional_files"):
+                optional = set(patch_pins.get("optional_files", {}).get(version, []))
+                self.assertTrue(set(by_file).issubset(diff_files), (name, version))
+                self.assertTrue(optional.issubset(diff_files), (name, version))
+                self.assertEqual(diff_files, set(by_file) | optional, (name, version))
 
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm 0.2.1-rc.2 lib/index.js")
