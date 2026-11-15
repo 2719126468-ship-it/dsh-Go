@@ -1,0 +1,9 @@
+node_modules/
+server.log
+*.log
+.pids/
+.token
+*.tmp
+server.log.1
+.run/
+.shots/

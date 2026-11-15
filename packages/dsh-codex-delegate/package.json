@@ -1,0 +1,15 @@
+{
+  "name": "dsh-codex-delegate",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "codex_delegate: run a task on a resident codex app-server and return the assembled reply.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

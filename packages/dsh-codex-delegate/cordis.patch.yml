@@ -1,0 +1,54 @@
+# dsh-codex-delegate — exposes the local Codex CLI to DSH two ways:
+#
+#   1. the `codex_delegate` tool (this package's own plugin), and
+#   2. the `codex` SubagentProvider, bound to a model-facing tool by the
+#      `tool-subagent-codex` row at the bottom.
+#
+# Both share ONE resident `codex app-server` process.
+#
+# Tunables for the plugin row (all optional; defaults live in index.js):
+#
+#   - id: codex-delegate
+#     name: dsh-codex-delegate
+#     config:
+#       timeoutMs: 300000          # per-turn budget (default 300000)
+#       idleTimeoutMs: 300000      # reap the app-server after this idle (default 300000)
+#       handshakeTimeoutMs: 30000  # spawn + initialize budget
+#       codexPath: /data/data/com.termux/files/home/.local/bin/codex
+#       sandboxMode: danger-full-access
+#       approvalPolicy: never
+#       defaultCwd: /data/data/com.termux/files/home
+#       maxOutputChars: 100000
+#       killGraceMs: 2000
+#       stderrTailChars: 4000
+#       subagentEnabled: true      # register the `codex` SubagentProvider
+#       residentProcess: true      # true  - share one process across runs (fast)
+#                                  # false - stop it when the last run disposes, so the
+#                                  #         child reaches actual exit before dispose()
+#                                  #         resolves. Slower, but strictly matches DSH's
+#                                  #         documented out-of-process teardown contract.
+#
+- insert:
+    - id: codex-delegate
+      name: dsh-codex-delegate
+      # Daily mode: one app-server is shared by the tool and the provider, and is
+      # reclaimed by `idleTimeoutMs` and by plugin unload.
+      #
+      # `false` is the strict-teardown alternative — it stops the child when the
+      # last turn drains, so the process reaches actual exit before `dispose()`
+      # resolves, at the cost of a cold start per delegation. Its refcount path
+      # (`activeTurns` + `maybeKill` in CodexAppServer) is verified by mock tests
+      # but has never been exercised on a live DSH; see README "已知限制".
+      config:
+        residentProcess: true
+    # A second `@deepseek-ai/dsh-tool-subagent` instance bound to the `codex`
+    # provider. `maxDepth: provider-managed` is REQUIRED: leaving it unset falls
+    # back to the Host default (1), which trips the mount-time depthLimit
+    # capability check, since the provider cannot enforce a recursion cap inside
+    # Codex. The row simply waits until the provider appears.
+    - id: tool-subagent-codex
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: codex
+        toolName: codex_subagent
+        maxDepth: provider-managed

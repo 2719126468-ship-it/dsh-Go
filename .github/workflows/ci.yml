@@ -35,6 +35,7 @@ jobs:
       app: ${{ github.event_name != 'pull_request' || steps.filter.outputs.app == 'true' }}
       packages: ${{ github.event_name != 'pull_request' || steps.filter.outputs.packages == 'true' }}
       runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.runtime == 'true' }}
+      codex: ${{ github.event_name != 'pull_request' || steps.filter.outputs.codex == 'true' }}
     steps:
       - id: filter
         if: github.event_name == 'pull_request'
@@ -46,6 +47,8 @@ jobs:
             app: [*ci, 'app/**', 'packages/**', 'sdk/plugin-kit/**', 'site/share/**', 'docs/guide/**', 'THIRD_PARTY_NOTICES.md']
             packages: [*ci, 'packages/**']
             runtime: [*ci, 'runtime/**', 'examples/**', 'sdk/plugin-kit/**', 'app/tool/engine_auth/**', 'app/test/plugin_config/fixtures/**', 'app/test/media/fixtures/**']
+            # Codex 套件：与 App 解耦的 Web 端 / 兼容桥 / DSH 插件 / 抓包探针
+            codex: [*ci, 'services/codex-web/**', 'services/sharedchat-bridge/**', 'packages/dsh-codex-delegate/**', 'tooling/codex-capture/**']
 
   checks:
     name: Generated files, tooling, SDK, web
@@ -197,6 +200,36 @@ jobs:
           bash runtime/tests/run-guard-tests.sh "$DSH_PREFIX"
           bash runtime/tests/run-native-tests.sh "$DSH_PREFIX"
 
+  codex:
+    name: Codex suite
+    needs: changes
+    if: needs.changes.outputs.codex == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - *checkout
+      - *node
+      # public/*.js 是浏览器脚本，tools/*.src.js 是被注入页面的片段（含顶层 return），
+      # 两者只做真实执行验证（npm test），不做 node --check。
+      - name: Web Codex unit tests
+        working-directory: services/codex-web
+        run: |
+          for file in server.js src/*.js; do node --check "$file"; done
+          npm test
+      - name: OpenAI-compatible bridge compiles
+        run: |
+          python3 -m py_compile services/sharedchat-bridge/bridge.py
+          for file in services/sharedchat-bridge/*.sh; do bash -n "$file"; done
+      - name: Delegate plugin parses
+        run: |
+          for file in packages/dsh-codex-delegate/index.js packages/dsh-codex-delegate/src/*.js; do
+            node --check "$file"
+          done
+      - name: Capture probes parse
+        run: |
+          for file in tooling/codex-capture/*.py; do python3 -m py_compile "$file"; done
+          for file in tooling/codex-capture/*.sh; do bash -n "$file"; done
+
   android:
     name: Android JVM
     needs: changes
@@ -227,7 +260,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    needs: [changes, checks, flutter, dart, runtime, android]
+    needs: [changes, checks, flutter, dart, runtime, codex, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

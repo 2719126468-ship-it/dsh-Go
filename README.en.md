@@ -290,6 +290,22 @@ To inspect APK build commands without building:
 DSH_BETA_TOKEN_FILE= bash tooling/build-apk.sh --dry-run -f all
 ```
 
+## Codex suite
+
+The repository also carries a Codex toolchain that stays decoupled from the app: `services/codex-web/`
+(a local Codex UI for the phone browser), `services/sharedchat-bridge/` (Responses API to OpenAI-compatible
+chat completions), `packages/dsh-codex-delegate/` (a DSH plugin) and `tooling/codex-capture/`
+(request capture and replay probes). None of it ships inside the APK:
+
+```bash
+node services/codex-web/server.js                # 127.0.0.1:3081
+(cd services/codex-web && npm test)              # zero-dependency unit tests
+bash services/sharedchat-bridge/start.sh         # 8787; put the key in .env first
+```
+
+CI runs it in the `Codex suite` job of `ci.yml`; `.github/workflows/apk-build.yml` builds a debug APK
+artifact on pull requests, so no local Flutter or Android SDK is needed. See [docs/codex-suite.md](docs/codex-suite.md).
+
 ## Repository layout
 
 | Path | Contents |
@@ -300,6 +316,8 @@ DSH_BETA_TOKEN_FILE= bash tooling/build-apk.sh --dry-run -f all
 | `runtime/` | Linux runtime assembly, engine patches and the app bridge |
 | `sdk/plugin-kit/` | Native plugin authoring kit, used from the repository and not published to npm |
 | `examples/plugins/` | Example plugins |
+| `services/codex-web/`, `services/sharedchat-bridge/` | Local web Codex UI and an OpenAI-compatible bridge ([Codex suite](docs/codex-suite.md)) |
+| `packages/dsh-codex-delegate/` | DSH plugin exposing the local Codex CLI as `codex_delegate` |
 | `docs/guide/`, `docs/plugins/` | User and plugin development guides |
 | `docs/assets/` | Showcase images, pet animations and community QR codes used on this page |
 | `tooling/` | Toolchain, APK build and diagnostic scripts |

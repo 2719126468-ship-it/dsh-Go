@@ -9,10 +9,14 @@ app/                         Flutter App：原生界面、Riverpod 状态、l10n
 app/lib/l10n/parts/          界面文案的中英文 ARB 输入
 packages/dsh_client/         纯 Dart 客户端：HTTP/SSE、mux、会话与删除 API
 packages/dsh_remote/         远程传输：WebRTC / LAN / TURN / 中继
+packages/dsh-codex-delegate/ DSH 插件：codex_delegate 工具 + codex SubagentProvider
 runtime/                     打补丁的 DSH 引擎运行时
 runtime/bridge/dsh-go-bridge/  App ↔ 引擎的 HTTP 桥（/dsh-go/v1/*，含会话删除路由）
 runtime/patches/             引擎补丁及其 pins.json（补丁与版本钉死）
 sdk/plugin-kit/              插件 SDK
+services/codex-web/          本地 Web 版 Codex：Node 零依赖，127.0.0.1:3081
+services/sharedchat-bridge/  Responses API → OpenAI chat/completions 兼容桥（Python）
+tooling/codex-capture/       Codex 上游抓包与逐字段复放探针
 tooling/                     APK 构建与构建号脚本
 docs/                        架构、发布、路线图、用户指南
 ```
@@ -30,6 +34,9 @@ node --test runtime/tests/*.test.mjs                               # 引擎桥/�
 python3 app/tool/l10n_merge.py --check                             # 文案生成检查
 python3 app/tool/guide_sync.py --check                             # 用户指南同步检查
 tooling/build-apk.sh --build-name <x.y.z>                          # 构建 APK
+(cd services/codex-web && npm test)                                # Web 版 Codex 单测（零依赖）
+python3 -m py_compile services/sharedchat-bridge/bridge.py         # 兼容桥语法
+node --check packages/dsh-codex-delegate/index.js                  # 插件入口语法
 ```
 
 CI（`.github/workflows/ci.yml`）在 PR 上跑通用检查和改动涉及的部分，在 `main` 上跑全量，结果看 `CI OK`。它不碰真机和真实账号，绿了不等于手机上没问题。
@@ -69,6 +76,12 @@ CI（`.github/workflows/ci.yml`）在 PR 上跑通用检查和改动涉及的部
 - 只暂存明确路径，不用 `git add .` / `git add -A`。
 - 未经要求不 commit、不 push、不打 tag、不发布。
 - 不 force push `main` 或重写共享历史，除非用户在当前对话里明确要求；重写后必须重建受影响的分支与 PR。
+
+### Codex 套件
+
+- `services/codex-web`、`services/sharedchat-bridge`、`tooling/codex-capture` 是**独立服务/工具**，不进 APK，不改动 App 运行时打包；细节见 [docs/codex-suite.md](docs/codex-suite.md)。
+- 三个组件的 CI 在 `ci.yml` 的 `Codex suite` job；APK 编译在 `apk-build.yml`（PR 触发，产出 debug APK artifact）。
+- 真实 key、token、`~/.codex` 会话、`body.json`/`capture.jsonl` 抓包日志不进仓库；脚本只从环境变量或本地 `.env` 读凭据。
 
 ### 真机验证
 
