@@ -369,9 +369,7 @@ tar -xzf /tmp/codex.tgz -C "$DEST" --strip-components=1
 | workspace-write | `{type:"workspaceWrite", writableRoots:[cwd]}` | 可改工作目录内文件，不联网 |
 | danger-full-access | `{type:"dangerFullAccess"}` | 全权限 |
 
-第二段是审批（`auto` / `on-request` / `untrusted` / `never`）：`auto` 跟随沙箱档的默认值
-（只读/可写 → `on-request`，全权限 → `never`），选显式值就压住沙箱默认，
-所以「全权限 + 按需确认」这种组合能成立 —— 那正是本机唯一能弹出审批卡的配置。
+第二段是审批（`auto` / `on-request` / `untrusted` / `never`）：`auto` 跟随当前权限档的安全默认值；目前三档均默认 `on-request`，包括 Android 上必须使用的 `danger-full-access`。只有用户显式选择 `never` 才会关闭审批；显式选择 `on-request` 或 `untrusted` 则覆盖沙箱档默认值。
 
 都是用 `turn/start` 的 `cwd` / `sandboxPolicy` / `approvalPolicy` 覆盖传的（协议原话：
 "Override … for this turn and subsequent turns"），**换目录换权限都不用重开会话**。
