@@ -70,10 +70,6 @@
           "before": "772ca58f0f786d6cb4d839deb621634c31097c13228d81b14e3f3153d0524924",
           "after": "9ca6bb783e0948aa7f82964e84e753976ab7afa3cf3f5c5398fbb69c7105fe1f"
         },
-        "node_modules/@deepseek-ai/dsh-sandbox/lib/index.js": {
-          "before": "b56373befbfcfe281c17c8892e9a4b2cdcb96851290b3ed0ff56b08915e2f743",
-          "after": "ea5f92f9a38c560b30ae9a83e13a086d6ebb8797a2308239b32a3ac3effae6dc"
-        },
         "node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js": {
           "before": "783214a95cc531c82567925ed0afabfdee5c091a56c4b1c1e1bce523b948ee02",
           "after": "6f125ead7b004d60965d6ca10fc41d6a891ff63ad627668d7b0060a8a49effa8"
@@ -107,10 +103,6 @@
         "node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js": {
           "before": "772ca58f0f786d6cb4d839deb621634c31097c13228d81b14e3f3153d0524924",
           "after": "9ca6bb783e0948aa7f82964e84e753976ab7afa3cf3f5c5398fbb69c7105fe1f"
-        },
-        "node_modules/@deepseek-ai/dsh-sandbox/lib/index.js": {
-          "before": "b56373befbfcfe281c17c8892e9a4b2cdcb96851290b3ed0ff56b08915e2f743",
-          "after": "ea5f92f9a38c560b30ae9a83e13a086d6ebb8797a2308239b32a3ac3effae6dc"
         },
         "node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js": {
           "before": "783214a95cc531c82567925ed0afabfdee5c091a56c4b1c1e1bce523b948ee02",
