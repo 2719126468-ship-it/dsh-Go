@@ -31,7 +31,23 @@ env:
   TZ: Asia/Shanghai
 
 jobs:
+  # Both flavors must carry the same versionCode; otherwise Android treats a
+  # cross-ABI update as a downgrade. Compute it once, before either build starts.
+  prepare:
+    name: 准备统一版本号
+    runs-on: ubuntu-24.04
+    outputs:
+      build_number: ${{ steps.number.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: 生成共享 Android versionCode
+        id: number
+        run: echo "build_number=$(python3 tooling/build_number.py)" >> "$GITHUB_OUTPUT"
+
   arm64:
+    needs: prepare
     if: github.event_name == 'push' || inputs.build_arm64
     runs-on: ubuntu-24.04
     timeout-minutes: 300
@@ -100,9 +116,10 @@ jobs:
         working-directory: .
         run: |
           chmod +x tooling/build-apk.sh
-          tooling/build-apk.sh -f arm64 ${VERSION:+--build-name "$VERSION"}
+          tooling/build-apk.sh -f arm64 -n "$BUILD_NUMBER" ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           # tawcroot 是可选启动方式（proot / direct 仍在）；CI 里 NDK 的 Pkg.Revision
           # 与 pin 不完全一致时直接跳过，不让一个可选库挡住出包。
           DSH_SKIP_TAWCROOT: '1'
@@ -152,6 +169,7 @@ jobs:
           if-no-files-found: error
 
   arm32:
+    needs: prepare
     if: github.event_name == 'push' || inputs.build_arm32
     runs-on: ubuntu-24.04
     timeout-minutes: 300
@@ -199,9 +217,10 @@ jobs:
         working-directory: .
         run: |
           chmod +x tooling/build-apk.sh
-          tooling/build-apk.sh -f arm32 ${VERSION:+--build-name "$VERSION"}
+          tooling/build-apk.sh -f arm32 -n "$BUILD_NUMBER" ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           # ARM32 不支持 direct/tawcroot；只打包经过验证的 PRoot 启动方式。
           DSH_SKIP_TAWCROOT: '1'
 
@@ -250,7 +269,7 @@ jobs:
           if-no-files-found: error
 
   bundle:
-    needs: [arm64, arm32]
+    needs: [prepare, arm64, arm32]
     # 双架构是定制版的发行契约；任一构建失败或被跳过，都不创建半套 Release。
     if: needs.arm64.result == 'success' && needs.arm32.result == 'success'
     runs-on: ubuntu-24.04
@@ -284,11 +303,12 @@ jobs:
         run: |
           ver="${{ inputs.version }}"
           [ -n "$ver" ] || ver=1.0.17
-          tag="custom-${ver}-$(date -u +%Y%m%d%H%M)"
+          tag="custom-${ver}-${GITHUB_RUN_ID}"
           {
             echo "破甲预设 + 四套实用技能 + dsh-our-free-model + 九套配色 + 固定签名（v1/v2/v3）。"
             echo
             echo "- arm64 与 arm32 APK 均检查了破甲预设、技能和免费模型插件是否真实打入包内"
+            echo "- Android versionCode：${{ needs.prepare.outputs.build_number }}（两个 ABI 共用，保证跨架构升级顺序一致）"
             echo "- arm64：Android 8+ 64 位，含 Ubuntu 本机 Linux 引擎"
             echo "- arm32：Android 8+ 32 位，含实验性 Debian armhf + Node v23.11.1 PRoot 引擎；尚需 32 位真机验收"
             echo
