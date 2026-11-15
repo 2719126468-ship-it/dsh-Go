@@ -48,7 +48,7 @@ except FileExistsError:
         key = f.read().strip()
 else:
     with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(key + "\\n")
+        f.write(key + "\n")
 print(key)
 PY
 )"

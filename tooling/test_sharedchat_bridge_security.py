@@ -24,7 +24,7 @@ finally:
 
 
 class BridgeSecurityTest(unittest.TestCase):
-    def test_loopback_bindings_are_safe_without_a_key(self):
+    def test_loopback_host_detection(self):
         for host in ("127.0.0.1", "::1", "localhost"):
             with self.subTest(host=host):
                 self.assertTrue(bridge.is_loopback_host(host))
