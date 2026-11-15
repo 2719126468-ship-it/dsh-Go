@@ -309,7 +309,7 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir
     log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
     cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
     warm_npm_cache "$bin" "$lockdir/package-lock.json"
-    PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
+    PATH="$bin:$PATH" npm ci --legacy-peer-deps "${npm_flags[@]}"
   else
     log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
     PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
