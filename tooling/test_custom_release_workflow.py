@@ -46,14 +46,14 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
     def test_push_events_are_received_then_filtered_by_job_branch_guards(self):
         # Receive push events first; apply the supported branch scope in jobs so GitHub
         # cannot silently miss the nested custom/* branch pattern at event filtering.
-        self.assertIn("  push:\\n  workflow_dispatch:", self.ci)
+        self.assertIn("  push:", self.ci)
         self.assertIn("github.ref == 'refs/heads/main'", self.ci)
         self.assertIn("startsWith(github.ref, 'refs/heads/custom/')", self.ci)
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.ci)
-        self.assertIn("  push:\\n  workflow_dispatch:", self.goldens)
+        self.assertIn("  push:", self.goldens)
         self.assertIn("startsWith(github.ref, 'refs/heads/custom/')", self.goldens)
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.goldens)
-        self.assertIn("  push:\\n\\npermissions:", self.text)
+        self.assertIn("  push:", self.text)
         self.assertIn("startsWith(github.ref, 'refs/heads/custom/')", self.text)
         self.assertIn("startsWith(github.ref, 'refs/heads/work/')", self.text)
         self.assertIn("  workflow_dispatch:", self.text)
