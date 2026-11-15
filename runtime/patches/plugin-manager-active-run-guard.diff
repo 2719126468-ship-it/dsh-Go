@@ -23,5 +23,5 @@
 +				if (isCancelled?.()) throw new InstallCancelledError();
 +				this.abort.signal.throwIfAborted();
 +				if (active !== void 0) throw new Error(active);
- 				const before = this.diskState();				const result = {
-					...request,
+ 				const before = this.diskState(); 				const result = {
+ 					...request,
