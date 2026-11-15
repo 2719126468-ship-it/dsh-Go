@@ -159,12 +159,9 @@
 +		const { session } = options;
 +		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-@@ -1779,6 +1799,7 @@
- 			/* v8 ignore next -- a synchronous effect exhausts the generator before returning */
- 			if (machine === void 0) throw new Error(`agent "${id}" lifecycle did not construct its driver`);
+@@ -1799,1 +1799,2 @@
  			const agent = machine;
 +			agent.dshGoDispose = dispose;
- 			assertLive();
  			return {
  				agent,
 --- a/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
