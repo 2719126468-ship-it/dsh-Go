@@ -14,9 +14,9 @@
 +		dshGoAuthorizationAbort = new AbortController();
 
 @@ -2012,2 +2013,3 @@
- 				cleanup = ctx.effect(() => async () => {
- 					this.stopping = true;
-+					this.dshGoAuthorizationAbort.abort();
+ 					cleanup = ctx.effect(() => async () => {
+ 						this.stopping = true;
++						this.dshGoAuthorizationAbort.abort();
 
 @@ -2082,6 +2084,7 @@
  		* @returns The durably stored schedule. Cancellation does not roll back an in-flight write.
