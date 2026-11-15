@@ -2,7 +2,7 @@ name: Render updated goldens
 
 on:
   push:
-    branches: ['work/**']
+    branches: ['work/**', 'custom/**']
   workflow_dispatch:
     inputs:
       paths:
