@@ -119,7 +119,6 @@ class _Plugins extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final chinese = Localizations.localeOf(context).languageCode == 'zh';
     final catalog = ref.watch(marketAllProvider);
     final rows = catalog.when<List<Widget>>(
       skipLoadingOnRefresh: false,
