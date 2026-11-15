@@ -5,12 +5,16 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "custom-release.yml"
+CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+GOLDENS_WORKFLOW = ROOT / ".github" / "workflows" / "goldens.yml"
 
 
 class CustomReleaseWorkflowTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text = WORKFLOW.read_text(encoding="utf-8")
+        cls.ci = CI_WORKFLOW.read_text(encoding="utf-8")
+        cls.goldens = GOLDENS_WORKFLOW.read_text(encoding="utf-8")
 
     def test_shared_build_number_is_generated_once(self):
         self.assertIn("build_number: ${{ steps.number.outputs.build_number }}", self.text)
@@ -34,6 +38,11 @@ class CustomReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("needs.arm64.result == 'success' && needs.arm32.result == 'success'", self.text)
         self.assertIn("arm64 artifact missing; refusing partial release", self.text)
         self.assertIn("arm32 artifact missing; refusing partial release", self.text)
+
+    def test_custom_branch_push_runs_ci_and_golden_rendering(self):
+        self.assertIn("branches: [main, 'work/**', 'custom/**']", self.ci)
+        self.assertIn("branches: ['work/**', 'custom/**']", self.goldens)
+        self.assertIn("      - custom/**", self.text)
 
     def test_release_tag_is_unique_per_workflow_run(self):
         self.assertIn('tag="custom-${ver}-${GITHUB_RUN_ID}"', self.text)
