@@ -252,7 +252,7 @@ jobs:
         run: |
           mkdir -p out
           ver="${{ inputs.version }}"
-          [ -n "$ver" ] || ver=1.0.16
+          [ -n "$ver" ] || ver=1.0.17
           a64=$(find dist -path '*arm64*' -name '*.apk' | head -1)
           a32=$(find dist -path '*arm32*' -name '*.apk' | head -1)
           test -n "$a64" || { echo "arm64 artifact missing; refusing partial release"; exit 1; }
@@ -271,7 +271,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ver="${{ inputs.version }}"
-          [ -n "$ver" ] || ver=1.0.16
+          [ -n "$ver" ] || ver=1.0.17
           tag="custom-${ver}-$(date -u +%Y%m%d%H%M)"
           {
             echo "破甲预设 + 实用技能 + dsh-our-free-model + 三套皮肤 + 固定签名（v1/v2/v3）。"
