@@ -265,6 +265,11 @@
           "before": "253e1339e3f7172aa6f272c5209f45cc69519a2509e9684242ee004c22a50f88",
           "after": "ff1c3fc024dfc3520c8b3a89cefae95e3e71b38e5437abb42553681eb1d89cc2"
         }
+      },
+      "superseded_files": {
+        "0.2.2-rc.1": [
+          "node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js"
+        ]
       }
     }
   },
