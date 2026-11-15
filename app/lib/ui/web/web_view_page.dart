@@ -702,7 +702,7 @@ class _WebViewPageState extends State<WebViewPage> {
   void _hideCustomWidget() {
     if (!_showingCustomWidget) return;
     _showingCustomWidget = false;
-    if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
     unawaited(
       SystemChrome.setPreferredOrientations(const [
         DeviceOrientation.portraitUp,
