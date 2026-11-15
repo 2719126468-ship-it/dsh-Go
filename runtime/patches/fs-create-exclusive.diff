@@ -28,28 +28,26 @@
 +			}
  		}
 
-@@ -0,7 +0,23 @@
- 		if (options.createIfAbsent) {
- 			try {
- 				await linkFile(tempPath, absolutePath);
- 			} catch (error) {
--				await throwGuardedCreateFailure(error, absolutePath, displayPath, inspectPublicationTarget);
-+				if (!(error instanceof Error && "code" in error && typeof error.code === "string" && ["EPERM", "EXDEV", "ENOTSUP", "EMLINK"].includes(error.code))) {
-+					await throwGuardedCreateFailure(error, absolutePath, displayPath, inspectPublicationTarget);
-+				}
-+				throwIfAborted(signal, "write");
-+				handle = await (internals.openPublicationFile ?? open)(absolutePath, "wx", 384)
-+					.catch((openError) => throwGuardedCreateFailure(openError, absolutePath, displayPath, inspectPublicationTarget));
-+				try {
-+					await handle.chmod(384);
-+					await handle.writeFile(content, { encoding: "utf8", ...signal ? { signal } : {} });
-+					await handle.sync();
-+					if (mode !== void 0) await handle.chmod(mode);
-+					await handle.close();
-+					handle = void 0;
-+				} catch (writeError) {
-+					// Do not unlink by path: another writer may have replaced the file we opened.
-+					throw new FsError(`cannot finish creating "${displayPath}": ${errorMessage(writeError)}; file may be incomplete`, isAbortError(writeError) ? "FS_ABORTED" : "FS_IO_ERROR", { cause: writeError });
-+				}
- 			}
+@@ -0,5 +0,22 @@
+ 		if (createIfAbsent !== void 0) try {
+ 			await linkFile(tempPath, absolutePath);
+ 		} catch (error) {
+-			await throwGuardedCreateFailure(error, absolutePath, createIfAbsent.displayPath, inspectPublicationTarget);
++			if (!(error instanceof Error && "code" in error && typeof error.code === "string" && ["EPERM", "EXDEV", "ENOTSUP", "EMLINK"].includes(error.code))) {
++				await throwGuardedCreateFailure(error, absolutePath, createIfAbsent.displayPath, inspectPublicationTarget);
++			}
++			throwIfAborted(signal, "write");
++			handle = await (internals.openPublicationFile ?? open)(absolutePath, "wx", 384)
++				.catch((openError) => throwGuardedCreateFailure(openError, absolutePath, createIfAbsent.displayPath, inspectPublicationTarget));
++			try {
++				await handle.chmod(384);
++				await handle.writeFile(content, { encoding: "utf8", ...signal ? { signal } : {} });
++				await handle.sync();
++				if (mode !== void 0) await handle.chmod(mode);
++				await handle.close();
++				handle = void 0;
++			} catch (writeError) {
++				// Do not unlink by path: another writer may have replaced the file we opened.
++				throw new FsError(`cannot finish creating "${createIfAbsent.displayPath}": ${errorMessage(writeError)}; file may be incomplete`, isAbortError(writeError) ? "FS_ABORTED" : "FS_IO_ERROR", { cause: writeError });
++			}
  		}
