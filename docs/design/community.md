@@ -160,4 +160,4 @@
 
 ## 2026-11-15：GitHub 项目发现
 
-`community.json` revision 2 新增 `projects`。项目卡只展示 GitHub 仓库链接、星标快照、MIT 许可证和维护者写明的适配限制；App 不会自动克隆、安装或执行这些仓库。当前精选包含 Web 插件市场、余额挂件、侧边栏、多智能体、B 站助手和视觉工具箱。侧边栏需按当前 DSH `0.2.2-rc.1` 固定旧版；B 站助手可执行账号写操作；视觉工具箱需要宿主端 Python 依赖且 ARM32 未验证。此分区是源码发现目录，不是安全认证或真机兼容背书。
+`community.json` revision 3 新增并扩充 `projects`。项目卡只展示 GitHub 仓库链接、星标快照、许可证和适配限制；App 不会自动克隆、安装或执行这些仓库。一键精选只保留 ModSearch 与 dsh-context：ModSearch 的默认 Firecrawl keyless 抓取会把公开 URL 交给云端，agy 引擎还会跳过权限提示；dsh-context 只依赖 zod，但它的公开兼容矩阵没有明确列出当前 `0.2.2-rc.1`。ModLens 的部分 CLI 引擎使用 `--dangerously-skip-permissions`，且图像可能交给外部服务；DSH-IM 有大量渠道 SDK 与账号凭据读写；官方媒体包当前无法找到公开源码仓库，因此三者不加入一键精选。Agent Teams、B 站助手和视觉工具箱也只作为源码参考，并标出持久化、账号写操作或 Python 依赖风险。星标为 2026-11-15 快照。这是维护者做过的有限源码与清单审查，不是病毒扫描、安全认证或 Android/ARM32 兼容背书。
