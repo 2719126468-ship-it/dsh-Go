@@ -87,7 +87,7 @@ v1 / v2 / v3 三项必须为 `true`，证书主题不得含 `CN=Android Debug`�
 
 ```sh
 # GitHub Actions（推荐）
-gh workflow run custom-release.yml --repo <owner>/dsh-Go --ref custom/pojia-free-model \
+gh workflow run custom-release.yml --repo <owner>/dsh-Go --ref custom/pojia-free-model-stabilize \
   -f version=1.0.17 -f build_arm64=true -f build_arm32=true
 
 # 本地（先产出 runtime/out；多个 ABI 共用一次生成的 versionCode）
