@@ -1,0 +1,17 @@
+{
+  "name": "codex-web",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "本地 Web 版 Codex：ChatGPT / Codex 同构的三栏界面（双主题、模型与推理档、推理摘要、工具卡、计划、diff、审批卡、右侧多功能区），Termux 起服务，手机浏览器访问。",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "probe": "node tools/probe.js",
+    "test": "node tools/approval-unit.mjs && node tools/protocol-unit.js && node tools/stream-sim.js",
+    "test:e2e": "node tools/e2e-token-sanitize.cjs && node tools/e2e-steer.cjs && node tools/e2e-tabs.cjs && node tools/e2e-mobile.cjs && node tools/e2e-demo-determinism.cjs",
+    "test:all": "npm test && npm run test:e2e"
+  }
+}

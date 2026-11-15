@@ -33,3 +33,9 @@ site/build/
 
 # Release assets (tooling/release_assets.py)
 /dist/
+
+# Local SharedChat bridge credentials and runtime files
+services/sharedchat-bridge/.env
+services/sharedchat-bridge/.bridge-key
+services/sharedchat-bridge/bridge.pid
+services/sharedchat-bridge/bridge.log
