@@ -87,18 +87,6 @@
         }
       }
     },
-    "zzz-config-editor-path.diff": {
-      "0.2.1-rc.4": {
-        "node_modules/@deepseek-ai/dsh-app-boot/lib/index.js": {
-          "before": "73c2735941be3d8ef2e7acc4eca953dd6bd360c1e95d19a50c4aca9f3b2271ba",
-          "after": "ab25eb3c66b43a194c8350be2b32a30bc46e1b66eefe99b62fedcc018acf0e55"
-        },
-        "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": {
-          "before": "373e05c8250d25dda983ccf6e214a55e3792a211d1a7b883affcd66de47b5bf8",
-          "after": "2d05f943a25e2971bc0b964868a4031dcae378c01d8b928a21ec09f17952fc5f"
-        }
-      }
-    },
     "zzz-title-cache-refresh.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js": {
