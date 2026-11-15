@@ -90,10 +90,11 @@ v1 / v2 / v3 三项必须为 `true`，证书主题不得含 `CN=Android Debug`�
 gh workflow run custom-release.yml --repo <owner>/dsh-Go --ref custom/pojia-free-model \
   -f version=1.0.17 -f build_arm64=true -f build_arm32=true
 
-# 本地（先产出 runtime/out，flavor 与 ABI 一一对应）
-bash runtime/build-runtime.sh arm64-v8a && tooling/build-apk.sh -f arm64
-bash runtime/build-runtime.sh armeabi-v7a && tooling/build-apk.sh -f arm32   # 实验性
-bash runtime/build-runtime.sh x86_64 && tooling/build-apk.sh -f x64
+# 本地（先产出 runtime/out；多个 ABI 共用一次生成的 versionCode）
+BUILD_NUMBER=$(python3 tooling/build_number.py)
+bash runtime/build-runtime.sh arm64-v8a && tooling/build-apk.sh -f arm64 -n "$BUILD_NUMBER"
+bash runtime/build-runtime.sh armeabi-v7a && tooling/build-apk.sh -f arm32 -n "$BUILD_NUMBER"   # 实验性
+bash runtime/build-runtime.sh x86_64 && tooling/build-apk.sh -f x64 -n "$BUILD_NUMBER"
 ```
 
 本地构建要签名，把 `app/android/key.properties` 指向密钥库即可（不进版本库）。
