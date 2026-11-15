@@ -37,7 +37,7 @@ jobs:
   # Both flavors must carry the same versionCode; otherwise Android treats a
   # cross-ABI update as a downgrade. Compute it once, before either build starts.
   prepare:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/') || github.ref == 'refs/heads/trigger-dsh-go-validation'
     name: 准备统一版本号
     runs-on: ubuntu-24.04
     outputs:
@@ -78,7 +78,7 @@ jobs:
 
   arm64:
     needs: prepare
-    if: (github.event_name == 'push' && needs.prepare.outputs.should_build == 'true' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/'))) || (github.event_name == 'workflow_dispatch' && inputs.build_arm64)
+    if: (github.event_name == 'push' && needs.prepare.outputs.should_build == 'true' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/') || github.ref == 'refs/heads/trigger-dsh-go-validation')) || (github.event_name == 'workflow_dispatch' && inputs.build_arm64)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     env:
@@ -237,7 +237,7 @@ jobs:
 
   arm32:
     needs: prepare
-    if: (github.event_name == 'push' && needs.prepare.outputs.should_build == 'true' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/'))) || (github.event_name == 'workflow_dispatch' && inputs.build_arm32)
+    if: (github.event_name == 'push' && needs.prepare.outputs.should_build == 'true' && (startsWith(github.ref, 'refs/heads/custom/') || startsWith(github.ref, 'refs/heads/work/') || github.ref == 'refs/heads/trigger-dsh-go-validation')) || (github.event_name == 'workflow_dispatch' && inputs.build_arm32)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     defaults:
