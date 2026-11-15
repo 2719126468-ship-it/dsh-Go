@@ -120,7 +120,7 @@ void main() {
       final rings = _rings(tester, custom: false);
       expect(rings.map((r) => r.center.dy).toSet(), hasLength(1));
       expect(_choice(appL10n.pluginsCustomColor), findsNothing);
-      final preset = AppAccent.presets.last;
+      final preset = AppAccent.presets.take(6).last;
       await tester.tap(_choice(preset.label));
       await tester.pumpAndSettle();
       expect(container.read(appearanceProvider).presetId, preset.id);
