@@ -61,7 +61,7 @@ jobs:
             exit 0
           fi
           changed_files="$(git diff --name-only "$BEFORE" "$AFTER")"
-          if grep -Eq '^(app/|runtime/|tooling/)' <<<"$changed_files"; then
+          if grep -Eq '^(app/|runtime/|tooling/(build-apk\.sh|build_number\.py)$)' <<<"$changed_files"; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
