@@ -34,10 +34,12 @@ class BridgeSecurityTest(unittest.TestCase):
             with self.subTest(host=host):
                 self.assertFalse(bridge.is_loopback_host(host))
 
-    def test_authentication_is_required_when_a_key_is_configured(self):
+    def test_authentication_is_required_even_on_loopback(self):
         old = bridge.LOCAL_KEY
-        bridge.LOCAL_KEY = "test-secret"
         try:
+            bridge.LOCAL_KEY = ""
+            self.assertFalse(bridge.Handler._auth_ok(SimpleNamespace(headers={})))
+            bridge.LOCAL_KEY = "test-secret"
             self.assertFalse(bridge.Handler._auth_ok(SimpleNamespace(headers={})))
             self.assertFalse(bridge.Handler._auth_ok(SimpleNamespace(
                 headers={"Authorization": "Bearer wrong"})))

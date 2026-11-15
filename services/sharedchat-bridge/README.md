@@ -46,7 +46,7 @@ tail -f bridge.log  # 每条请求一行日志
 
 开机自启已挂到 `~/.termux/boot/50-sharedchat-bridge.sh`（需要装 Termux:Boot 并手动启动一次 App）。
 
-key 来源优先级：`$SHAREDCHAT_API_KEY` > `~/.bashrc` > 本目录 `.env`。
+上游 key 来源优先级：`$SHAREDCHAT_API_KEY` > `~/.bashrc` > 本目录 `.env`。下游 API Key 始终必需：`start.sh` 首次启动时自动生成 384-bit 随机密钥，保存到 `.bridge-key`（文件权限 600）；客户端 API Key 读取该文件即可。也可显式设置 `BRIDGE_KEY` 或在 `.env` 中配置。
 
 ## 端点
 
@@ -73,7 +73,7 @@ Tavo 的「自定义（OpenAI 协议）」要求 **API 基础 URL**，它会自�
 | 字段 | 值 |
 |---|---|
 | 模型平台 | 自定义（OpenAI 协议） |
-| API Key | 随便填，例如 `local`（除非你设了 `BRIDGE_KEY`） |
+| API Key | `cat services/sharedchat-bridge/.bridge-key` 读取启动脚本生成的密钥 |
 | API 基础 URL | `http://127.0.0.1:8787/v1` |
 | 模型名 | `gpt-5.6-sol`（或 `gpt-5.6-terra`） |
 
@@ -81,7 +81,7 @@ Tavo 的「自定义（OpenAI 协议）」要求 **API 基础 URL**，它会自�
 
 1. **别填 `https://new.sharedchat.cc/codex/v1`** —— 那是 responses 协议 + 指纹校验，Tavo 直连必然失败。
 2. Tavo 的 manifest 是 `usesCleartextTraffic=true`，`http://127.0.0.1` 能直连，不用 https、不用证书。
-3. 如果 Tavo 跑在另一台设备（同一 WiFi），将 `BRIDGE_HOST=0.0.0.0` 并配置强随机 `BRIDGE_KEY` 后启动；未配置密钥时服务会拒绝非本机监听。URL 换成本机内网 IP，例如 `http://192.168.x.x:8787/v1`。Tavo 的 API Key 填同一个 `BRIDGE_KEY`。
+3. 如果 Tavo 跑在另一台设备（同一 WiFi），将 `BRIDGE_HOST=0.0.0.0` 后启动；服务对所有来源均强制验证 `BRIDGE_KEY`。URL 换成本机内网 IP，例如 `http://192.168.x.x:8787/v1`。Tavo 的 API Key 填同一个 `BRIDGE_KEY`。
 4. 模型平台里如果 Tavo 有「API 模式 / API Mode」选项，选 `openai_chat`；选 `openai_responses` 也能用（走 `/v1/responses` 透传）。
 
 ## 已知坑
@@ -99,8 +99,8 @@ Tavo 的「自定义（OpenAI 协议）」要求 **API 基础 URL**，它会自�
 | `SHAREDCHAT_BASE` | `https://new.sharedchat.cc/codex/v1` | 上游 |
 | `SHAREDCHAT_MODEL` | `gpt-5.6-sol` | 默认模型 |
 | `SHAREDCHAT_INSTALL_ID` | 固定 UUID | 指纹；换成任意非空字符串也行 |
-| `BRIDGE_KEY` | 空 | 监听非 loopback 地址时必填；校验下游 Authorization / x-api-key |
-| `BRIDGE_PORT` / `BRIDGE_HOST` | 8787 / 127.0.0.1 | 监听；非本机地址必须配置 BRIDGE_KEY |
+| `BRIDGE_KEY` | 自动生成 | 所有监听地址均必需；start.sh 将随机密钥保存在 `.bridge-key`，校验下游 Authorization / x-api-key |
+| `BRIDGE_PORT` / `BRIDGE_HOST` | 8787 / 127.0.0.1 | 监听；无论绑定地址如何都强制验证 BRIDGE_KEY |
 | `BRIDGE_TIMEOUT` | 300 | 上游超时秒 |
 | `BRIDGE_DEFAULT_INSTRUCTIONS` | 中性 RP 提示 | 客户端没给 system 时用 |
 

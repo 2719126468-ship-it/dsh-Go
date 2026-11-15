@@ -32,15 +32,34 @@ fi
 
 BRIDGE_KEY_VALUE="${BRIDGE_KEY:-}"
 [ -n "$BRIDGE_KEY_VALUE" ] || BRIDGE_KEY_VALUE="$(read_env_value BRIDGE_KEY)"
-case "$HOST" in
-  127.0.0.1|::1|localhost) ;;
-  *)
-    if [ -z "$BRIDGE_KEY_VALUE" ]; then
-      echo "!! 非本机监听必须配置 BRIDGE_KEY（环境变量或 $ENV_FILE）" >&2
-      exit 1
-    fi
-    ;;
-esac
+KEY_FILE="$DIR/.bridge-key"
+if [ -z "$BRIDGE_KEY_VALUE" ]; then
+  if [ -s "$KEY_FILE" ]; then
+    BRIDGE_KEY_VALUE="$(cat "$KEY_FILE")"
+  else
+    BRIDGE_KEY_VALUE="$(python3 - "$KEY_FILE" <<'PY'
+import os, secrets, sys
+path = sys.argv[1]
+key = secrets.token_urlsafe(48)
+try:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+except FileExistsError:
+    with open(path, encoding="utf-8") as f:
+        key = f.read().strip()
+else:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(key + "\\n")
+print(key)
+PY
+)"
+    echo "已生成并保存本机 API Key（权限 600）：$KEY_FILE"
+    echo "首次配置客户端时使用此 Key：$BRIDGE_KEY_VALUE"
+  fi
+fi
+if [ -z "$BRIDGE_KEY_VALUE" ]; then
+  echo "!! BRIDGE_KEY 为空；拒绝启动" >&2
+  exit 1
+fi
 
 if curl -fsS -m 2 -H "Authorization: Bearer $BRIDGE_KEY_VALUE" "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then
   echo "bridge 已在 $PORT 运行"

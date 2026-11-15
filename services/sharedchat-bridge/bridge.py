@@ -22,7 +22,7 @@ UPSTREAM = os.environ.get("SHAREDCHAT_BASE", "https://new.sharedchat.cc/codex/v1
 API_KEY = os.environ.get("SHAREDCHAT_API_KEY", "").strip()
 DEFAULT_MODEL = os.environ.get("SHAREDCHAT_MODEL", "gpt-5.6-sol")
 INSTALL_ID = os.environ.get("SHAREDCHAT_INSTALL_ID", "b6f1a0c2-7d34-4e18-9a55-2c9f0d1e7a63")
-LOCAL_KEY = os.environ.get("BRIDGE_KEY", "").strip()          # 非本机监听时强制配置
+LOCAL_KEY = os.environ.get("BRIDGE_KEY", "").strip()          # 所有监听地址都必须配置
 TIMEOUT = float(os.environ.get("BRIDGE_TIMEOUT", "300"))
 VERBOSE = os.environ.get("BRIDGE_VERBOSE", "1") == "1"
 
@@ -292,7 +292,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _auth_ok(self) -> bool:
         if not LOCAL_KEY:
-            return True  # main() 已保证无密钥时只能绑定 loopback
+            return False
         h = self.headers.get("Authorization", "")
         key = h[7:].strip() if h.lower().startswith("bearer ") else self.headers.get("x-api-key", "")
         return hmac.compare_digest(key, LOCAL_KEY)
@@ -547,8 +547,8 @@ def main():
     ap.add_argument("--host", default=os.environ.get("BRIDGE_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("BRIDGE_PORT", "8787")))
     a = ap.parse_args()
-    if not is_loopback_host(a.host) and not LOCAL_KEY:
-        ap.error("非本机监听必须设置 BRIDGE_KEY；默认仅允许绑定 127.0.0.1")
+    if not LOCAL_KEY:
+        ap.error("必须设置 BRIDGE_KEY；请使用 start.sh 自动生成，或通过环境变量显式设置")
     if not API_KEY:
         print("!! 需要 SHAREDCHAT_API_KEY", file=sys.stderr)
     print(f"sharedchat-bridge  →  {UPSTREAM}")
