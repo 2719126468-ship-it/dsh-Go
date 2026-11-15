@@ -37,14 +37,19 @@ jobs:
     name: 准备统一版本号
     runs-on: ubuntu-24.04
     outputs:
-      build_number: ${{ steps.number.outputs.build_number }}
+      app_version: ${{ steps.meta.outputs.app_version }}
+      build_number: ${{ steps.meta.outputs.build_number }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: 生成共享 Android versionCode
-        id: number
-        run: echo "build_number=$(python3 tooling/build_number.py)" >> "$GITHUB_OUTPUT"
+      - name: 读取应用版本并生成共享 Android versionCode
+        id: meta
+        run: |
+          version="$(sed -n 's/^version: *\\([^+[:space:]]*\\).*/\\1/p' app/pubspec.yaml | head -1)"
+          test -n "$version" || { echo "app/pubspec.yaml has no version"; exit 1; }
+          echo "app_version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_number=$(python3 tooling/build_number.py)" >> "$GITHUB_OUTPUT"
 
   arm64:
     needs: prepare
@@ -291,7 +296,7 @@ jobs:
         run: |
           mkdir -p out
           ver="${{ inputs.version }}"
-          [ -n "$ver" ] || ver=1.0.17
+          [ -n "$ver" ] || ver="${{ needs.prepare.outputs.app_version }}"
           a64=$(find dist -path '*arm64*' -name '*.apk' | head -1)
           a32=$(find dist -path '*arm32*' -name '*.apk' | head -1)
           test -n "$a64" || { echo "arm64 artifact missing; refusing partial release"; exit 1; }
@@ -310,7 +315,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ver="${{ inputs.version }}"
-          [ -n "$ver" ] || ver=1.0.17
+          [ -n "$ver" ] || ver="${{ needs.prepare.outputs.app_version }}"
           tag="custom-${ver}-${GITHUB_RUN_ID}"
           {
             echo "破甲预设 + 四套实用技能 + dsh-our-free-model + 九套配色 + 固定签名（v1/v2/v3）。"
