@@ -24,15 +24,15 @@ ScreenClickCapture 的可执行入口目前只是 ChatGPT / Claude WebView；其
 
 DSH-017 当前服务端包含 B 站搜索、播放、多 P、收藏、下载等页面。DSH Go 的 WebView 增加了 Android HTML5 自定义全屏视图处理：点击 DSH-017 播放器的横屏全屏操作会进入横屏沉浸式播放，退出或按返回键后恢复应用布局。
 
-搜索结果列表状态恢复、分页快照和服务端搜索缓存属于 DSH-017 服务端改动，见 [DSH-017 PR #58](https://github.com/2719126468-ship-it/dsh017/pull/58)。该 PR 目前仍为 Draft；它说明 CI 的 ARMv7/ARM64 构建已通过，但 Mate 20 Pro / Android 10 手动验收尚未完成。部署的 DSH-017 服务端需包含该 PR 的改动后，返回搜索页才会获得原位置恢复效果。不要把这项待验收的服务端能力误认为已随 DSH Go 客户端自动部署。
+搜索结果列表状态恢复、分页快照和服务端搜索缓存属于 DSH-017 服务端改动，见 [DSH-017 PR #58](https://github.com/2719126468-ship-it/dsh017/pull/58)。该 PR 目前仍为 Draft；其 CI 构建已通过，但 Mate 20 Pro / Android 10 手动验收尚未完成。部署的 DSH-017 服务端需包含该 PR 的改动后，返回搜索页才会获得原位置恢复效果。不要把这项待验收的服务端能力误认为已随 DSH Go 客户端自动部署。
 
-## 32 / 64 位设备与包体积
+## 包体积与依赖边界
 
-- ARM64 APK 可使用 DSH Go 内置 Linux 运行时，并访问独立 DSH-017 媒体服务。
-- ARMv7 32 位 APK 是远程/浏览器客户端，不包含本机 Linux 运行时；Node.js 24 没有 32 位 Linux 构建。它仍可使用 AI 浏览器、DSH-017 B 站媒体和远程 DSH 主机。
-- 两个客户端共用 Flutter 页面和系统 WebView，不新增原生媒体库、不携带 Chromium 内核包，不打包 DSH-017 Python 依赖。
-- 当前正式更新清单仍以 ARM64 为主；ARM32 包由仓库的 Custom release 工作流构建并作为独立 APK 资产发布。
+- AI 浏览器和媒体页面共用 Flutter 页面与 Android System WebView。
+- 不打包 DSH-017 的 Flask/Python 服务、curl_cffi、媒体下载依赖或 Chromium APK。
+- 不复制 ScreenClickCapture 中尚未接入 Android 生命周期的截屏服务，也不带入 sing-box JNI 占位服务。
+- DSH-017 继续作为独立主机服务运行，客户端只保存服务 URL 和安全凭据并打开其 Web 页面。
 
 ## 尚待设备验收
 
-在目标 Android 设备上检查 ChatGPT / Claude 登录、普通网页导航、DSH-017 Basic Auth、B 站搜索返回状态、视频横屏全屏和返回恢复。CI 能确认 APK 可构建，不能代替设备验证。
+在目标 Android 设备上检查 ChatGPT / Claude 登录、普通网页导航、DSH-017 Basic Auth、B 站搜索返回状态、视频横屏全屏和返回恢复。CI 能确认静态分析与构建检查，不能代替设备验证。
