@@ -94,6 +94,11 @@ class CommunityPluginRow extends ConsumerWidget {
     final bundles = ref.watch(installedPluginsProvider.select((s) => s.value));
     final bundled = bundles?.where((bundle) => bundle.name == pick.name && isDshGoPreinstalledBundle(bundle)).firstOrNull;
     final job = plugin == null ? null : ref.watch(pluginInstallsProvider.select((jobs) => jobs[plugin.name]));
+    // A feed entry is only actionable when it exists in the live market
+    // or is part of this installation. Never present arbitrary package names
+    // from a stale or malformed feed as installable plugins.
+    if (plugin == null && bundled == null) return const SizedBox.shrink();
+
     final locale = Localizations.localeOf(context).languageCode;
     final chinese = locale == 'zh';
     final title = bundled?.title(locale) ?? plugin?.displayTitle() ?? pick.name;
