@@ -355,6 +355,20 @@ def cmd_patch_dsh(args):
             continue
         diff = parse_unified_diff(open(os.path.join(args.patches, name)).read())
         patch_pins = pins["patches"].get(name, {})
+        superseded_hunks = patch_pins.get("superseded_hunks", {}).get(args.dsh_version, {})
+        if superseded_hunks:
+            filtered = []
+            for rel, hunks in diff:
+                skipped = set(superseded_hunks.get(rel, []))
+                if any(not isinstance(index, int) or index < 1 or index > len(hunks) for index in skipped):
+                    sys.exit("%s: invalid superseded hunk index for %s" % (name, rel))
+                kept = [hunk for index, hunk in enumerate(hunks, 1) if index not in skipped]
+                if skipped:
+                    print("%s: upstream supersedes hunks %s for DSH %s in %s" %
+                          (name, sorted(skipped), args.dsh_version, rel))
+                if kept:
+                    filtered.append((rel, kept))
+            diff = filtered
         want = patch_pins.get(args.dsh_version)
         optional_files = set(patch_pins.get("optional_files", {}).get(args.dsh_version, []))
         superseded_files = set(patch_pins.get("superseded_files", {}).get(args.dsh_version, []))
