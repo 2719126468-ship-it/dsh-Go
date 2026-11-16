@@ -215,6 +215,14 @@
           "before": "63fbb41d2c33e07111884b798be507e68c2752acab8249c821c20ade436e894f"
         }
       }
+    },
+    "file-upload-resolver-dispose.diff": {
+      "0.2.1-rc.4": {
+        "node_modules/@deepseek-ai/dsh-client-file-upload/lib/index.js": {
+          "after": "b24297ec812d1c21b8038fac94616213da6f030552faf6d138492b244d598050",
+          "before": "5dd5bd2d20656a1edeb1366e6b878afb04db519d2ba400135cb020ef037912fb"
+        }
+      }
     }
   },
   "schema": 1

@@ -223,7 +223,16 @@ jobs:
           echo "DSH_VERSION=$version"
             echo "DSH_FS_LOCAL_ORIGINAL_JS=$prefix/fs-local-original.js"
           } >> "$GITHUB_ENV"
-      - name: Capture upstream DSH files for patch review
+      - name: Unit tests
+        run: |
+          manager="$RUNNER_TEMP/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js"
+          if ! node --check "$manager"; then
+            sed -n '875,905p' "$manager"
+            exit 1
+          fi
+          node --test runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
+          python3 -I runtime/tests/test_patch_dsh.py
+      - name: Capture patched DSH files for patch review
         if: failure()
         run: |
           debug="$RUNNER_TEMP/dsh-patch-debug"
@@ -234,7 +243,7 @@ jobs:
           done
           cp runtime/patches/*.diff "$debug/" || true
           cp runtime/patches/pins.json "$debug/"
-      - name: Upload DSH patch review files
+      - name: Upload patched DSH patch review files
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -242,10 +251,6 @@ jobs:
           path: ${{ runner.temp }}/dsh-patch-debug/
           if-no-files-found: error
           retention-days: 3
-      - name: Unit tests
-        run: |
-          node --test runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
-          python3 -I runtime/tests/test_patch_dsh.py
       - name: Media and example plugins
         run: |
           (cd runtime/media/dsh-media && npm install --ignore-scripts --no-package-lock --no-audit --no-fund && npm test)
