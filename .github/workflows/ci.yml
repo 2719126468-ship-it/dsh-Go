@@ -343,6 +343,10 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Unit tests
         run: |
+          legacy_manager="$DSH_LEGACY_PREFIX/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js"
+          if ! node --check "$legacy_manager"; then sed -n '875,905p' "$legacy_manager"; exit 1; fi
+          current_manager="$DSH_PREFIX/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js"
+          if ! node --check "$current_manager"; then sed -n '875,905p' "$current_manager"; exit 1; fi
           DSH_PREFIX="$DSH_LEGACY_PREFIX" \
           DSH_TEST_PREFIX="$DSH_LEGACY_PREFIX" \
           DSH_INSTALL="$DSH_LEGACY_PREFIX/node_modules/@deepseek-ai/dsh" \
@@ -351,6 +355,28 @@ jobs:
             node --test runtime/tests/*.test.mjs
           DSH_PREFIX="$DSH_PREFIX" node --test runtime/tests/schedule-authorization-host.mjs app/tool/engine_auth/*.test.mjs
           python3 -I runtime/tests/test_patch_dsh.py
+      - name: Capture patched DSH prefixes for review
+        if: failure()
+        run: |
+          debug="$RUNNER_TEMP/dsh-patch-debug"
+          mkdir -p "$debug"
+          for prefix in "$DSH_LEGACY_PREFIX" "$DSH_PREFIX"; do
+            label=$(basename "$prefix")
+            for package in dsh-fs-local dsh-home-paths dsh-app-boot dsh-subprocess-local dsh-sandbox dsh-sandbox-policy dsh-skill-filesystem dsh-api-session-controller dsh-plugin-manager dsh-client-file-upload; do
+              source="$prefix/node_modules/@deepseek-ai/$package/lib/index.js"
+              if [[ -f "$source" ]]; then cp "$source" "$debug/$label-$package-index.js"; fi
+            done
+          done
+          cp runtime/patches/*.diff "$debug/" || true
+          cp runtime/patches/pins.json "$debug/"
+      - name: Upload patched DSH prefixes
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dsh-patch-review
+          path: ${{ runner.temp }}/dsh-patch-debug/
+          if-no-files-found: error
+          retention-days: 3
       - name: Media and example plugins
         run: |
           (cd runtime/media/dsh-media && npm install --ignore-scripts --no-package-lock --no-audit --no-fund && npm test)

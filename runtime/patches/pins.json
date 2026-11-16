@@ -102,6 +102,14 @@
           "before": "a9801acb577b03053c5d5a3191ff555c5f1d791d0acddec113bea4511e33b386",
           "after": "a745dd51bcb72dc3202dbc167f727b5acd0b59fc760b24b908072d4374b7363f"
         }
+      },
+      "superseded_files": {
+        "0.2.1-rc.4": [
+          "node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js"
+        ],
+        "0.2.2-rc.1": [
+          "node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
+        ]
       }
     },
     "zzz-config-editor-path.diff": {
