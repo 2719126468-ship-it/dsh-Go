@@ -97,7 +97,7 @@
  		const project = projectDir(this.root, meta.cwd);
  		const dir = sessionDir(this.root, meta.cwd, meta.id);
  		const finalPath = logPath(this.root, meta.cwd, meta.id, this.compression);
-@@ -3442,7 +3457,8 @@
+@@ -3442,6 +3457,7 @@
  	}
  	/** Find the unique authoritative generation for an id across project directories. */
  	async findLog(id, signal) {
@@ -107,7 +107,7 @@
  			signal?.throwIfAborted();
 --- a/node_modules/@deepseek-ai/dsh-session/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session/lib/index.js
-@@ -1852,4 +1852,5 @@
+@@ -1852,3 +1852,4 @@
  	enter(session) {
  		const id = session.id;
 +		this.ctx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
@@ -152,7 +152,7 @@
  		ownerCtx.fiber.assertActive();
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
  		/* v8 ignore next -- unreachable backstop, see above */
-@@ -1940,4 +1948,21 @@
+@@ -1940,3 +1948,20 @@
  		}
  	}
 +	dshGoDeletionVersion = 1;
@@ -199,7 +199,7 @@
  		const expected = lifecycleIdentityOf(meta);
  		const record = this.requireTable().get(meta.id);
  		if (record === void 0 || !predecessorIdentityMatches(record.identity, expected)) return void 0;
-@@ -349,8 +352,21 @@
+@@ -349,7 +352,20 @@
  		}
  	}
  	/** Replace one session's stored record with its log identity and a detached snapshot of `rows`. */
@@ -222,7 +222,7 @@
  		await this.requireTable().put(id, {
 --- a/node_modules/@deepseek-ai/dsh-session-query/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-query/lib/index.js
-@@ -1061,7 +1061,11 @@
+@@ -1061,6 +1061,10 @@
  	* @param options - cancellation and projection selection for this read.
  	* @returns a caller-owned observation lease.
  	*/
@@ -235,7 +235,7 @@
  	}
 --- a/node_modules/@deepseek-ai/dsh-session-query-sqlite/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-query-sqlite/lib/index.js
-@@ -643,8 +643,25 @@
+@@ -643,7 +643,24 @@
  			release();
  		}
  	}
@@ -286,7 +286,7 @@
  			const agent = this.ctx.agents.get(sessionId);
  			if (agent === void 0 || delegationDepthOf(agent) === 0) return void 0;
  			return {
-@@ -2290,10 +2293,30 @@
+@@ -2290,9 +2293,29 @@
  				if (failure !== void 0) throw failure;
  			});
  		}
@@ -341,7 +341,7 @@
  	constructor(ctx) {
  		super(ctx, "workspaceRegistry");
  	}
-@@ -612,7 +627,8 @@
+@@ -612,6 +627,7 @@
  	* masquerade as an unknown session.
  	*/
  	async sessionKnown(id) {
@@ -379,7 +379,7 @@
  		this.open.set(descriptor.name, unit);
  		return unit;
  	}
-@@ -603,6 +617,7 @@
+@@ -603,7 +617,8 @@
  */
  function apply(ctx, config) {
  	const backend = new JsonStorageBackend(config.root);
