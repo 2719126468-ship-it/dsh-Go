@@ -150,13 +150,13 @@
  						agent,
  						dispose
  					};
-@@ -1681,3 +1688,4 @@
+@@ -1681,4 +1688,5 @@
  	prepare(ownerCtx, id, options, session, callerSignal, handle, parentAgent) {
  		assertAgentOptions(options);
  		ownerCtx.fiber.assertActive();
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
  		/* v8 ignore next -- unreachable backstop, see above */
-@@ -1940,3 +1948,19 @@
+@@ -1940,3 +1948,20 @@
  		}
  	}
 +	dshGoDeletionVersion = 1;
