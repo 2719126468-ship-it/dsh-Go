@@ -5,7 +5,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
+
+
+_PACKAGE_NAME = re.compile(r"^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
+
+
+def _within(root: Path, candidate: Path, label: str) -> Path:
+    resolved_root = root.resolve()
+    resolved = candidate.resolve()
+    if not resolved.is_relative_to(resolved_root):
+        raise SystemExit(f"{label} escapes its package directory: {candidate}")
+    return resolved
 
 
 def main() -> int:
@@ -26,18 +38,46 @@ def main() -> int:
             raise SystemExit("invalid package entry in preinstalled bundle manifest")
         name = expected.get("name")
         version = expected.get("version")
-        if not isinstance(name, str) or not isinstance(version, str):
-            raise SystemExit("each preinstalled package needs an exact name and version")
-        package_dir = prefix / "node_modules" / name
-        package_file = package_dir / "package.json"
+        if (
+            not isinstance(name, str)
+            or len(name) > 214
+            or not _PACKAGE_NAME.fullmatch(name)
+            or not isinstance(version, str)
+            or not version
+        ):
+            raise SystemExit("each preinstalled package needs a safe npm name and exact version")
+        node_modules = prefix / "node_modules"
+        package_dir = _within(node_modules, node_modules / name, "package path")
+        package_file = _within(package_dir, package_dir / "package.json", "package.json path")
         if not package_file.is_file():
             raise SystemExit(f"preinstalled package not found: {name}")
         package = json.loads(package_file.read_text(encoding="utf-8"))
         if package.get("version") != version:
             raise SystemExit(f"{name} version mismatch: expected {version}, got {package.get('version')}")
-        patch = package.get("dsh", {}).get("bundle", {}).get("patch")
-        if not isinstance(patch, str) or not (package_dir / patch).is_file():
+        for field in ("license",):
+            expected_value = expected.get(field)
+            if expected_value is not None and package.get(field) != expected_value:
+                raise SystemExit(f"{name} {field} mismatch: expected {expected_value}, got {package.get(field)}")
+        expected_node = expected.get("node")
+        actual_node = package.get("engines", {}).get("node")
+        if expected_node is not None and actual_node != expected_node:
+            raise SystemExit(f"{name} Node engine mismatch: expected {expected_node}, got {actual_node}")
+        expected_dsh = expected.get("dsh")
+        actual_dsh = package.get("engines", {}).get("dsh")
+        if expected_dsh is not None and (
+            not isinstance(actual_dsh, str) or expected_dsh not in actual_dsh.split(" || ")
+        ):
+            raise SystemExit(f"{name} DSH engine mismatch: expected {expected_dsh} in {actual_dsh}")
+        dsh = package.get("dsh")
+        bundle = dsh.get("bundle") if isinstance(dsh, dict) else None
+        patch = bundle.get("patch") if isinstance(bundle, dict) else None
+        if not isinstance(patch, str) or not patch or Path(patch).is_absolute() or ".." in Path(patch).parts:
+            raise SystemExit(f"{name} has an unsafe DSH bundle patch path")
+        patch_file = _within(package_dir, package_dir / patch, "bundle patch path")
+        if not patch_file.is_file():
             raise SystemExit(f"{name} does not contain its declared DSH bundle patch")
+        if name in names:
+            raise SystemExit(f"duplicate preinstalled package: {name}")
         names.append(name)
 
     catalog = prefix / "node_modules/@deepseek-ai/dsh-official-bundles/lib/index.js"
