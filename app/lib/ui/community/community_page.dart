@@ -120,9 +120,15 @@ class _Plugins extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final catalog = ref.watch(marketAllProvider);
+    final bundles = ref.watch(installedPluginsProvider.select((state) => state.value));
+    bool isPreinstalled(CommunityPlugin pick) =>
+        bundles?.any((bundle) => bundle.name == pick.name && isDshGoPreinstalledBundle(bundle)) ?? false;
     final rows = catalog.when<List<Widget>>(
       skipLoadingOnRefresh: false,
-      loading: () => [for (final pick in picks) CommunityPluginRow(pick: pick, entry: null)],
+      loading: () => [
+        for (final pick in picks)
+          if (isPreinstalled(pick)) CommunityPluginRow(pick: pick, entry: null),
+      ],
       error: (_, _) => [
         ListPageRow(
           icon: AppIcons.refresh,
@@ -130,10 +136,13 @@ class _Plugins extends ConsumerWidget {
           subtitle: l10n.botsTapRetry,
           onTap: () => ref.invalidate(marketCatalogProvider),
         ),
-        for (final pick in picks) CommunityPluginRow(pick: pick, entry: null),
+        for (final pick in picks)
+          if (isPreinstalled(pick)) CommunityPluginRow(pick: pick, entry: null),
       ],
       data: (catalog) => [
-        for (final pick in picks) CommunityPluginRow(pick: pick, entry: catalog.byName[pick.name]),
+        for (final pick in picks)
+          if (catalog.byName[pick.name] != null || isPreinstalled(pick))
+            CommunityPluginRow(pick: pick, entry: catalog.byName[pick.name]),
       ],
     );
     if (rows.isEmpty) return const SizedBox.shrink();
