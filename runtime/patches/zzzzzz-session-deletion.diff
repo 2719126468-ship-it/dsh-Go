@@ -379,7 +379,7 @@
  		this.open.set(descriptor.name, unit);
  		return unit;
  	}
-@@ -603,7 +617,8 @@
+@@ -603,6 +617,7 @@
  */
  function apply(ctx, config) {
  	const backend = new JsonStorageBackend(config.root);
