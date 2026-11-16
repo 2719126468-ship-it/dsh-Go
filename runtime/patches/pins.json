@@ -161,10 +161,6 @@
         "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": {
           "before": "2d05f943a25e2971bc0b964868a4031dcae378c01d8b928a21ec09f17952fc5f",
           "after": "2439dc55dc7df8864ff69862153020b45cb07171790a25ec62c5798cc1dacb54"
-        },
-        "node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js": {
-          "before": "e7a14993a6d4d8b24dc9908369b75543ce76e0841c23d35e567ca0a506b8125d",
-          "after": "bf7c0fee7b638e314c92a90bed6dae0eee494a312b2def13b32feeb7b1632c6b"
         }
       }
     },

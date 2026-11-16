@@ -1,4 +1,5 @@
-# DSH rc4 after 020: read-only profile ownership probes and plugin-config JSON 503.
+# DSH rc4: read-only profile ownership probes; plugin-config JSON 503 is handled by the bridge fallback guard.
+
 --- a/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js
 @@ -1009,11 +1009,12 @@
@@ -60,23 +61,3 @@
  	}
  	inherited(entry, loaded) {
  		const patches = loaded.patches.map((patch) => {
---- a/node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js
-@@ -512,12 +512,15 @@
- 	async dshGoRejectRequest(route, req, res) {
- 		const status = await this.dshGoRouteRejection(route.kind, route.path, req);
- 		if (status === void 0) return false;
-+		let pathname;
-+		try { pathname = new URL(req.url ?? "/", "http://dsh-go.invalid").pathname; } catch {}
-+		const configUnavailable = status === 503 && (pathname === "/dsh-go/v1/plugin-config" || pathname?.startsWith("/dsh-go/v1/plugin-config/"));
- 		res.writeHead(status, {
- 			"cache-control": "no-store",
--			"content-type": "text/plain; charset=utf-8",
-+			"content-type": configUnavailable ? "application/json; charset=utf-8" : "text/plain; charset=utf-8",
- 			"x-dsh-go-guard": "reject"
- 		});
--		res.end(req.method === "HEAD" ? void 0 : `${STATUS_CODES[status]}\n`);
-+		res.end(req.method === "HEAD" ? void 0 : configUnavailable ? JSON.stringify({ v: 1, code: "host-unavailable", message: "主机配置服务暂不可用，请稍后重试。" }) : `${STATUS_CODES[status]}\n`);
- 		return true;
- 	}
- 	async dshGoGuardUpgrade(route, req, socket, head) {
