@@ -42,20 +42,6 @@
         }
       }
     },
-    "route-guard.diff": {
-      "0.2.1-rc.2": {
-        "node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js": {
-          "after": "e7a14993a6d4d8b24dc9908369b75543ce76e0841c23d35e567ca0a506b8125d",
-          "before": "08907285802f0edd3aeb68c91fb443be2804879ab3d41104c4600424be06f3ab"
-        }
-      },
-      "0.2.1-rc.4": {
-        "node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js": {
-          "after": "e7a14993a6d4d8b24dc9908369b75543ce76e0841c23d35e567ca0a506b8125d",
-          "before": "08907285802f0edd3aeb68c91fb443be2804879ab3d41104c4600424be06f3ab"
-        }
-      }
-    },
     "zz-direct-runtime.diff": {
       "0.2.1-rc.2": {
         "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": {

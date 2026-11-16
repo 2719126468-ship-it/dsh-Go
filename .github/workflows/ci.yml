@@ -359,7 +359,7 @@ jobs:
           done
       - name: Route guard and native bridge against a real host
         run: |
-          bash runtime/tests/run-guard-tests.sh "$DSH_PREFIX"
+          bash runtime/tests/run-guard-tests.sh "$DSH_PREFIX" --guard bridge
           bash runtime/tests/run-native-tests.sh "$DSH_PREFIX"
 
   codex:
