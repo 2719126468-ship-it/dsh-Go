@@ -53,6 +53,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -168,6 +173,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: NDK（与 Gradle 工具链保持一致）
+        working-directory: .
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.2.13676358" >/dev/null
+
       - name: 固定签名
         working-directory: .
         run: |
@@ -239,7 +250,7 @@ jobs:
           mkdir -p out
           ver="${{ inputs.version }}"
           if [ -z "$ver" ]; then
-            ver=$(sed -nE 's/^version: ([0-9]+\\.[0-9]+\\.[0-9]+).*$/\\1/p' app/pubspec.yaml)
+            ver=$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p' app/pubspec.yaml)
           fi
           test -n "$ver" || { echo "无法从 app/pubspec.yaml 读取版本"; exit 1; }
           a64=$(find dist -path '*arm64*' -name '*.apk' | head -1)
@@ -262,7 +273,7 @@ jobs:
         run: |
           ver="${{ inputs.version }}"
           if [ -z "$ver" ]; then
-            ver=$(sed -nE 's/^version: ([0-9]+\\.[0-9]+\\.[0-9]+).*$/\\1/p' app/pubspec.yaml)
+            ver=$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p' app/pubspec.yaml)
           fi
           test -n "$ver" || { echo "无法从 app/pubspec.yaml 读取版本"; exit 1; }
           tag="custom-${ver}-$(date -u +%Y%m%d%H%M)"
