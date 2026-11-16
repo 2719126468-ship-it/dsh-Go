@@ -41,8 +41,8 @@
       },
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": {
-          "before": "63fbb41d2c33e07111884b798be507e68c2752acab8249c821c20ade436e894f",
-          "after": "d69560a359b8653d6aa45eaf7904ef61795ccd958b521f136c82251f9cb677bc"
+          "before": "dc077d91a07374d64900a45bb6288c941094c531237acc6e1994b0bd88deb1d6",
+          "after": "b275b221acdc4a0ce217b9c552b6ad4a61922874cb9257b618cdf5a560af8dbd"
         },
         "node_modules/@deepseek-ai/dsh-home-paths/lib/index.js": {
           "before": "9877a6117c5def69b61fae12f70a7a7400894a9dc4a9f7069ce4cc58aeb66e9d",
@@ -122,7 +122,7 @@
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
           "before": "3a4b8bdaf6b5505e6890103bf14db11bd0e057d07fe02180d4ea64ceaf44204e",
-          "after": "47f7b81a82f281c0191d08090b61b803fbd27457f00dc0ed1610c38becf791d8"
+          "after": "866275b9076b8714cdcbd4a083213eb5e59ccac6c8292eaa7f83b839a35533fc"
         }
       }
     },
