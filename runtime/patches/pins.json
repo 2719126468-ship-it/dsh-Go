@@ -11,7 +11,7 @@
     "zz-direct-runtime.diff": {
       "0.2.1-rc.2": {
         "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": {
-          "before": "63fbb41d2c33e07111884b798be507e68c2752acab8249c821c20ade436e894f",
+          "before": "dc077d91a07374d64900a45bb6288c941094c531237acc6e1994b0bd88deb1d6",
           "after": "d69560a359b8653d6aa45eaf7904ef61795ccd958b521f136c82251f9cb677bc"
         },
         "node_modules/@deepseek-ai/dsh-home-paths/lib/index.js": {
