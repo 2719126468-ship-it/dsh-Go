@@ -142,10 +142,10 @@
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
 @@ -1794,3 +1800,4 @@
- 					await loopCtx.agents.announce(agent, source, abort.signal);
- 					assertLive();
-+					agent.dshGoDispose = dispose;
- 					return {
+ 						await loopCtx.agents.announce(agent, source, abort.signal);
+ 						assertLive();
++						agent.dshGoDispose = dispose;
+ 						return {
 @@ -1681,4 +1688,5 @@
  	prepare(ownerCtx, id, options, session, callerSignal, handle, parentAgent) {
  		assertAgentOptions(options);
