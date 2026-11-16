@@ -141,19 +141,15 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1578,4 +1578,5 @@
- 						await loopCtx.agents.announce(agent, source, abort.signal);
- 						assertLive();
-+						agent.dshGoDispose = dispose;
- 						ready = true;
- 						return {
-@@ -1681,4 +1688,5 @@
- 	prepare(ownerCtx, id, options, session, callerSignal, handle, parentAgent) {
- 		assertAgentOptions(options);
- 		ownerCtx.fiber.assertActive();
+@@ -1455,3 +1455,4 @@
+ 	async initializeAgent(ownerCtx, options) {
+ 		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
+ 		const id = session.id;
 +		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
- 		/* v8 ignore next -- unreachable backstop, see above */
-@@ -1940,3 +1948,20 @@
+@@ -1594,5 +1595,23 @@
+ 		} catch (error) {
+ 			await dispose().catch((_disposeError) => {});
+ 			throw error;
  		}
  	}
 +	dshGoDeletionVersion = 1;
@@ -173,7 +169,12 @@
 +			throw error;
 +		}
 +	}
- 	async initializeAgent(prepared, initialize) {
+@@ -1578,4 +1597,5 @@
+ 						await loopCtx.agents.announce(agent, source, abort.signal);
+ 						assertLive();
++						agent.dshGoDispose = dispose;
+ 						ready = true;
+ 						return {
 --- a/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session-projection-cache/lib/index.js
 @@ -166,6 +166,7 @@
