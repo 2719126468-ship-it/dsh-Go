@@ -447,11 +447,11 @@ PYEOF
 # per-ABI build
 # ---------------------------------------------------------------------------
 build_abi() {
-  local abi="$1" ubuntu_arch node_arch npm_cpu termux_arch elf_name
+  local abi="$1" ubuntu_arch node_arch npm_cpu termux_arch
   case "$abi" in
-    arm64-v8a)   ubuntu_arch=arm64; node_arch=arm64;  npm_cpu=arm64; termux_arch=aarch64; elf_name="ARM aarch64" ;;
-    armeabi-v7a) ubuntu_arch=armhf; node_arch=armv7l; npm_cpu=arm;   termux_arch=arm;     elf_name="ARM" ;;
-    x86_64)      ubuntu_arch=amd64; node_arch=x64;    npm_cpu=x64;   termux_arch=x86_64;  elf_name="x86-64" ;;
+    arm64-v8a)   ubuntu_arch=arm64; node_arch=arm64;  npm_cpu=arm64; termux_arch=aarch64 ;;
+    armeabi-v7a) ubuntu_arch=armhf; node_arch=armv7l; npm_cpu=arm;   termux_arch=arm ;;
+    x86_64)      ubuntu_arch=amd64; node_arch=x64;    npm_cpu=x64;   termux_arch=x86_64 ;;
     *) die "unknown ABI $abi (use armeabi-v7a, arm64-v8a or x86_64)" ;;
   esac
   log "=== $abi ==="
@@ -518,7 +518,7 @@ for name, (pkg, ver, deb, inner, patch, orig) in src.items():
         "bytes": os.path.getsize(path),
         "source": "termux-main %s %s (%s:/data/data/com.termux/files/%s)" % (pkg, ver, deb, inner),
         "patch": patch, "originalSha256": orig,
-        "machine": e["machine"], "type": e["type"], "needed": e.get("needed"),
+        "class": e["class"], "machine": e["machine"], "type": e["type"], "needed": e.get("needed"),
         "soname": e.get("soname"), "minLoadAlign": e["minLoadAlign"],
     }
 json.dump(res, open(out, "w"), indent=2)
@@ -588,18 +588,28 @@ PYEOF
     --versions "$versions" --out "$assets/manifest.json" >&2
 
   # -- verification: every jniLib and every ELF in the rootfs must match the ABI --
-  local f bad=0
-  for f in "$jni"/*.so; do
-    file -b "$f" | grep -q "$elf_name" || { log "ABI mismatch: $f: $(file -b "$f")"; bad=1; }
-  done
-  python3 -I - "$out/build-report.json" "$abi" <<'PYEOF' || bad=1
+  python3 -I - "$work/jnilibs.json" "$out/build-report.json" "$abi" <<'PYEOF' || die "ABI verification failed for $abi"
 import json, sys
-r = json.load(open(sys.argv[1])); want = {"arm64-v8a": "aarch64", "armeabi-v7a": "arm", "x86_64": "x86-64"}[sys.argv[2]]
-wrong = [e["path"] for e in r["elf"] if e["machine"] != want]
-print("rootfs ELF objects: %d, wrong-arch: %d, warnings: %d" % (len(r["elf"]), len(wrong), len(r["warnings"])), file=sys.stderr)
-sys.exit(1 if wrong else 0)
+jni = json.load(open(sys.argv[1]))
+report = json.load(open(sys.argv[2]))
+expected = {
+    "arm64-v8a": ("aarch64", 64),
+    "armeabi-v7a": ("arm", 32),
+    "x86_64": ("x86-64", 64),
+}[sys.argv[3]]
+machine, bits = expected
+bad_jni = [(name, item.get("class"), item.get("machine")) for name, item in jni.items()
+           if item.get("class") != bits or item.get("machine") != machine]
+bad_root = [(item["path"], item.get("class"), item.get("machine")) for item in report["elf"]
+            if item.get("class") != bits or item.get("machine") != machine]
+print("JNI ELF objects: %d, wrong ABI/class: %d; rootfs ELF objects: %d, wrong ABI/class: %d; warnings: %d" %
+      (len(jni), len(bad_jni), len(report["elf"]), len(bad_root), len(report["warnings"])), file=sys.stderr)
+for item in bad_jni:
+    print("wrong JNI ELF: %s class=%s machine=%s" % item, file=sys.stderr)
+for item in bad_root:
+    print("wrong rootfs ELF: %s class=%s machine=%s" % item, file=sys.stderr)
+sys.exit(1 if bad_jni or bad_root else 0)
 PYEOF
-  [[ "$bad" == 0 ]] || die "ABI verification failed for $abi"
   log "$abi done: $(du -ch "${archives[@]}" | tail -n1 | cut -f1) archive total, version $runtime_version"
 }
 
