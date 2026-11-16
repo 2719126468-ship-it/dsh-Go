@@ -39,7 +39,7 @@ import { promisify } from "node:util";
 import { CodexAppServer, ThreadGoneError, describe } from "./src/appserver.js";
 import { createCwdGuard, realpathOrNull, withinRoot } from "./src/paths.js";
 import { turnsToMessages, summarizeThread } from "./src/history.js";
-import { safeRequestTarget } from "./src/security.js";
+import { isLoopbackBindHost, safeRequestTarget } from "./src/security.js";
 
 // Keep local service state (logs, token and uploaded images) private by default.
 process.umask(0o077);
@@ -57,6 +57,9 @@ const TURN_TIMEOUT_MINUTES = Number(process.env.CODEX_TURN_TIMEOUT_MINUTES || 30
 /** 启动时是否预热 codex app-server（设 CODEX_WEB_NO_PREWARM=1 关闭）。 */
 const PREWARM = process.env.CODEX_WEB_NO_PREWARM !== "1";
 const NO_AUTH = process.env.CODEX_WEB_NO_AUTH === "1" || process.argv.includes("--no-auth");
+if (NO_AUTH && !isLoopbackBindHost(HOST)) {
+  throw new Error("CODEX_WEB_NO_AUTH only permits loopback binding; keep token authentication enabled for non-loopback hosts");
+}
 const TOKEN_FILE = join(homedir(), ".codex-web-token");
 const NEW_TOKEN = process.argv.includes("--new-token");
 const execFileAsync = promisify(execFile);
