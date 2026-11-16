@@ -33,6 +33,8 @@ env:
   FLUTTER_VERSION: 3.47.7
   NODE_VERSION: 24.22.1
   TZ: Asia/Shanghai
+  DSH_MAVEN_MIRRORS: '0'
+  EXPECTED_CERT_SHA256: 2501e25fc25fd73baaf3870db4885e486136c175fc739831edfe1fb2a1bc3444
 
 jobs:
   arm64:
@@ -43,15 +45,15 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -89,7 +91,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: 依赖
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: 打包 arm64
         working-directory: .
@@ -109,17 +111,24 @@ jobs:
           echo "APK=$APK"
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify.txt
-          grep -q "Verified using v1 scheme (JAR signing): true" verify.txt
-          grep -q "Verified using v2 scheme" verify.txt
-          grep -q "Verified using v3 scheme" verify.txt
+          for scheme in v1 v2 v3; do
+            grep -q "Verified using ${scheme} scheme.*: true" verify.txt || { cat verify.txt; echo "${scheme} 签名方案未通过"; exit 1; }
+          done
           ! grep -q "CN=Android Debug" verify.txt
+          actual_cert=$(grep -m1 "Signer #1 certificate SHA-256 digest:" verify.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          test "$actual_cert" = "$EXPECTED_CERT_SHA256" || { echo "签名证书不匹配：$actual_cert"; exit 1; }
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" > badging.txt
+          grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging.txt
+          grep -q "^sdkVersion:'26'" badging.txt
+          grep -q "^native-code:.*'arm64-v8a'" badging.txt || { cat badging.txt; echo "arm64 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
         if: always()
         working-directory: .
         run: rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dsh-go-arm64
           path: app/build/app/outputs/flutter-apk/*.apk
@@ -133,17 +142,27 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: 构建 ARMHF 本机运行时
         working-directory: .
         run: |
+          sudo apt-get update -qq
           sudo apt-get install -y -qq gpgv xz-utils file
           bash runtime/build-runtime.sh armeabi-v7a
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -163,7 +182,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: 依赖
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: 打包 arm32
         working-directory: .
@@ -179,17 +198,24 @@ jobs:
           echo "APK=$APK"
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify32.txt
-          grep -q "Verified using v2 scheme" verify32.txt
+          for scheme in v1 v2 v3; do
+            grep -q "Verified using ${scheme} scheme.*: true" verify32.txt || { cat verify32.txt; echo "${scheme} 签名方案未通过"; exit 1; }
+          done
           ! grep -q "CN=Android Debug" verify32.txt
+          actual_cert=$(grep -m1 "Signer #1 certificate SHA-256 digest:" verify32.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          test "$actual_cert" = "$EXPECTED_CERT_SHA256" || { echo "签名证书不匹配：$actual_cert"; exit 1; }
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
-          "$AAPT" dump badging "$APK" | grep -E "native-code|sdkVersion|package:" || true
+          "$AAPT" dump badging "$APK" > badging32.txt
+          grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging32.txt
+          grep -q "^sdkVersion:'26'" badging32.txt
+          grep -q "^native-code:.*'armeabi-v7a'" badging32.txt || { cat badging32.txt; echo "arm32 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
         if: always()
         working-directory: .
         run: rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dsh-go-arm32
           path: app/build/app/outputs/flutter-apk/*.apk
@@ -202,30 +228,43 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
       - name: 汇总（重命名 + 校验和）
         run: |
           mkdir -p out
           ver="${{ inputs.version }}"
-          [ -n "$ver" ] || ver=1.0.16
+          if [ -z "$ver" ]; then
+            ver=$(sed -nE 's/^version: ([0-9]+\\.[0-9]+\\.[0-9]+).*$/\\1/p' app/pubspec.yaml)
+          fi
+          test -n "$ver" || { echo "无法从 app/pubspec.yaml 读取版本"; exit 1; }
           a64=$(find dist -path '*arm64*' -name '*.apk' | head -1)
           a32=$(find dist -path '*arm32*' -name '*.apk' | head -1)
           [ -z "$a64" ] || cp "$a64" "out/dsh-go-${ver}-arm64.apk"
           [ -z "$a32" ] || cp "$a32" "out/dsh-go-${ver}-arm32.apk"
           cd out && sha256sum *.apk | tee SHA256SUMS && cat SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apks
           path: out/
+      - name: 阻止不完整发布
+        if: inputs.publish_release && (needs.arm64.result != 'success' || needs.arm32.result != 'success')
+        run: echo "::warning::arm64 与 arm32 必须全部成功才允许发布；本次只保留已构建的 artifact。"
+
       - name: 发布到 Release
-        if: inputs.publish_release
+        if: inputs.publish_release && needs.arm64.result == 'success' && needs.arm32.result == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           ver="${{ inputs.version }}"
-          [ -n "$ver" ] || ver=1.0.16
+          if [ -z "$ver" ]; then
+            ver=$(sed -nE 's/^version: ([0-9]+\\.[0-9]+\\.[0-9]+).*$/\\1/p' app/pubspec.yaml)
+          fi
+          test -n "$ver" || { echo "无法从 app/pubspec.yaml 读取版本"; exit 1; }
           tag="custom-${ver}-$(date -u +%Y%m%d%H%M)"
           {
             echo "破甲预设 + 实用技能 + dsh-our-free-model + 三套皮肤 + 固定签名（v1/v2/v3）。"
