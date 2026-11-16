@@ -218,7 +218,7 @@ class PatchDsh(unittest.TestCase):
         patched = rtbuild.apply_hunks(original, files[0][1], "fs-create-exclusive.diff")
         self.assertIn('["EPERM", "EXDEV", "ENOTSUP", "EMLINK"]', patched)
         self.assertEqual(hashlib.sha256(patched.encode("utf-8")).hexdigest(), pins[rel]["after"])
-        self.assertIn('open(absolutePath, "wx", 384)', original)
+        self.assertIn('open(absolutePath, "wx", 384)', patched)
         self.assertIn("await handle.sync()", original)
         self.assertIn("await handle.close()", original)
 
