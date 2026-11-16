@@ -114,47 +114,12 @@
  		const carrier = scopeTarget(session, scopeOf(this.ctx));
 --- a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
-@@ -798,6 +798,8 @@
- 		if (status !== previousStatus) this.dispatch.emit("agent/status", { status });
- 	}
- 	send(message, target, wakeup) {
-+		if (this.dshGoDeleting) throw new Error("session is being deleted");
-+		this.loopCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(this.id);
- 		const wakingAfterAbort = wakeup && this.phase.kind !== "idle" && this.phase.abort.signal.aborted;
- 		const resolvedTarget = wakingAfterAbort ? "next-turn" : target;
- 		this.inbox.splice(resolvedTarget, Infinity, 0, [message]);
-@@ -820,6 +822,8 @@
- 		if (this.phase.kind !== "idle") this.phase.abort.abort(cause);
- 	}
- 	runMaintenance(job) {
-+		if (this.dshGoDeleting) throw new Error("session is being deleted");
-+		this.loopCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(this.id);
- 		if (this.phase.kind !== "idle") throw new Error(`agent "${this.id}" already has active work`);
- 		const done = Promise.withResolvers();
- 		const maintenance = {
-@@ -852,6 +856,8 @@
- 	*   the inbox insertion so a reentrant cancel cannot reclassify it.
- 	*/
- 	wakeDriver(wakeAfterAbort = false) {
-+		if (this.dshGoDeleting) throw new Error("session is being deleted");
-+		this.loopCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(this.id);
- 		if (this.phase.kind !== "idle") {
- 			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
- 			return;
-@@ -1455,3 +1455,4 @@
- 	async initializeAgent(ownerCtx, options) {
- 		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
- 		const id = session.id;
-+		ownerCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
-@@ -1578,4 +1578,5 @@
+@@ -1794,3 +1794,4 @@
  						await loopCtx.agents.announce(agent, source, abort.signal);
  						assertLive();
 +						agent.dshGoDispose = dispose;
- 						ready = true;
  						return {
-@@ -1594,5 +1595,22 @@
- 		} catch (error) {
- 			await dispose().catch((_disposeError) => {});
+@@ -1810,3 +1811,20 @@
  			throw error;
  		}
  	}
