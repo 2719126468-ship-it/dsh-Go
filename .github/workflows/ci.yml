@@ -278,10 +278,27 @@ jobs:
             echo "Runtime locks and verified patch pins are already current."
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Pin DSH $version runtime dependencies and patches"
-          git push origin "HEAD:$GITHUB_HEAD_REF"
+          # PR workflows check out a synthetic merge commit. Commit generated pins
+          # on the actual PR head in a detached worktree, not on that merge ref.
+          branch_dir="$RUNNER_TEMP/pr-head"
+          git fetch origin "refs/heads/$GITHUB_HEAD_REF"
+          git worktree add --detach "$branch_dir" FETCH_HEAD
+          cp runtime/patches/pins.json "$branch_dir/runtime/patches/pins.json"
+          for suffix in "" "-android"; do
+            source="$RUNNER_TEMP/dsh-locks/dsh-$version$suffix"
+            target="$branch_dir/runtime/locks/dsh-$version$suffix"
+            mkdir -p "$target"
+            cp "$source/package.json" "$source/package-lock.json" "$target/"
+          done
+          git -C "$branch_dir" add runtime/patches/pins.json runtime/locks/dsh-"$version" runtime/locks/dsh-"$version"-android
+          if git -C "$branch_dir" diff --cached --quiet; then
+            echo "Runtime locks and verified patch pins are already current."
+            exit 0
+          fi
+          git -C "$branch_dir" config user.name "github-actions[bot]"
+          git -C "$branch_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$branch_dir" commit -m "Pin DSH $version runtime dependencies and patches"
+          git -C "$branch_dir" push origin "HEAD:refs/heads/$GITHUB_HEAD_REF"
           curl --fail --silent --show-error -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
