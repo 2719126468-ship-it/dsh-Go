@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { link, lstat, mkdir, open, readdir, realpath, rm } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const failure = (code, message = code) => Object.assign(new Error(message), { code });
@@ -88,7 +88,14 @@ export function createDeletionSeam(storage, { acquire, parseGeneration, notFound
   const safeDirectory = async (dir) => {
     // A configured root may itself be a symlink; child/project symlinks are not admitted.
     const canonicalRoot = await realpath(root);
-    if (await realpath(dir) !== join(canonicalRoot, relative(root, dir))) throw failure('failed', 'Symlink session directory.');
+    const canonicalDir = await realpath(dir);
+    const rel = relative(canonicalRoot, canonicalDir);
+    if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
+      throw failure('failed', 'Session directory escaped the log root.');
+    }
+    if (canonicalDir !== join(canonicalRoot, relative(root, dir))) {
+      throw failure('failed', 'Symlink session directory.');
+    }
   };
   const logFiles = async (dir) => {
     const files = [];
@@ -143,7 +150,12 @@ export function createDeletionSeam(storage, { acquire, parseGeneration, notFound
             const corpus = [...await storage.list(), ...live.map((session) => ({ header: session.header }))];
             if (corpus.some(({ header }) => header.id === id && (header.origin === 'subagent' || (header.delegationDepth ?? 0) > 0)
               || header.origin === 'subagent' && header.parentSession === id)) throw failure('session-related');
-            await hooks.prepare();
+            // Task writes share this mutation fence. Inspect them before disposing the
+            // idle agent so a rejected deletion does not unnecessarily tear it down.
+            await mutation(async () => {
+              if (await hooks.inspectTasks?.()) throw failure('session-related');
+            });
+            await hooks.prepare?.();
           }
         } finally { draining.delete(id); }
         if (storage.ctx.get('sessions')?.get(id) !== undefined) throw failure('writer-held');
