@@ -179,6 +179,27 @@ class PatchDsh(unittest.TestCase):
             for version, by_file in pins["patches"][name].items():
                 self.assertEqual(sorted(by_file), sorted(rel for rel, _ in files), (name, version))
 
+    def test_shipped_patch_pins_form_ordered_hash_chains(self):
+        shipped = os.path.join(HERE, "..", "patches")
+        pins = load(os.path.join(shipped, "pins.json"))["patches"]
+        names = sorted(n for n in os.listdir(shipped) if n.endswith(".diff"))
+        versions = sorted({
+            version
+            for patch in pins.values()
+            for version in patch
+            if version not in {"optional_files", "superseded_files", "superseded_hunks"}
+        })
+        for version in versions:
+            terminal = {}
+            for name in names:
+                for rel, pin in pins.get(name, {}).get(version, {}).items():
+                    if rel in terminal:
+                        self.assertEqual(
+                            terminal[rel], pin["before"],
+                            (name, version, rel, "broken patch hash chain"),
+                        )
+                    terminal[rel] = pin["after"]
+
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
     def test_upstream_fs_local_has_exclusive_create_fallback(self):
