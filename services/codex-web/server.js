@@ -39,6 +39,7 @@ import { promisify } from "node:util";
 import { CodexAppServer, ThreadGoneError, describe } from "./src/appserver.js";
 import { createCwdGuard, realpathOrNull, withinRoot } from "./src/paths.js";
 import { turnsToMessages, summarizeThread } from "./src/history.js";
+import { safeRequestTarget } from "./src/security.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3081);
@@ -183,7 +184,7 @@ async function appendLogLine(line) {
 
 function rejectRequest(req, res, status, reason) {
   const ip = req.socket.remoteAddress || "unknown";
-  const line = `⚠️ 拦截 [${ip}] [${req.url || "/"}] 原因: [${reason}]`;
+  const line = `⚠️ 拦截 [${ip}] [${safeRequestTarget(req.url)}] 原因: [${reason}]`;
   console.warn(line);
   appendLogLine(`[${new Date().toISOString()}] ${line}\n`);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
