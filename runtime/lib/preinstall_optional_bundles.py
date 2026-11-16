@@ -64,8 +64,12 @@ def main() -> int:
             raise SystemExit(f"{name} Node engine mismatch: expected {expected_node}, got {actual_node}")
         expected_dsh = expected.get("dsh")
         actual_dsh = package.get("engines", {}).get("dsh")
-        if expected_dsh is not None and (
-            not isinstance(actual_dsh, str) or expected_dsh not in actual_dsh.split(" || ")
+        # Some packages document DSH compatibility only in our curated manifest.
+        # When the package also declares engines.dsh, keep the two declarations aligned.
+        if (
+            expected_dsh is not None
+            and actual_dsh is not None
+            and (not isinstance(actual_dsh, str) or expected_dsh not in actual_dsh.split(" || "))
         ):
             raise SystemExit(f"{name} DSH engine mismatch: expected {expected_dsh} in {actual_dsh}")
         dsh = package.get("dsh")
