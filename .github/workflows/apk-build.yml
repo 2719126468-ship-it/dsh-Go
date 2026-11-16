@@ -1,9 +1,10 @@
 # 在 GitHub runner 上编 APK，产物以 artifact 交付。
 #
-# 本工作流只编 debug/profile 包：不做签名、不嵌内测通道令牌、不要求任何 secret，
-# 因此 fork、PR、本地克隆都能直接跑。带固定签名的正式包走 custom-release.yml。
+# 本工作流只编 debug/profile 包：使用 Gradle debug keystore，不使用固定发布密钥，
+# 不嵌内测通道令牌、不要求 secret，因此 fork、PR、本地克隆都能直接跑。
+# 带固定签名的正式包走 custom-release.yml。
 #
-#   PR：自动构建 arm32 debug 包（包含 Ubuntu armhf 本机运行时）；手动可选其它 flavor。
+#   PR：同时构建 arm64 与 arm32 debug 包，并分别验证 APK ABI。
 #   手动：workflow_dispatch 可选 flavor 与 mode。
 name: APK build
 
@@ -19,13 +20,13 @@ on:
   workflow_dispatch:
     inputs:
       flavor:
-        description: 'APK flavor（arm64 手机 / x64 模拟器 / arm32 无本机运行时）'
+        description: 'APK flavor（arm64 手机 / x64 模拟器 / arm32 32 位手机）'
         required: true
         default: arm64
         type: choice
         options: [arm64, x64, arm32]
       mode:
-        description: '构建类型（debug 不需要运行时产物，profile 同 debug）'
+        description: '构建类型（debug/profile 使用 Gradle debug 签名）'
         required: true
         default: debug
         type: choice
@@ -45,9 +46,13 @@ env:
 
 jobs:
   apk:
-    name: APK ${{ inputs.flavor || (github.event_name == 'pull_request' && 'arm32' || 'arm64') }} ${{ inputs.mode || 'debug' }}
+    name: APK ${{ matrix.flavor }} ${{ inputs.mode || 'debug' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: ${{ github.event_name == 'pull_request' && fromJSON('["arm64","arm32"]') || fromJSON(format('["{0}"]', inputs.flavor || 'arm64')) }}
     env:
       DSH_MAVEN_MIRRORS: 0 # Aliyun 镜像从 US runner 上又慢又不稳
       DSH_BETA_TOKEN_FILE: '' # 不嵌内测通道令牌
@@ -73,12 +78,17 @@ jobs:
           channel: stable
           cache: true
 
-      - name: 构建 ARM32 Ubuntu armhf 本机运行时
-        if: inputs.flavor == 'arm32' || github.event_name == 'pull_request'
+      - name: 构建对应 ABI 的本机运行时
+        if: matrix.flavor == 'arm32' || matrix.flavor == 'arm64'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -qq gpgv xz-utils file
-          bash runtime/build-runtime.sh armeabi-v7a
+          case "${{ matrix.flavor }}" in
+            arm64) abi=arm64-v8a ;;
+            arm32) abi=armeabi-v7a ;;
+            *) exit 1 ;;
+          esac
+          bash runtime/build-runtime.sh "$abi"
 
       - name: Flutter 依赖与 local.properties
         working-directory: app
@@ -89,31 +99,41 @@ jobs:
       - name: 编译 APK
         run: |
           chmod +x tooling/build-apk.sh
-          tooling/build-apk.sh --${{ inputs.mode || 'debug' }} -f ${{ inputs.flavor || (github.event_name == 'pull_request' && 'arm32' || 'arm64') }}
+          tooling/build-apk.sh --${{ inputs.mode || 'debug' }} -f ${{ matrix.flavor }}
 
       - name: 校验产物
         id: apk
         run: |
-          apk=$(find app/build/app/outputs/flutter-apk -maxdepth 1 -type f -name '*-${{ inputs.mode || 'debug' }}.apk' | sort | tail -1)
-          test -s "$apk" || { echo "没有产出 APK" && exit 1; }
+          apk=$(find app/build/app/outputs/flutter-apk -maxdepth 1 -type f -name '*-${{ matrix.flavor }}-${{ inputs.mode || 'debug' }}.apk' | sort | tail -1)
+          test -s "$apk" || { echo "没有产出 ${{ matrix.flavor }} APK" && exit 1; }
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
           ls -lh "$apk"
           aapt2=$(ls -1d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           apksigner=$(ls -1d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$aapt2" dump badging "$apk" > badging.txt
+          case "${{ matrix.flavor }}" in
+            arm64) expected_abi=arm64-v8a ;;
+            arm32) expected_abi=armeabi-v7a ;;
+            x64) expected_abi=x86_64 ;;
+          esac
+          grep -q "^package: name=" badging.txt
+          grep -q "^native-code:.*'$expected_abi'" badging.txt || { cat badging.txt; echo "APK ABI 不匹配：期望 $expected_abi"; exit 1; }
+          "$apksigner" verify -v --print-certs "$apk" > verify.txt
+          grep -q "Verified using v2 scheme.*: true" verify.txt || { cat verify.txt; exit 1; }
           {
-            echo "### APK"
+            echo "### APK ABI 与签名校验"
             echo
-            echo "$apk"
+            echo "$apk（$expected_abi）"
             echo
             echo '```'
-            "$aapt2" dump badging "$apk" | grep -E "^package:|^sdkVersion|^native-code" || true
-            "$apksigner" verify --print-certs "$apk" | head -6 || true
+            grep -E "^package:|^sdkVersion|^native-code" badging.txt
+            grep -E "Verified using v[123] scheme|Signer #1 certificate SHA-256" verify.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: dsh-go-apk-${{ inputs.flavor || (github.event_name == 'pull_request' && 'arm32' || 'arm64') }}-${{ inputs.mode || 'debug' }}
+          name: dsh-go-apk-${{ matrix.flavor }}-${{ inputs.mode || 'debug' }}
           path: ${{ steps.apk.outputs.apk }}
           if-no-files-found: error
           retention-days: 7
