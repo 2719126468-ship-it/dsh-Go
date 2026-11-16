@@ -106,14 +106,6 @@
  		const wakingAfterAbort = wakeup && this.phase.kind !== "idle" && this.phase.abort.signal.aborted;
  		const resolvedTarget = wakingAfterAbort ? "next-turn" : target;
  		this.inbox.splice(resolvedTarget, Infinity, 0, [message]);
-@@ -862,1 +892,7 @@
- 		const driver = Promise.withResolvers();
-+		// Direct wakes also restore held claims before a new terminal can settle them.
-+		try {
-+			this.inbox.recover();
-+		} catch (error) {
-+			this.throwError(error);
-+		}
 @@ -896,12 +932,20 @@
  		} catch (_error) {} finally {
  			/* v8 ignore next -- kick owns a running phase until this driver boundary */
