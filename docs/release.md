@@ -505,3 +505,14 @@ App 这边（`app/lib/update/delta.dart`、`app/lib/state/update_state.dart`）�
 - [ ] 下载中切到后台、断网再恢复、杀进程后重进：都能续传
 - [ ] 国产 ROM（vivo / 小米 / 华为）：自带的安装拦截页、「安全安装」流程不会让 App 卡在「安装中」（App 回到前台 3 秒后会自动放开）
 - [ ] 公共镜像实测可用；GitHub 不通时能回落
+
+## Custom dual-ABI release
+
+The regular release metadata generator and in-app update feed remain ARM64-only. To build signed ARM64 and ARM32 APKs together, use **Actions → Custom release (arm64 + arm32, fixed signature)** with both build inputs enabled. The workflow:
+
+- builds `arm64-v8a` and `armeabi-v7a` separately;
+- checks minSdk 26, the expected native ABI, and the fixed signing certificate;
+- verifies APK signature schemes v1, v2, and v3 for each APK;
+- publishes only when both ABI builds succeed and `publish_release` is explicitly enabled.
+
+The resulting `custom-*` GitHub Release includes both APKs and `SHA256SUMS`. It does not update the standard `update.json` feed, so ARM32 users currently install custom-release APKs manually. Do not treat a partial one-ABI artifact bundle as a complete dual-ABI release.
