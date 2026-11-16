@@ -202,12 +202,22 @@ class PatchDsh(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
-    def test_upstream_fs_local_has_exclusive_create_fallback(self):
-        # DSH 0.2.2-rc.1 already ships this behavior. Keep the runtime contract
-        # checked without carrying a duplicate patch or inventing a new pin.
-        with open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb") as source:
-            original = source.read().decode("utf-8")
-        self.assertIn('["EPERM", "EXDEV", "ENOTSUP", "EMLINK"]', original)
+    def test_pinned_fs_local_patch_provides_exclusive_create_fallback(self):
+        # The current ARM runtime is pinned to DSH 0.2.1-rc.4. Verify the
+        # shipped strict patch against that exact upstream source, rather than
+        # asserting that the upstream package already contains our patch.
+        original_bytes = open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb").read()
+        original = original_bytes.decode("utf-8")
+        version = os.environ["DSH_VERSION"]
+        rel = "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js"
+        patches = os.path.join(HERE, "..", "patches")
+        pins = load(os.path.join(patches, "pins.json"))["patches"]["fs-create-exclusive.diff"][version]
+        self.assertEqual(hashlib.sha256(original_bytes).hexdigest(), pins[rel]["before"])
+        files = rtbuild.parse_unified_diff(read(os.path.join(patches, "fs-create-exclusive.diff")))
+        self.assertEqual([path for path, _ in files], [rel])
+        patched = rtbuild.apply_hunks(original, files[0][1], "fs-create-exclusive.diff")
+        self.assertIn('["EPERM", "EXDEV", "ENOTSUP", "EMLINK"]', patched)
+        self.assertEqual(hashlib.sha256(patched.encode("utf-8")).hexdigest(), pins[rel]["after"])
         self.assertIn('open(absolutePath, "wx", 384)', original)
         self.assertIn("await handle.sync()", original)
         self.assertIn("await handle.close()", original)
