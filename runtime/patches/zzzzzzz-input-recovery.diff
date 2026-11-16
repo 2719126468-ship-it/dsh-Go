@@ -97,7 +97,7 @@
  	}
  	get status() {
  		return this.phase.kind === "idle" || this.phase.kind === "maintenance" ? "idle" : "running";
-@@ -800,6 +828,8 @@
+@@ -800,4 +828,6 @@
  	send(message, target, wakeup) {
 +		// Reject admission before insertion if an older claim still cannot be restored.
 +		if (wakeup && this.phase.kind === "idle") this.inbox.recover();
