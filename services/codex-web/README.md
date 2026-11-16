@@ -41,6 +41,8 @@ services/codex-web/stop.sh      # 停服务，连带它拉起的 codex / proot �
 令牌会存进浏览器的 localStorage；之后直接打开 <http://127.0.0.1:3081>，或从主屏幕启动 PWA 就行
 （详见下面「认证」）。
 
+`CODEX_WEB_NO_AUTH=1` / `--no-auth` 仅允许 `127.0.0.1`、`::1` 或 `localhost` 绑定；尝试绑定 `0.0.0.0` 或局域网地址会直接拒绝启动。需要跨设备访问时请保留令牌认证。
+
 日志在 `services/codex-web/server.log`。超过 5MB 自动轮转：尾部 2MB 快照进 `server.log.1`，
 主文件清空重记（copy+truncate，不换 inode——nohup 的 stdout 和拦截日志的 appendFile
 写的是同一个文件，rename 会让两条流分叉）。
