@@ -10,3 +10,8 @@ export function safeRequestTarget(raw) {
     return "/";
   }
 }
+
+/** No-auth mode must never expose the local Codex service beyond this device. */
+export function isLoopbackBindHost(raw) {
+  return typeof raw === "string" && ["127.0.0.1", "::1", "localhost"].includes(raw.trim().toLowerCase());
+}
