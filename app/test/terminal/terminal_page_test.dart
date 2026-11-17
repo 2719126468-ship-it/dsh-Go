@@ -6,6 +6,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:dsh_app/state/terminal_state.dart';
 import 'package:dsh_app/ui/terminal/terminal_keys.dart';
+import 'package:dsh_app/ui/terminal/terminal_keyboard.dart';
 import 'package:dsh_app/ui/terminal/terminal_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -142,6 +143,28 @@ void main() {
     await settleTerminal(tester);
     expect(attach.written, endsWith('bch\t'));
     expect(find.text('ch'), findsNothing);
+  });
+
+  testWidgets('show reattaches the terminal keyboard connection', (tester) async {
+    final backend = FakeTerminalBackend();
+    await pumpTerminalPage(tester, backend);
+    final attach = backend.attachOf(backend.created.single['id']! as String);
+    tester.testTextInput.log.clear();
+
+    // Exercise the bridge directly: xterm's gesture arena can consume a tap
+    // without dispatching onTapUp in a widget test, while the production path
+    // calls this same method from TerminalView.onTapUp.
+    tester.state<TerminalKeyboardState>(find.byType(TerminalKeyboard)).show();
+    await tester.pump();
+    expect(
+      tester.testTextInput.log.map((call) => call.method),
+      containsAllInOrder(['TextInput.setClient', 'TextInput.show']),
+    );
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(text: '  ls', selection: TextSelection.collapsed(offset: 4)),
+    );
+    await settleTerminal(tester);
+    expect(attach.written, 'ls');
   });
 
   testWidgets('ended: 已结束 with the exit code; 新建终端 starts a fresh one in place', (tester) async {

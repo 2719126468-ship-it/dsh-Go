@@ -79,6 +79,10 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   /// Brings the keyboard back (a tap on the screen after it was dismissed).
   void show() {
     if (!widget.enabled) return;
+    // Some IMEs ignore show() after Back hides an attached connection.
+    // Reattaching restores the keyboard; flushing first preserves composing text.
+    flushComposing();
+    _close();
     if (!widget.focusNode.hasFocus) {
       widget.focusNode.requestFocus();
       return;
