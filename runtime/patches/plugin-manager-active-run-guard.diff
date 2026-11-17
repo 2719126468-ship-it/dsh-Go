@@ -1,28 +1,33 @@
-# Prevent overlapping installs from mutating the same profile after the request is cancelled.
+# dsh-go: serialize installs against recorded pnpm runs and preserve cancellation after lock wait.
+# Re-vetted against @deepseek-ai/dsh-plugin-manager 0.2.2-rc.1.
 --- a/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js
-@@ -2097,7 +2097,7 @@
+@@ -2865,7 +2865,7 @@
  				stage: "install",
  				target: spec,
  				enabled: options?.enabled !== false
 -			}, "install");
-+			}, "install", stopped);
++			}, "install", void 0, stopped);
  			control.result = result;
  			return result.finally(() => {
  				if (requestId !== void 0) this.installs.delete(requestId);
-@@ -2372,9 +2372,14 @@
+@@ -3139,7 +3139,7 @@
  				restartReason: restart
  			};
  		}
--		async change(operation, request, reason) {
-+		async change(operation, request, reason, isCancelled) {
- 			return withFileLock(join(this.profile.dir, "package.json"), async () => {
- 				this.abort.signal.throwIfAborted();
-+				if (isCancelled?.()) throw new InstallCancelledError();
-+				const active = await activeRecordedRun(this.profile.dir);
-+				if (isCancelled?.()) throw new InstallCancelledError();
-+				this.abort.signal.throwIfAborted();
-+				if (active !== void 0) throw new Error(active);
- 				const before = this.diskState();
- 				const result = {
- 					...request,
+-		async change(operation, request, reason, identity) {
++		async change(operation, request, reason, identity, isCancelled) {
+ 			const id = randomUUID();
+ 			const target = identity === void 0 ? this.operationTarget(reason, request.target) : identity.target;
+ 			const version = identity === void 0 ? this.operationVersion(reason, reason === "plugin" ? request.target : target) : identity.version;
+@@ -3160,6 +3160,11 @@
+ 			try {
+ 				settled = await withFileLock(join(this.profile.dir, "package.json"), async () => {
+ 					this.abort.signal.throwIfAborted();
++					if (isCancelled?.()) throw new InstallCancelledError();
++					const active = await activeRecordedRun(this.profile.dir);
++					if (isCancelled?.()) throw new InstallCancelledError();
++					this.abort.signal.throwIfAborted();
++					if (active !== void 0) throw new Error(active);
+ 					const before = this.diskState();
+ 					const result = {
