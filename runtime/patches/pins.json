@@ -337,6 +337,20 @@
           "before": "931ca0cb10c5102066c7723690a887f0e6e8e7ab0ffdee1a782686745b0b934f",
           "after": "a26b396baee3c353b5bd55c932e30f2653b083a136e7a8f9f596e9fe4c1222b0"
         }
+      },
+      "superseded_hunks": {
+        "0.2.1-rc.4": {
+          "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": [
+            4,
+            5
+          ]
+        },
+        "0.2.2-rc.1": {
+          "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": [
+            6,
+            7
+          ]
+        }
       }
     },
     "zzzzzzzz-schedule-authorization.diff": {
