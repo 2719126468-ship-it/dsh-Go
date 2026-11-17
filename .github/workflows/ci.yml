@@ -362,7 +362,7 @@ jobs:
           mkdir -p "$debug"
           for prefix in "$DSH_LEGACY_PREFIX" "$DSH_PREFIX"; do
             label=$(basename "$prefix")
-            for package in dsh-fs-local dsh-home-paths dsh-app-boot dsh-subprocess-local dsh-sandbox dsh-sandbox-policy dsh-skill-filesystem dsh-api-session-controller dsh-plugin-manager dsh-client-file-upload; do
+            for package in dsh-fs-local dsh-home-paths dsh-app-boot dsh-subprocess-local dsh-sandbox dsh-sandbox-policy dsh-skill-filesystem dsh-agent-loop dsh-api-session-controller dsh-plugin-manager dsh-client-file-upload; do
               source="$prefix/node_modules/@deepseek-ai/$package/lib/index.js"
               if [[ -f "$source" ]]; then cp "$source" "$debug/$label-$package-index.js"; fi
             done
