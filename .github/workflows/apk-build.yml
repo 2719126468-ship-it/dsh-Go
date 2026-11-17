@@ -17,6 +17,16 @@ on:
       - 'sdk/**'
       - 'tooling/**'
       - '.github/workflows/apk-build.yml'
+  push:
+    branches:
+      - 'feat/**'
+    paths:
+      - 'app/**'
+      - 'packages/**'
+      - 'runtime/**'
+      - 'sdk/**'
+      - 'tooling/**'
+      - '.github/workflows/apk-build.yml'
   workflow_dispatch:
     inputs:
       flavor:
@@ -52,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flavor: ${{ github.event_name == 'pull_request' && fromJSON('["arm64","arm32"]') || fromJSON(format('["{0}"]', inputs.flavor || 'arm64')) }}
+        flavor: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && fromJSON('["arm64","arm32"]') || fromJSON(format('["{0}"]', inputs.flavor || 'arm64')) }}
     env:
       DSH_MAVEN_MIRRORS: 0 # Aliyun 镜像从 US runner 上又慢又不稳
       DSH_BETA_TOKEN_FILE: '' # 不嵌内测通道令牌
