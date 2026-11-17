@@ -105,7 +105,8 @@
       },
       "superseded_files": {
         "0.2.1-rc.4": [
-          "node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js"
+          "node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js",
+          "node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
         ],
         "0.2.2-rc.1": [
           "node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
