@@ -1274,7 +1274,8 @@ class ChatController extends Notifier<ChatState> {
       }
       final notice = await _deliver(operation, trimmed, attachments, receipts, requestId: requestId, mode: promptMode);
       _sent();
-      if (!_currentOperation(operation)) return false;
+      // Delivery completed; a reconnect after acceptance must not restore a sent draft.
+      if (!_currentOperation(operation)) return true;
       state = state.copyWith(error: stopFailed, notice: notice);
       return true;
     } catch (e) {
