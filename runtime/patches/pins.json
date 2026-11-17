@@ -351,6 +351,11 @@
             7
           ]
         }
+      },
+      "superseded_files": {
+        "0.2.1-rc.4": [
+          "node_modules/@deepseek-ai/dsh-session-query/lib/index.js"
+        ]
       }
     },
     "zzzzzzzz-schedule-authorization.diff": {
