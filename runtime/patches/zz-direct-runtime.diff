@@ -91,16 +91,6 @@
  		} catch (error) {
  			scope?.cleanup();
  			activity?.dispose();
---- a/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
-@@ -148,6 +148,7 @@
- *   outcome; inventing a fallback would grant a path the caller never named).
- */
- function canonicalPath(path) {
-+	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
- 	try {
- 		return realpathSync.native(path);
- 	} catch {
 --- a/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
 @@ -75,13 +75,13 @@
