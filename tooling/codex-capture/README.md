@@ -25,4 +25,5 @@ SHAREDCHAT_API_KEY=sk-xxx bash replay.sh
 
 - 这些脚本会向真实上游发请求，属于一次性诊断工具；CI 只做语法检查，不执行。
 - `body.json`、`capture.jsonl`、`out*.txt`、`*.log` 是本地产物，**不要提交**（已在 `.gitignore` 忽略）。
+- `capture.jsonl` 会保留请求正文（可能含私密对话内容），但 `Authorization`、`x-api-key`、Cookie 等凭据头会脱敏；捕获文件权限固定为 `0600`。分享诊断产物前仍应检查正文。
 - 复放脚本从 `SHAREDCHAT_API_KEY` 读 key，仓库里不保存任何凭据。
