@@ -188,7 +188,7 @@ Capabilities depend on the host and connection. DSHarness Remote currently accep
 
 ## Install
 
-Installation requires Android 8.0 (API 26) or later. The **arm64** package on the Releases page is for typical 64-bit Android phones; the x64 package for x86_64 devices and emulators is under “Other builds” at the end of the release notes. This repository has no 32-bit ARM build.
+Installation requires Android 8.0 (API 26) or later. The **arm32** package supports 32-bit ARM phones running Android 8.1 (API 27) or later and includes an Ubuntu armhf Linux userspace with Termux/Bionic Node.js 24.22.3 (Android API 24+). The **arm64** package is for typical 64-bit Android phones; x86_64 devices and emulators use x64. ARM32 omits optional npm packages that ship only glibc-native addons. The source tree retains a `portable` flavor for remote-only builds.
 
 1. Download the APK for your device architecture from [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) or the [download page](https://go.dshtui.com/download), and follow Android's prompt to allow that installation source.
 2. On first launch, choose an on-device runtime or a remote host.
@@ -310,6 +310,7 @@ bash services/sharedchat-bridge/start.sh         # 8787; put the key in .env fir
 CI runs it in the `Codex suite` job of `ci.yml`; `.github/workflows/apk-build.yml` builds a debug APK
 artifact on pull requests, so no local Flutter or Android SDK is needed. See [docs/codex-suite.md](docs/codex-suite.md).
 
+
 ## Repository layout
 
 | Path | Contents |
@@ -320,8 +321,6 @@ artifact on pull requests, so no local Flutter or Android SDK is needed. See [do
 | `runtime/` | Linux runtime assembly, engine patches and the app bridge |
 | `sdk/plugin-kit/` | Native plugin authoring kit, used from the repository and not published to npm |
 | `examples/plugins/` | Example plugins |
-| `services/codex-web/`, `services/sharedchat-bridge/` | Local web Codex UI and an OpenAI-compatible bridge ([Codex suite](docs/codex-suite.md)) |
-| `packages/dsh-codex-delegate/` | DSH plugin exposing the local Codex CLI as `codex_delegate` |
 | `docs/guide/`, `docs/plugins/` | User and plugin development guides |
 | `docs/assets/` | Showcase images, pet animations and community QR codes used on this page |
 | `tooling/` | Toolchain, APK build and diagnostic scripts |

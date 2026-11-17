@@ -97,28 +97,21 @@
  	}
  	get status() {
  		return this.phase.kind === "idle" || this.phase.kind === "maintenance" ? "idle" : "running";
-@@ -800,6 +828,8 @@
+@@ -800,4 +828,6 @@
  	send(message, target, wakeup) {
- 		if (this.dshGoDeleting) throw new Error("session is being deleted");
- 		this.loopCtx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(this.id);
 +		// Reject admission before insertion if an older claim still cannot be restored.
 +		if (wakeup && this.phase.kind === "idle") this.inbox.recover();
  		const wakingAfterAbort = wakeup && this.phase.kind !== "idle" && this.phase.abort.signal.aborted;
  		const resolvedTarget = wakingAfterAbort ? "next-turn" : target;
  		this.inbox.splice(resolvedTarget, Infinity, 0, [message]);
-@@ -862,6 +892,12 @@
+@@ -884,6 +912,7 @@
+ 	wakeDriver(wakeAfterAbort = false) {
++		if (this.phase.kind === "idle") this.inbox.recover();
+ 		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
  		}
-+		// Direct wakes also restore held claims before a new terminal can settle them.
-+		try {
-+			this.inbox.recover();
-+		} catch (error) {
-+			this.throwError(error);
-+		}
  		const driver = Promise.withResolvers();
- 		this.activityDone = driver.promise;
- 		this.setPhase({
 @@ -896,12 +932,20 @@
  		} catch (_error) {} finally {
  			/* v8 ignore next -- kick owns a running phase until this driver boundary */

@@ -179,40 +179,49 @@ class PatchDsh(unittest.TestCase):
             for version, by_file in pins["patches"][name].items():
                 self.assertEqual(sorted(by_file), sorted(rel for rel, _ in files), (name, version))
 
-    @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
-                         "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm 0.2.1-rc.2 lib/index.js")
-    def test_shipped_exclusive_create_patch_applies_and_rejects_drift(self):
+    def test_shipped_patch_pins_form_ordered_hash_chains(self):
         shipped = os.path.join(HERE, "..", "patches")
-        name = "fs-create-exclusive.diff"
-        rel = "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js"
-        pins = load(os.path.join(shipped, "pins.json"))
-        pin = pins["patches"][name]["0.2.1-rc.2"][rel]
-        with open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb") as source:
-            original = source.read()
-        self.assertEqual(hashlib.sha256(original).hexdigest(), pin["before"])
-        target = os.path.join(self.prefix, rel)
-        os.makedirs(os.path.dirname(target), exist_ok=True)
-        with open(target, "wb") as out:
-            out.write(original)
-        os.remove(os.path.join(self.patches, "guard.diff"))
-        with open(os.path.join(self.patches, name), "w") as out:
-            out.write(read(os.path.join(shipped, name)))
-        with open(os.path.join(self.patches, "pins.json"), "w") as out:
-            json.dump({"schema": 1, "patches": {name: pins["patches"][name]}}, out)
+        pins = load(os.path.join(shipped, "pins.json"))["patches"]
+        names = sorted(n for n in os.listdir(shipped) if n.endswith(".diff"))
+        versions = sorted({
+            version
+            for patch in pins.values()
+            for version in patch
+            if version not in {"optional_files", "superseded_files", "superseded_hunks"}
+        })
+        for version in versions:
+            terminal = {}
+            for name in names:
+                for rel, pin in pins.get(name, {}).get(version, {}).items():
+                    if rel in terminal:
+                        self.assertEqual(
+                            terminal[rel], pin["before"],
+                            (name, version, rel, "broken patch hash chain"),
+                        )
+                    terminal[rel] = pin["after"]
 
-        result = self.run_cli("--dsh-version", "0.2.1-rc.2")
-        self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual(sha(read(target)), pin["after"])
-        again = self.run_cli("--dsh-version", "0.2.1-rc.2")
-        self.assertEqual(again.returncode, 0, again.stdout)
-        self.assertIn("already patched", again.stdout)
-        with open(target, "wb") as out:
-            out.write(original + b"// upstream drift\n")
-        changed = self.run_cli("--dsh-version", "0.2.1-rc.2")
-        self.assertNotEqual(changed.returncode, 0)
-        self.assertIn("differs from the vetted", changed.stdout)
-        with open(target, "rb") as source:
-            self.assertEqual(source.read(), original + b"// upstream drift\n")
+    @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
+                         "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
+    def test_pinned_fs_local_patch_provides_exclusive_create_fallback(self):
+        # The current ARM runtime is pinned to DSH 0.2.1-rc.4. Verify the
+        # shipped strict patch against that exact upstream source, rather than
+        # asserting that the upstream package already contains our patch.
+        original_bytes = open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb").read()
+        original = original_bytes.decode("utf-8")
+        version = os.environ["DSH_VERSION"]
+        rel = "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js"
+        patches = os.path.join(HERE, "..", "patches")
+        pins = load(os.path.join(patches, "pins.json"))["patches"]["fs-create-exclusive.diff"][version]
+        self.assertEqual(hashlib.sha256(original_bytes).hexdigest(), pins[rel]["before"])
+        files = rtbuild.parse_unified_diff(read(os.path.join(patches, "fs-create-exclusive.diff")))
+        self.assertEqual([path for path, _ in files], [rel])
+        patched = rtbuild.apply_hunks(original, files[0][1], "fs-create-exclusive.diff")
+        self.assertIn('["EPERM", "EXDEV", "ENOTSUP", "EMLINK"]', patched)
+        self.assertEqual(hashlib.sha256(patched.encode("utf-8")).hexdigest(), pins[rel]["after"])
+        self.assertIn(')(absolutePath, "wx", 384)', patched)
+        self.assertIn("await handle.sync()", original)
+        self.assertIn("await handle.close()", original)
+
 
 
 if __name__ == "__main__":

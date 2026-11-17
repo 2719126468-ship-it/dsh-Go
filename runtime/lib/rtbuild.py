@@ -35,6 +35,7 @@ DIRECT_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dir
 PNPM_BINS = {"pnpm": "pnpm.mjs", "pnpx": "pnpx.mjs", "pn": "pnpm.mjs", "pnx": "pnpx.mjs"}
 ABI = {
     "arm64-v8a": {"machine": 183, "npm_cpu": "arm64", "node": "arm64", "ubuntu": "arm64", "termux": "aarch64"},
+    "armeabi-v7a": {"machine": 40, "npm_cpu": "arm", "node": "armv7l", "ubuntu": "armhf", "termux": "arm"},
     "x86_64": {"machine": 62, "npm_cpu": "x64", "node": "x64", "ubuntu": "amd64", "termux": "x86_64"},
 }
 
@@ -1063,7 +1064,7 @@ def cmd_assemble(args):
         entries["opt/python"] = Entry("dir", 0o755, origin="python")
 
     # 2. Node.js
-    keep_node_top = {"bin", "lib", "LICENSE"}
+    keep_node_top = {"bin", "lib", "LICENSE", "licenses", "share"}
     with tarfile.open(args.node, "r:*") as t:
         for m in t:
             p = norm_member(m.name)
@@ -1086,6 +1087,13 @@ def cmd_assemble(args):
                 raise SystemExit("unexpected hard link in node tarball: " + m.name)
     entries["opt"] = Entry("dir", 0o755, origin="node")
     entries["opt/node"] = Entry("dir", 0o755, origin="node")
+    if abi == "armeabi-v7a":
+        entries["data/data/com.termux/files/usr/lib"] = Entry(
+            "symlink", 0o777, link="../../../../../opt/node/lib", origin="node")
+        entries["data/data/com.termux/files/usr/bin/sh"] = Entry(
+            "symlink", 0o777, link="../../../../../../bin/sh", origin="node")
+        entries["data/data/com.termux/files/usr/etc/tls/cert.pem"] = Entry(
+            "symlink", 0o777, link="../../../../../../../etc/ssl/certs/ca-certificates.crt", origin="node")
 
     # 3. npm trees on disk: DSH (whole --prefix) and pnpm (laid out like `npm i -g pnpm`)
     def add_tree(src, dest_root, origin, drop_reason):
@@ -1145,6 +1153,10 @@ def cmd_assemble(args):
     for p, e in overlay_entries(runtime_info, with_python=bool(args.python), with_pnpm=bool(args.pnpm_prefix),
                                 with_bridge=bool(args.bridge)).items():
         entries[p] = e
+    if abi == "armeabi-v7a":
+        entries.pop("usr/local/bin/corepack", None)
+        entries["opt/dsh-go/android-bionic-runtime.cjs"] = Entry(
+            "file", 0o644, data=b"Object.defineProperty(process, 'platform', { value: 'linux', enumerable: true, configurable: true }); process.execPath = '/opt/node/bin/node'; delete process.env.LD_LIBRARY_PATH;\n", origin="overlay")
 
     # 5. ELF audit + arch/libc pruning; Termux-style fixes for node-pty helpers
     for p in sorted(entries):
@@ -1159,6 +1171,10 @@ def cmd_assemble(args):
             info = elf_summary(data)
         except Exception as exc:  # truncated/odd ELF objects (e.g. test fixtures)
             report["warnings"].append("unparsable ELF %s: %s" % (p, exc))
+            continue
+        if abi == "armeabi-v7a" and e.origin in ("dsh", "pnpm"):
+            drop("bionic-incompatible-native-addon", p, len(data))
+            del entries[p]
             continue
         if info["e_machine"] != machine:
             if e.origin in ("dsh", "pnpm"):
@@ -1308,8 +1324,9 @@ def cmd_assemble(args):
 # ---------------------------------------------------------------------------
 # manifest
 # ---------------------------------------------------------------------------
-def launch_template():
+def launch_template(abi):
     """The proot invocation the app runs (placeholders expanded by DshProcess.kt)."""
+    node_memory = " --require=/opt/dsh-go/android-bionic-runtime.cjs --max-old-space-size=320 --max-semi-space-size=8" if abi == "armeabi-v7a" else ""
     guest_env = [
         "HOME=/root", "USER=root", "LOGNAME=root", "SHELL=/bin/bash",
         "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -1319,7 +1336,8 @@ def launch_template():
         "pnpm_config_registry=" + NPMMIRROR,
         "UV_USE_IO_URING=0",
         "NARB_DISABLE_NATIVE_CACHE=1",
-        "NODE_OPTIONS=--dns-result-order=ipv4first",
+        *(["ICU_DATA=/opt/node/share/icu"] if abi == "armeabi-v7a" else []),
+        "NODE_OPTIONS=--dns-result-order=ipv4first" + node_memory,
     ]
     argv = [
         "{NATIVE_LIB_DIR}/libproot.so",
@@ -1436,7 +1454,9 @@ def cmd_manifest(args):
             "schema": 2,
             "defaultEnabled": False,
             "preload": "/opt/dsh-go/direct/preload.mjs",
-            "loader": "/usr/lib/" + ("x86_64-linux-gnu/ld-linux-x86-64.so.2" if args.abi == "x86_64" else "aarch64-linux-gnu/ld-linux-aarch64.so.1"),
+            "loader": ("/system/bin/linker" if args.abi == "armeabi-v7a" else
+                       "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2" if args.abi == "x86_64" else
+                       "/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1"),
             "paths": "typed guest/physical path seams; same-path PRoot alias only for direct or a prior direct preparation",
             "safeMode": "proot",
             "tls": "Node bundled CA defaults; explicit extra CA environment retained",
@@ -1445,7 +1465,7 @@ def cmd_manifest(args):
             "nativeAddonInventory": "/opt/dsh-go/direct/native-addons.json",
             "compatibilityGate": "nonempty or unreadable PRoot hard-link backing store selects proot; late L2S targets are refused without data migration",
         },
-        "launch": launch_template(),
+        "launch": launch_template(args.abi),
         "build": v.get("build", {}),
     }
     with open(args.out, "w") as f:

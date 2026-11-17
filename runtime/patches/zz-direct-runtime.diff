@@ -48,18 +48,6 @@
  		};
  	} catch (error) {
  		/* v8 ignore next -- native Windows coverage exercises the FsError raised by the repair above. */
---- a/node_modules/@deepseek-ai/dsh-working-directory/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-working-directory/lib/index.js
-@@ -74,7 +74,8 @@
- 	* @returns its effective absolute directory.
- 	*/
- 	get(session) {
--		return this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
-+		const directory = this.ctx.sessionProjections.stateOf(session, "workingDirectory") ?? this.defaultDirectory;
-+		return globalThis[Symbol.for("dsh.go.direct")]?.toHost(directory) ?? directory;
- 	}
- 	/**
- 	* Validate the current directory and restore the original project when it disappeared.
 --- a/node_modules/@deepseek-ai/dsh-home-paths/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-home-paths/lib/index.js
 @@ -82,7 +82,8 @@
@@ -103,16 +91,6 @@
  		} catch (error) {
  			scope?.cleanup();
  			activity?.dispose();
---- a/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js
-@@ -65,6 +65,7 @@
- */
- /** Preserve execution-world spelling; enforcing providers resolve filesystem identity on their host. */
- function resolveWorkspaceRoot(path) {
-+	path = globalThis[Symbol.for("dsh.go.direct")]?.toHost(path) ?? path;
- 	if (!isAbsolute(path)) throw new Error("sandbox-policy: workspace root must be an absolute execution-world path");
- 	return path;
- }
 --- a/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js
 @@ -148,6 +148,7 @@

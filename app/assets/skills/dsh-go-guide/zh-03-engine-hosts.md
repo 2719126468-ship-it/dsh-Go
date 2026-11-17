@@ -13,6 +13,8 @@ DSH 可以直接运行在这台手机上（本机引擎），也可以运行在�
 
 ## 本机引擎
 
+ARM32 版本同样包含本机 Ubuntu armhf Linux 用户空间，使用 Termux 为 Android API 24+ 构建的 32 位 ARM Node.js 24.22.3（Bionic），Node V8 old-space 上限为 320 MiB。Android 8.1 对应 API 27，满足本 App 的 minSdk 26，也高于该 Node 构建的 API 24 基线。少数只提供 glibc 原生扩展的可选 npm 插件不会装入 ARM32 运行时。
+
 <!-- nav: commonSettings,hubSettingsEngine -->
 `设置 › 本机引擎` · [打开](dshgo://open/engine)
 

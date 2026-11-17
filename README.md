@@ -188,7 +188,7 @@ DSH Go 提供聊天界面、本机运行环境和远程连接，是基于 [DeepS
 
 ## 安装
 
-安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。仓库没有 32 位 ARM 构建。
+安装要求为 Android 8.0（API 26）及以上。**arm32** 包适用于 Android 8.1（API 27）及以上的 32 位 ARM 手机，内置 Ubuntu armhf Linux 用户空间与 Termux/Bionic Node.js 24.22.3（Android API 24+）；**arm64** 适用于常见 64 位手机，x86_64 设备和模拟器使用 x64。ARM32 不包含仅提供 glibc 原生扩展的可选 npm 插件。源代码仍保留 `portable` flavor，供只需要远程主机的精简构建使用。
 
 1. 从 [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) 或[官网下载页](https://go.dshtui.com/download)下载对应架构的 APK，并按系统提示允许该安装来源。
 2. 首次启动时，选择在本机安装运行环境，或连接远程主机。
@@ -309,6 +309,7 @@ bash services/sharedchat-bridge/start.sh         # 8787，先在 .env 里填 key
 CI 在 `ci.yml` 的 `Codex suite` job 里跑；APK 由 `.github/workflows/apk-build.yml` 在 PR 上编译成 artifact，
 本地没有 Flutter/Android SDK 也能出包。完整说明见 [docs/codex-suite.md](docs/codex-suite.md)。
 
+
 ## 目录
 
 | 路径 | 内容 |
@@ -319,8 +320,6 @@ CI 在 `ci.yml` 的 `Codex suite` job 里跑；APK 由 `.github/workflows/apk-bu
 | `runtime/` | Linux 运行时打包、引擎补丁与 App 桥接 |
 | `sdk/plugin-kit/` | 原生插件作者工具包；在仓库中使用，未发布到 npm |
 | `examples/plugins/` | 插件示例 |
-| `services/codex-web/`、`services/sharedchat-bridge/` | 本地 Web 版 Codex、OpenAI 兼容桥（[Codex 套件](docs/codex-suite.md)） |
-| `packages/dsh-codex-delegate/` | DSH 插件：把本机 Codex CLI 接成 `codex_delegate` 工具 |
 | `docs/guide/`、`docs/plugins/` | 用户指南与插件开发文档 |
 | `docs/assets/` | 本页用到的展示图、桌宠动图和社群二维码 |
 | `tooling/` | 工具链、APK 构建与诊断脚本 |

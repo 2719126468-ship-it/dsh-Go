@@ -91,3 +91,13 @@ EventChannel `dsh/runtime/events`，事件 map：
 - API 细节：`packages/dsh_client/`
 - 远程接入方式：`packages/dsh_remote/`
 - 设计规范：`docs/design/`
+
+## Android ABI matrix
+
+| ABI | Android compatibility | Local runtime | Notes |
+|---|---|---|---|
+| `arm64-v8a` | API 26+ | Ubuntu aarch64 + Node 24.22.1 + pinned DSH | Primary device build |
+| `armeabi-v7a` (ARM32) | APK minSdk 26; Android 8.1+ target devices | Ubuntu armhf + Node 24.22.3 + pinned DSH | Local 32-bit engine; the optional tawcroot helper is omitted from CI release builds |
+| `x86_64` | Emulator | Emulator build flavor | Development and emulator validation |
+
+The ARM32 runtime is a separate `armhf` rootfs and must not reuse ARM64 native libraries. Keep APK ABI checks, runtime-manifest checks, and signing verification separate for each flavor.
