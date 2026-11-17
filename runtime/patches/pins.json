@@ -354,7 +354,8 @@
       },
       "superseded_files": {
         "0.2.1-rc.4": [
-          "node_modules/@deepseek-ai/dsh-session-query/lib/index.js"
+          "node_modules/@deepseek-ai/dsh-session-query/lib/index.js",
+          "node_modules/@deepseek-ai/dsh-schedule/lib/index.js"
         ]
       }
     },
