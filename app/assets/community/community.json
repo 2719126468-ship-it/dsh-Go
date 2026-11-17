@@ -1,15 +1,18 @@
 {
   "schema": 1,
-  "revision": 1,
-  "updatedAt": "2026-10-24T00:00:00Z",
-  "_comment": "社区页内容（docs/design/community.md）。线上版放仓库根目录 community.json，改一次 revision 加 1。group 的 url / qr / copy 全空时该项不显示。",
+  "revision": 4,
+  "updatedAt": "2026-11-15T00:00:00Z",
+  "_comment": "社区页内容。根目录 community.json 用于线上更新；此文件作为 APK 首次启动的离线副本。projects 仅是 GitHub 源码链接，不会自动安装或执行。",
   "tagline": "开源项目，欢迎点星",
   "plugins": [
-    { "name": "@liustack/modsearch", "note": "免费的联网搜索" },
-    { "name": "@liustack/modlens", "note": "让纯文本模型看懂图片" },
-    { "name": "dsh-context", "note": "看清并管理上下文用量" },
-    { "name": "@xmanrui/dsh-im", "note": "把飞书、微信、QQ 机器人接进 DSH" },
-    { "name": "dsh-univer-office", "note": "表格和文档的办公环境" }
+    {
+      "name": "@liustack/modsearch",
+      "note": "联网搜索与网页抓取；默认抓取可能使用 Firecrawl 云端，启用前请审阅数据流与权限。"
+    },
+    {
+      "name": "dsh-context",
+      "note": "上下文统计与管理工具；启用前请检查插件偏好设置。"
+    }
   ],
   "prompts": [
     {
@@ -50,9 +53,30 @@
     }
   ],
   "groups": [
-    { "kind": "qq", "title": "QQ 交流群", "subtitle": "", "url": "", "qr": "", "copy": "" },
-    { "kind": "wechat", "title": "微信公众号", "subtitle": "", "url": "", "qr": "", "copy": "" },
-    { "kind": "telegram", "title": "Telegram", "subtitle": "", "url": "", "qr": "", "copy": "" },
+    {
+      "kind": "qq",
+      "title": "QQ 交流群",
+      "subtitle": "",
+      "url": "",
+      "qr": "",
+      "copy": ""
+    },
+    {
+      "kind": "wechat",
+      "title": "微信公众号",
+      "subtitle": "",
+      "url": "",
+      "qr": "",
+      "copy": ""
+    },
+    {
+      "kind": "telegram",
+      "title": "Telegram",
+      "subtitle": "",
+      "url": "",
+      "qr": "",
+      "copy": ""
+    },
     {
       "kind": "github",
       "title": "问题反馈",
@@ -66,6 +90,138 @@
       "title": "社区页上线",
       "summary": "精选插件、玩法和交流群都在这里，内容会持续更新。",
       "url": "https://github.com/ccch1mneyyy/dsh-go"
+    }
+  ],
+  "projects": [
+    {
+      "repository": "dsh-market/dsh-market",
+      "stars": 12447,
+      "license": "MIT",
+      "note": {
+        "zh": "DSH Web 插件市场，支持搜索、安装、收藏和更新。",
+        "en": "A DSH Web plugin market with search, installation, favorites and updates."
+      },
+      "compatibility": {
+        "zh": "Web/桌面端插件；Go 已有原生市场，功能重叠，不需要再装一套。",
+        "en": "Web/desktop plugin; Go already has a native market, so this overlaps and is not needed here."
+      }
+    },
+    {
+      "repository": "MeteorNOX/DeepSeek-Balance-Whale-Widget",
+      "stars": 7227,
+      "license": "MIT",
+      "note": {
+        "zh": "DeepSeek 余额与用量挂件，支持自定义角色、动效和提醒。",
+        "en": "A DeepSeek balance and usage widget with custom characters, animations and alerts."
+      },
+      "compatibility": {
+        "zh": "DSH Web 界面挂件；不进入 APK，也不替代 Go 的原生页面。",
+        "en": "A DSH Web UI widget; not bundled in the APK or a replacement for Go's native screens."
+      }
+    },
+    {
+      "repository": "omdsh-dev/DSH-better-sidebar",
+      "stars": 5169,
+      "license": "MIT",
+      "note": {
+        "zh": "文件树、编辑器、Git、终端和侧边 Agent 聊天工作台。",
+        "en": "A workbench for files, editing, Git, terminal and side-chat agents."
+      },
+      "compatibility": {
+        "zh": "当前引擎 0.2.2-rc.1 需固定 0.32.0；0.32.1 要求 rc.2。Web UI 组件较多，低内存手机慎用。",
+        "en": "With engine 0.2.2-rc.1, pin 0.32.0; 0.32.1 requires rc.2. Its Web UI is substantial, so use cautiously on low-memory phones."
+      }
+    },
+    {
+      "repository": "bowenliang123/dsh-context",
+      "stars": 5110,
+      "license": "Apache-2.0",
+      "note": {
+        "zh": "上下文统计、组成浏览、趋势分析和 Agent Fleet 面板。",
+        "en": "Context statistics, composition browsing, trends and an Agent Fleet panel."
+      },
+      "compatibility": {
+        "zh": "Node 22.19+/24+；公开兼容记录仅明确列出 0.2.0-rc.2 与 0.2.1-rc.2，当前 0.2.2-rc.1 需实机确认。",
+        "en": "Requires Node 22.19+/24+. Its published compatibility record explicitly lists 0.2.0-rc.2 and 0.2.1-rc.2; validate on 0.2.2-rc.1."
+      }
+    },
+    {
+      "repository": "liustack/modlens",
+      "stars": 4976,
+      "license": "MIT",
+      "note": {
+        "zh": "给纯文本模型增加图片识别、OCR 和截图理解。",
+        "en": "Adds image understanding, OCR and screenshot analysis to text-only models."
+      },
+      "compatibility": {
+        "zh": "部分 CLI 引擎使用 --dangerously-skip-permissions，非 OS 沙箱；图像可能发往外部模型服务。不要对不可信图片默认启用。",
+        "en": "Some CLI engines use --dangerously-skip-permissions and are not OS-sandboxed; images may be sent to external model providers. Avoid enabling by default for untrusted images."
+      }
+    },
+    {
+      "repository": "xmanrui/dsh-im",
+      "stars": 3600,
+      "license": "MIT",
+      "note": {
+        "zh": "连接飞书、微信、QQ、Slack、Telegram 等消息渠道。",
+        "en": "Connects Feishu, WeChat, QQ, Slack, Telegram and other messaging channels."
+      },
+      "compatibility": {
+        "zh": "多渠道 SDK 与可选 sharp 依赖较多；需持有机器人凭据并读写消息。32 位及低内存设备不建议默认安装。",
+        "en": "Many channel SDKs plus optional sharp; requires bot credentials and message read/write access. Not a default install on 32-bit or low-memory devices."
+      }
+    },
+    {
+      "repository": "nanmicoder/dsh-agent-teams",
+      "stars": 2944,
+      "license": "MIT",
+      "note": {
+        "zh": "多智能体团队、依赖任务、成员直连消息和工作区面板。",
+        "en": "Multi-agent teams, dependent tasks, direct member messaging and a workspace panel."
+      },
+      "compatibility": {
+        "zh": "并发成员会消耗额外 token 与内存；项目含持久化任务状态，当前仅列源码，不作一键安装推荐。",
+        "en": "Concurrent agents use extra tokens and memory; the project persists task state, so it is listed as source only, not a one-click recommendation."
+      }
+    },
+    {
+      "repository": "Alterssss/dsh-bili-whale",
+      "stars": 1050,
+      "license": "MIT",
+      "note": {
+        "zh": "B站内容阅读、日记与通知，可配置评论和私信监听。",
+        "en": "A Bilibili agent for reading, diaries and notifications, with optional comment and DM monitoring."
+      },
+      "compatibility": {
+        "zh": "需要 B 站凭据；可执行评论/私信等账号写操作。仅建议专用账号手动部署。",
+        "en": "Requires Bilibili credentials and can write comments or DMs. Manual setup with a dedicated account only."
+      }
+    },
+    {
+      "repository": "liustack/modsearch",
+      "stars": 987,
+      "license": "MIT",
+      "note": {
+        "zh": "联网搜索、X 搜索和网页抓取，提供结构化来源证据。",
+        "en": "Web and X search plus page fetching with structured source evidence."
+      },
+      "compatibility": {
+        "zh": "Node 22.13+；默认 Firecrawl keyless 抓取会将公开 URL 交给云端；agy 引擎使用危险权限跳过参数，建议使用本地抓取并审阅安全文档。",
+        "en": "Node 22.13+. Default keyless Firecrawl fetch sends public URLs to its cloud; the agy engine skips permission prompts. Review its security guide and prefer the local fetch engine."
+      }
+    },
+    {
+      "repository": "Anionex/dsh-vision-toolkit",
+      "stars": 945,
+      "license": "MIT",
+      "note": {
+        "zh": "视觉问答、长截图 OCR、UI 还原和像素比较。",
+        "en": "Vision Q&A, long-screenshot OCR, UI reconstruction and pixel comparison."
+      },
+      "compatibility": {
+        "zh": "需要宿主端 Python、Pillow、NumPy、vtracer；依赖按需下载，不打进 APK；ARM32 未验证。",
+        "en": "Needs host-side Python, Pillow, NumPy and vtracer; dependencies download on demand, not in the APK. ARM32 is unverified."
+      }
     }
   ]
 }
