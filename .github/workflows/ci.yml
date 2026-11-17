@@ -245,9 +245,16 @@ jobs:
         run: |
           debug="$RUNNER_TEMP/dsh-patch-debug"
           mkdir -p "$debug"
-          for package in dsh-agent-default-model dsh-agent-loop dsh-api-session-controller dsh-app-boot dsh-config-editor dsh-fs-local dsh-home-paths dsh-host-webserver dsh-plugin-manager dsh-sandbox dsh-schedule dsh-session dsh-session-persistence-jsonl dsh-session-projection-cache dsh-session-query dsh-session-query-sqlite dsh-skill-filesystem dsh-storage-domain dsh-storage-json dsh-subprocess-local dsh-tool-schedule dsh-workspace; do
+          for package in dsh-agent-default-model dsh-agent-loop dsh-api-session-controller dsh-app-boot dsh-config-editor dsh-fs-local dsh-home-paths dsh-host-webserver dsh-official-bundles dsh-plugin-manager dsh-sandbox dsh-schedule dsh-session dsh-session-persistence-jsonl dsh-session-projection-cache dsh-session-query dsh-session-query-sqlite dsh-skill-filesystem dsh-storage-domain dsh-storage-json dsh-subprocess-local dsh-tool-schedule dsh-workspace; do
             source="$RUNNER_TEMP/dsh/node_modules/@deepseek-ai/$package/lib/index.js"
             if [[ -f "$source" ]]; then cp "$source" "$debug/$package-index.js"; fi
+          done
+          for package in @liustack/modsearch dsh-context; do
+            source="$RUNNER_TEMP/dsh/node_modules/$package/package.json"
+            if [[ -f "$source" ]]; then
+              safe_name=$(printf '%s' "$package" | tr '/@' '--')
+              cp "$source" "$debug/$safe_name-package.json"
+            fi
           done
           cp runtime/patches/*.diff "$debug/" || true
           cp runtime/patches/pins.json "$debug/"
