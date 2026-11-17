@@ -129,7 +129,8 @@ class AppUpdateState {
   final String? patchFailedVersion;
 
   bool get hasUpdate => latest != null;
-  bool get isSkipped => latest != null && skippedVersion == latest!.version.toString();
+  /// A release skipped through another source is still the same release (build may be absent).
+  bool get isSkipped => latest != null && AppVersion.tryParse(skippedVersion)?.compareTo(latest!.version) == 0;
   ReleaseAsset? get asset => latest?.apkFor(flavor);
 
   /// What a download fetches in place of [asset]: the patch from the installed
