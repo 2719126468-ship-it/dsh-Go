@@ -394,14 +394,14 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
     PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
   else
     log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
-    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact --legacy-peer-deps "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}"
+    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}"
     # npm nests an exact-pinned dependency in every dependent when another version wins the top
     # level (0.2.1-rc.2: 50 copies of zod 4.4.3, ~26k files). Pin those as direct dependencies so
     # one copy is hoisted, then reinstall.
     local -a hoist=(); mapfile -t hoist < <("${PY[@]}" hoist-candidates "$prefix/package-lock.json")
     if [[ ${#hoist[@]} -gt 0 ]]; then
       log "hoisting duplicated exact dependencies: ${hoist[*]}"
-      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact --legacy-peer-deps "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}" "${hoist[@]}"
+      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}" "${hoist[@]}"
     fi
     mkdir -p "$lockdir"
     cp "$prefix/package.json" "$lockdir/"
