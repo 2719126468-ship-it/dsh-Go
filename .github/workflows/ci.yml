@@ -245,7 +245,7 @@ jobs:
         run: |
           debug="$RUNNER_TEMP/dsh-patch-debug"
           mkdir -p "$debug"
-          for package in dsh-api-session-controller dsh-session-projection-cache dsh-storage-domain dsh-storage-json dsh-fs-local dsh-host-webserver dsh-agent-loop dsh-app-boot dsh-config-editor dsh-plugin-manager dsh-home-paths dsh-subprocess-local dsh-sandbox dsh-skill-filesystem; do
+          for package in dsh-agent-default-model dsh-agent-loop dsh-api-session-controller dsh-app-boot dsh-config-editor dsh-fs-local dsh-home-paths dsh-host-webserver dsh-plugin-manager dsh-sandbox dsh-schedule dsh-session dsh-session-persistence-jsonl dsh-session-projection-cache dsh-session-query dsh-session-query-sqlite dsh-skill-filesystem dsh-storage-domain dsh-storage-json dsh-subprocess-local dsh-tool-schedule dsh-workspace; do
             source="$RUNNER_TEMP/dsh/node_modules/@deepseek-ai/$package/lib/index.js"
             if [[ -f "$source" ]]; then cp "$source" "$debug/$package-index.js"; fi
           done
