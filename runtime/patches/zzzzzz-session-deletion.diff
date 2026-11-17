@@ -141,7 +141,7 @@
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
  			return;
-@@ -1678,3 +1678,17 @@
+@@ -1678,3 +1678,22 @@
 +	dshGoDeletionVersion = 1;
 +	async dshGoDisposeForDeletion(id) {
 +		const agent = this.runtime.ctx.agents.get(id);
@@ -152,7 +152,12 @@
 +			throw Object.assign(new Error("active agent"), { code: "session-active" });
 +		if (typeof agent.dshGoDispose !== "function") throw Object.assign(new Error("writer held"), { code: "writer-held" });
 +		agent.dshGoDeleting = true;
-+		await agent.dshGoDispose();
++		try {
++			await agent.dshGoDispose();
++		} catch (error) {
++			agent.dshGoDeleting = false;
++			throw error;
++		}
 +	}
  	async initializeAgent(ownerCtx, options) {
  		const { session, agentOptions, source, stored, setup, signal: callerSignal, parentAgent } = options;
