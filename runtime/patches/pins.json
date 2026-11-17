@@ -232,6 +232,18 @@
           "before": "5874c1f64c8ffbc600cd7ac9c1a1f408d0010c698e3fd4fecf283348cb734645",
           "after": "071193aaf2b653990cc7bd3f0d55d49e56b204140f67e580874db2b3484f6ee1"
         }
+      },
+      "superseded_hunks": {
+        "0.2.1-rc.4": {
+          "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": [
+            2
+          ]
+        },
+        "0.2.2-rc.1": {
+          "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": [
+            3
+          ]
+        }
       }
     },
     "plugin-manager-cancel-tree-confirmation.diff": {
