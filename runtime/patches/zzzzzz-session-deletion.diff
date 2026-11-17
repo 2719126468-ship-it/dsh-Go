@@ -153,26 +153,20 @@
  		const record = this.requireTable().get(id);
  		if (record === void 0) return void 0;
  		return identityMatches(record.identity, expected) ? record : void 0;
-@@ -194,6 +195,7 @@
- 		await this.requireTable().refresh(id);
- 	}
+@@ -192,3 +192,4 @@
  	cachedSnapshot(meta, keys) {
 +		if (this.ctx.get("sessionPersistence")?.dshGoDeletion?.deleted(meta.id)) return void 0;
  		const expected = lifecycleIdentityOf(meta);
  		const record = this.requireTable().get(meta.id);
  		if (record === void 0 || !currentLifecycleMatches(record.identity, expected)) return void 0;
-@@ -215,6 +217,7 @@
- 	*   incompatible with the title unit.
- 	*/
+@@ -213,3 +213,4 @@
  	cachedPredecessorTitle(meta) {
 +		if (this.ctx.get("sessionPersistence")?.dshGoDeletion?.deleted(meta.id)) return void 0;
  		const expected = lifecycleIdentityOf(meta);
  		const record = this.requireTable().get(meta.id);
  		if (record === void 0 || !predecessorIdentityMatches(record.identity, expected)) return void 0;
-@@ -349,7 +352,20 @@
- 		}
- 	}
- 	/** Replace one session's stored record with its log identity and a detached snapshot of `rows`. */
+@@ -348,1 +348,13 @@
+ 	async put(id, identity, rows) {
 +	dshGoDeletionVersion = 1;
 +	async dshGoForget(id) {
 +		for (const session of this.dirty.keys()) if (session.id === id) {
