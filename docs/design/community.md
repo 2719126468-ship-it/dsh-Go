@@ -152,3 +152,8 @@
 - 「保存图片」落在 `下载/DSH/` 而不是 `Pictures/`，多数相册能看到；要进「相机胶卷」类相册需要给 `FilesPlugin.kt` 加一个写 `MediaStore.Images` 的方法。
 - 长回答截断靠估算，极端排版（大量表格、长公式）可能比估算高，由硬上限兜底淡出。
 - 未在真机上验证：系统分享面板接收 PNG、各家相册是否显示 `下载/DSH`、大图（2× 长图）的内存占用。
+
+
+## GitHub 项目发现（revision 4）
+
+社区 feed 的可选 `projects` 数组用于展示精选 GitHub 仓库。每项包含 `repository`（严格为 `owner/repo`）、非负整数 `stars`、`license`，以及同时提供 `zh` / `en` 的 `note` 与 `compatibility`。客户端只生成 HTTPS GitHub 仓库链接并展示用途、星标快照、许可证和兼容说明；不克隆、安装或执行第三方代码。缺字段、仓库名不合规或星标不是非负整数的条目会被丢弃。维护 feed 时应更新 revision，并刷新星标快照日期。
