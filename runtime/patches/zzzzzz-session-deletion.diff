@@ -115,10 +115,10 @@
 --- a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 @@ -1794,3 +1794,4 @@
- 						await loopCtx.agents.announce(agent, source, abort.signal);
- 						assertLive();
-+						agent.dshGoDispose = dispose;
- 						ready = true;
+ 					await loopCtx.agents.announce(agent, source, abort.signal);
+ 					assertLive();
++					agent.dshGoDispose = dispose;
+ 					ready = true;
 @@ -1807,6 +1807,23 @@
  			throw error;
  		}
