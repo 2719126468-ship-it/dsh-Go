@@ -60,7 +60,6 @@ class WallpaperImport {
     final wallpaper =
         previous?.replacedBy(path: launch.path, width: launch.width, height: launch.height, edge: launch.edge) ??
         CustomWallpaper(path: launch.path, width: launch.width, height: launch.height, edge: launch.edge);
-    if (previous != null && previous.path != launch.path) await removeFile(previous.path);
     return (wallpaper, null);
   }
 
