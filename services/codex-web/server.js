@@ -39,7 +39,7 @@ import { promisify } from "node:util";
 import { CodexAppServer, ThreadGoneError, describe } from "./src/appserver.js";
 import { createCwdGuard, realpathOrNull, withinRoot } from "./src/paths.js";
 import { turnsToMessages, summarizeThread } from "./src/history.js";
-import { isLoopbackBindHost, safeRequestTarget } from "./src/security.js";
+import { isAllowedNoAuthOrigin, isLoopbackBindHost, safeRequestTarget } from "./src/security.js";
 
 // Keep local service state (logs, token and uploaded images) private by default.
 process.umask(0o077);
@@ -1139,8 +1139,16 @@ const STATIC = new Map([
 
 const server = createServer(async (req, res) => {
   const host = req.headers.host || "";
-  if (!NO_AUTH && !validHost(host)) {
+  // Always reject non-loopback Host headers, including in no-auth mode, to
+  // prevent DNS-rebinding requests from reaching the local Codex API.
+  if (!validHost(host)) {
     rejectRequest(req, res, 403, "Host错误");
+    return;
+  }
+  // No-auth is intended for same-origin local browser use and native clients.
+  // Browser cross-origin requests carry Origin; reject them to prevent CSRF.
+  if (NO_AUTH && !isAllowedNoAuthOrigin(req.headers.origin, host)) {
+    rejectRequest(req, res, 403, "Origin错误");
     return;
   }
   const url = new URL(req.url || "/", "http://127.0.0.1");
