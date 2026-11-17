@@ -106,6 +106,10 @@ jobs:
         run: |
           apk=$(find app/build/app/outputs/flutter-apk -maxdepth 1 -type f -name '*-${{ matrix.flavor }}-${{ inputs.mode || 'debug' }}.apk' | sort | tail -1)
           test -s "$apk" || { echo "没有产出 ${{ matrix.flavor }} APK" && exit 1; }
+          size_bytes=$(stat -c%s "$apk")
+          max_apk_bytes=600000000
+          echo "APK size: $size_bytes bytes (limit: $max_apk_bytes)"
+          (( size_bytes <= max_apk_bytes )) || { echo "APK exceeds 600 MB"; exit 1; }
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
           ls -lh "$apk"
           aapt2=$(ls -1d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
