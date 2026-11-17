@@ -1,7 +1,14 @@
-# DSH 0.2.x: await config authorizers while holding the existing HMR/profile locks.
+# DSH 0.2.2-rc.1: await config authorizers under the existing HMR/profile locks.
 --- a/node_modules/@deepseek-ai/dsh-config-editor/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-config-editor/lib/index.js
-@@ -15,6 +15,8 @@
+@@ -8,20 +8,22 @@
+ import { withFileLock, writeFileAtomic } from "@deepseek-ai/dsh-atomic-write";
+ import { Scalar, isMap, isSeq, parseDocument, visit } from "yaml";
+ //#region lib/types/index.js
+ /** Profile-owned configuration edits, serialized with Loader hot reload. */
+ function flatten(rows) {
+ 	return rows.flatMap((row) => [row, ...row.group && Array.isArray(row.config) ? flatten(row.config) : []]);
+ }
  /** Persist complete raw configs and apply them through the normal Loader path. */
  var ConfigEditor = class extends Service {
  	ownerContext;
@@ -10,16 +17,36 @@
  	static inject = ["loader", "profileContext"];
  	constructor(ownerContext) {
  		super(ownerContext, "configEditor");
-@@ -102,9 +104,10 @@
+ 		this.ownerContext = ownerContext;
+ 	}
+ 	/** The profile patch edited by this service. */
+ 	get documentPath() {
+ 		return this.ownerContext.profileContext.patchPath;
+ 	}
+ 	/** Addressable profile rows; nested Includes have independent configuration ownership.
+@@ -95,23 +97,23 @@
+ 	async edit(entry, change) {
+ 		const run = async () => {
+ 			const path = this.documentPath;
+ 			await withFileLock(join(this.ownerContext.profileContext.dir, "package.json"), async () => {
+ 				if (!this.entries().includes(entry) || entry.fiber === void 0) throw new Error("Configuration entry is no longer available");
+ 				const beforePatches = readProfilePatches("dsh", this.ownerContext.profileContext);
+ 				await reconcileProfilePatches(this.ownerContext.root, beforePatches, "dsh");
  				if (!this.entries().includes(entry)) throw new Error("Configuration entry changed during reload");
  				const current = structuredClone(entry.options.config ?? {});
  				const inherited = this.inherited(entry, loadProfileDirectory("dsh", this.ownerContext.profileContext.dir, this.ownerContext.profileContext.installAnchor));
 -				const next = change(current, inherited);
  				const fiber = entry.fiber;
 -				if (fiber.state !== 2) throw new Error("Configuration plugin is no longer active");
-+				// Async authorizers run under the same HMR and profile file locks.
 +				const next = await change(current, inherited);
 +				if (!this.entries().includes(entry) || entry.fiber !== fiber || fiber?.state !== 2) throw new Error("Configuration plugin is no longer active");
- 				const resolved = fiber.ctx.waterfall(fiber, "internal/config", next, () => next);
- 				resolveConfig(fiber.runtime, resolved);
+ 				fiber.resolveConfig(next);
  				let before;
+ 				try {
+ 					before = await readFile(path, "utf8");
+ 				} catch (error) {
+ 					if (error.code !== "ENOENT") throw error;
+ 					before = "[]\n";
+ 				}
+ 				const document = parseDocument(before, { customTags: [{
+ 					tag: "tag:yaml.org,2002:js",
