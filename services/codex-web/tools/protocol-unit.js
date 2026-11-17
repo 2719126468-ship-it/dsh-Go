@@ -11,6 +11,7 @@
  */
 import { CodexAppServer, describe, prettyCommand } from "../src/appserver.js";
 import { createCwdGuard } from "../src/paths.js";
+import { isLoopbackBindHost, safeRequestTarget } from "../src/security.js";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -20,6 +21,30 @@ const check = (label, cond, detail) => {
   if (cond) console.log("  ✓ " + label);
   else { console.log("  ✗ " + label + (detail !== undefined ? "  → " + JSON.stringify(detail) : "")); fails++; }
 };
+
+console.log("\\n[0] 拒绝日志请求目标不得包含查询参数");
+{
+  const cases = [
+    ["/api/threads?token=secret-token&x=1", "/api/threads"],
+    ["http://127.0.0.1:3081/api/chat?token=secret-token", "/api/chat"],
+    ["/api/attach?token=secret-token&after=42", "/api/attach"],
+  ];
+  for (const [raw, expected] of cases) {
+    const got = safeRequestTarget(raw);
+    check("日志只保留路径，不保留 token/query", got === expected && !got.includes("secret-token"), got);
+  }
+  check("畸形 URL 安全退化", safeRequestTarget("http://[::1") === "/");
+}
+
+console.log("\\n[0b] 无认证模式只能绑定本机回环地址");
+{
+  for (const host of ["127.0.0.1", "::1", "localhost", "LOCALHOST"]) {
+    check(`允许回环绑定 ${host}`, isLoopbackBindHost(host));
+  }
+  for (const host of ["0.0.0.0", "::", "192.168.1.10", "example.com", ""]) {
+    check(`拒绝非回环绑定 ${host || "(empty)"}`, !isLoopbackBindHost(host));
+  }
+}
 
 function feed(message) {
   const srv = new CodexAppServer();

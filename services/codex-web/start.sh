@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 起 codex-web 后台服务。重复执行是安全的（已在跑就直接报地址）。
 set -euo pipefail
+umask 077
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORT="${PORT:-3081}"
@@ -18,6 +19,16 @@ port_busy() { "$NODE_BIN" "$DIR/tools/portcheck.js" "$PORT" "$HOST"; }
 # 端口上跑的是不是我们自己人（而不是别的程序）。
 is_ours() {
   curl -fsS -m 3 "http://${HOST}:${PORT}/healthz" 2>/dev/null | grep -q '"appServer"'
+}
+
+# PID 文件可能已陈旧且 PID 被系统复用；只有命令行与工作目录都匹配才允许发信号。
+pid_is_ours() {
+  local pid="$1" cmd cwd
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  [ -r "/proc/$pid/cmdline" ] || return 1
+  cmd="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+  cwd="$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)"
+  [[ "$cwd" == "$DIR" && "$cmd" == *"server.js"* ]]
 }
 
 # 打印带 token 的完整访问地址。
@@ -45,15 +56,24 @@ print_url() {
 if [ -f "$PIDFILE" ]; then
   OLD="$(cat "$PIDFILE" 2>/dev/null || true)"
   if [ -n "$OLD" ] && kill -0 "$OLD" 2>/dev/null; then
-    if is_ours; then
-      echo "codex-web 已经在跑了（pid $OLD）"
-      print_url
-      exit 0
+    if pid_is_ours "$OLD"; then
+      if is_ours; then
+        echo "codex-web 已经在跑了（pid $OLD）"
+        print_url
+        exit 0
+      fi
+      echo "pid $OLD 是本服务进程但健康检查无响应，尝试安全停止后重启。" >&2
+      kill -TERM "$OLD" 2>/dev/null || true
+      for _ in $(seq 1 12); do
+        if ! kill -0 "$OLD" 2>/dev/null || ! pid_is_ours "$OLD"; then break; fi
+        sleep 0.25
+      done
+      if kill -0 "$OLD" 2>/dev/null && pid_is_ours "$OLD"; then
+        kill -9 "$OLD" 2>/dev/null || true
+      fi
+    else
+      echo "PID 文件中的进程 $OLD 不属于当前 codex-web；为避免误杀，不发送信号。" >&2
     fi
-    echo "pid $OLD 还活着但 ${PORT} 上没有应答，先把它清掉再启动。" >&2
-    kill "$OLD" 2>/dev/null || true
-    sleep 1
-    kill -9 "$OLD" 2>/dev/null || true
   fi
   rm -f "$PIDFILE"
 fi

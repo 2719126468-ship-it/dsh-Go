@@ -8,19 +8,32 @@ PIDFILE="$DIR/.pids/server.pid"
 
 stopped=0
 
+pid_is_ours() {
+  local pid="$1" cmd cwd
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  [ -r "/proc/$pid/cmdline" ] || return 1
+  cmd="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+  cwd="$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)"
+  [[ "$cwd" == "$DIR" && "$cmd" == *"server.js"* ]]
+}
+
 if [ -f "$PIDFILE" ]; then
   PID="$(cat "$PIDFILE" 2>/dev/null || true)"
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID" 2>/dev/null || true
-    for _ in $(seq 1 40); do
-      kill -0 "$PID" 2>/dev/null || break
-      sleep 0.25
-    done
-    if kill -0 "$PID" 2>/dev/null; then
-      kill -9 "$PID" 2>/dev/null || true
+    if pid_is_ours "$PID"; then
+      kill -TERM "$PID" 2>/dev/null || true
+      for _ in $(seq 1 40); do
+        if ! kill -0 "$PID" 2>/dev/null || ! pid_is_ours "$PID"; then break; fi
+        sleep 0.25
+      done
+      if kill -0 "$PID" 2>/dev/null && pid_is_ours "$PID"; then
+        kill -9 "$PID" 2>/dev/null || true
+      fi
+      echo "已停止 codex-web（pid $PID）"
+      stopped=1
+    else
+      echo "PID 文件中的进程 $PID 不属于当前 codex-web；为避免误杀，不发送信号。" >&2
     fi
-    echo "已停止 codex-web（pid $PID）"
-    stopped=1
   fi
   rm -f "$PIDFILE"
 fi

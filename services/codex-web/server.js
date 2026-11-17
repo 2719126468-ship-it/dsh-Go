@@ -39,6 +39,10 @@ import { promisify } from "node:util";
 import { CodexAppServer, ThreadGoneError, describe } from "./src/appserver.js";
 import { createCwdGuard, realpathOrNull, withinRoot } from "./src/paths.js";
 import { turnsToMessages, summarizeThread } from "./src/history.js";
+import { isAllowedNoAuthOrigin, isLoopbackBindHost, safeRequestTarget } from "./src/security.js";
+
+// Keep local service state (logs, token and uploaded images) private by default.
+process.umask(0o077);
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3081);
@@ -53,6 +57,9 @@ const TURN_TIMEOUT_MINUTES = Number(process.env.CODEX_TURN_TIMEOUT_MINUTES || 30
 /** 启动时是否预热 codex app-server（设 CODEX_WEB_NO_PREWARM=1 关闭）。 */
 const PREWARM = process.env.CODEX_WEB_NO_PREWARM !== "1";
 const NO_AUTH = process.env.CODEX_WEB_NO_AUTH === "1" || process.argv.includes("--no-auth");
+if (NO_AUTH && !isLoopbackBindHost(HOST)) {
+  throw new Error("CODEX_WEB_NO_AUTH only permits loopback binding; keep token authentication enabled for non-loopback hosts");
+}
 const TOKEN_FILE = join(homedir(), ".codex-web-token");
 const NEW_TOKEN = process.argv.includes("--new-token");
 const execFileAsync = promisify(execFile);
@@ -67,7 +74,12 @@ function loadOrCreateToken() {
   if (!NEW_TOKEN) {
     try {
       const saved = readFileSync(TOKEN_FILE, "utf8").trim();
-      if (/^[0-9a-f]{32}$/.test(saved)) return { token: saved, source: "reused" };
+      if (/^[0-9a-f]{32}$/.test(saved)) {
+        try { chmodSync(TOKEN_FILE, 0o600); } catch (error) {
+          console.warn(`⚠️ 无法收紧令牌文件权限（${TOKEN_FILE}）：${error?.message || error}`);
+        }
+        return { token: saved, source: "reused" };
+      }
     } catch { /* 还没有这个文件，往下新建 */ }
   }
   let existed = false;
@@ -183,7 +195,7 @@ async function appendLogLine(line) {
 
 function rejectRequest(req, res, status, reason) {
   const ip = req.socket.remoteAddress || "unknown";
-  const line = `⚠️ 拦截 [${ip}] [${req.url || "/"}] 原因: [${reason}]`;
+  const line = `⚠️ 拦截 [${ip}] [${safeRequestTarget(req.url)}] 原因: [${reason}]`;
   console.warn(line);
   appendLogLine(`[${new Date().toISOString()}] ${line}\n`);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -395,7 +407,7 @@ async function gitDiffInfo(threadId, full = false) {
   try {
     // -C 用仓库根：thread 的 cwd 可能是子目录，在那里跑 git diff 只看得到子树。
     // --no-pager 双保险：即使有人给 git 配了 pager，也不会让非 tty 子进程挂起等输入。
-    const args = ["-C", root, "--no-pager", "diff"];
+    const args = ["-C", root, "--no-pager", "-c", "core.fsmonitor=false", "diff", "--no-ext-diff", "--no-textconv"];
     if (full) {
       const { stdout } = await execFileAsync("git", args, GIT_EXEC_OPTS);
       // 先按字节切再解码：slice 字符串是在 UTF-16 码元上切，会切坏中文/多字节，
@@ -408,7 +420,7 @@ async function gitDiffInfo(threadId, full = false) {
     }
     const [{ stdout: stat }, { stdout: status }] = await Promise.all([
       execFileAsync("git", [...args, "--stat"], GIT_EXEC_OPTS),
-      execFileAsync("git", ["-C", root, "--no-pager", "status", "--porcelain"], GIT_EXEC_OPTS),
+      execFileAsync("git", ["-C", root, "--no-pager", "-c", "core.fsmonitor=false", "status", "--porcelain"], GIT_EXEC_OPTS),
     ]);
     const last = stat.trim().split(/\r?\n/).pop() || "";
     const match = (re) => { const m = last.match(re); return m ? Number(m[1]) : 0; };
@@ -591,12 +603,6 @@ async function probeCodexVersion() {
 }
 
 // 进程退出时把 codex 子进程树一起带走，别留孤儿 proot。
-for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, () => {
-    codex.dispose();
-    process.exit(0);
-  });
-}
 process.on("exit", () => { try { codex.dispose(); } catch { /* 尽力而为 */ } });
 
 // ---------------------------------------------------------------------------
@@ -695,8 +701,11 @@ function openSse(req, res) {
 // ---------------------------------------------------------------------------
 
 async function handleThread(req, res) {
-  let body = {};
-  try { body = await readBody(req); } catch { body = {}; }
+  let body;
+  try { body = await readBody(req); } catch (error) {
+    json(res, 400, { error: describe(error) });
+    return;
+  }
 
   const want = await normalizeCwd(body.cwd ?? WORKDIR_REAL);
   const wantErr = cwdFailure(want);
@@ -1083,6 +1092,9 @@ async function handleAttach(req, res, url) {
     session.detach(sse);
   });
 
+  // 先同步挂上实时通道，再快照并补发。两步之间不让出事件循环，
+  // 因此不会出现“快照后、attach 前”新事件落入空窗而丢失。
+  session.attach(sse);
   const missed = session.frames.filter((f) => f.seq > since);
   log(`⟳ 重连 thread=${short(threadId)} since=${since} 补发 ${missed.length} 条`);
   for (const f of missed) sse.send(f.event, f.data, f.seq);
@@ -1091,7 +1103,6 @@ async function handleAttach(req, res, url) {
     sse.close();
     return;
   }
-  session.attach(sse);
   // 故意不 end：连接保持打开，后面的事件继续从这里出去。
 }
 
@@ -1128,8 +1139,16 @@ const STATIC = new Map([
 
 const server = createServer(async (req, res) => {
   const host = req.headers.host || "";
-  if (!NO_AUTH && !validHost(host)) {
+  // Always reject non-loopback Host headers, including in no-auth mode, to
+  // prevent DNS-rebinding requests from reaching the local Codex API.
+  if (!validHost(host)) {
     rejectRequest(req, res, 403, "Host错误");
+    return;
+  }
+  // No-auth is intended for same-origin local browser use and native clients.
+  // Browser cross-origin requests carry Origin; reject them to prevent CSRF.
+  if (NO_AUTH && !isAllowedNoAuthOrigin(req.headers.origin, host)) {
+    rejectRequest(req, res, 403, "Origin错误");
     return;
   }
   const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -1333,15 +1352,26 @@ const server = createServer(async (req, res) => {
       if (bytes.length > 20 * 1024 * 1024) { json(res, 413, { error: "图片超过 20MB" }); return; }
       const dir = join(WORKDIR_REAL, ".codex-web", "uploads");
       try {
-        await mkdir(dir, { recursive: true });
+        // 先经真实路径守卫检查目录及其现存祖先，避免 .codex-web/uploads 软链把
+        // 上传重定向到工作区外；建好后再解析一次，后续读写只使用真实路径。
+        const candidate = await normalizeCwd(dir);
+        if (!candidate.ok) { json(res, 403, { error: candidate.error }); return; }
+        await mkdir(candidate.path, { recursive: true, mode: 0o700 });
+        const verified = await normalizeCwd(candidate.path);
+        if (!verified.ok || !verified.exists) {
+          json(res, 403, { error: verified.error || "上传目录不可用" });
+          return;
+        }
+        try { chmodSync(verified.path, 0o700); } catch { /* 尽力收紧权限 */ }
+        const safeDir = verified.path;
         const name = `${Date.now().toString(36)}-${randomBytes(6).toString("hex")}.${ext}`;
-        const file = join(dir, name);
-        await writeFile(file, bytes);
+        const file = join(safeDir, name);
+        await writeFile(file, bytes, { flag: "wx", mode: 0o600 });
         // 顺手清扫：同一目录下超过 24 小时的文件直接删（失败不影响这次上传）。
         try {
           const cutoff = Date.now() - 24 * 3600 * 1000;
-          for (const entry of await readdir(dir)) {
-            const full = join(dir, entry);
+          for (const entry of await readdir(safeDir)) {
+            const full = join(safeDir, entry);
             try {
               const st = await stat(full);
               if (st.isFile() && st.mtimeMs < cutoff) await unlink(full);
@@ -1484,6 +1514,20 @@ const server = createServer(async (req, res) => {
   }
 });
 
+// 退出时先停止接入并关闭浏览器连接，再给 app-server 的 SIGTERM → SIGKILL
+// 升级窗口留足时间；直接 process.exit 会取消 terminate() 的延迟 SIGKILL。
+let shuttingDown = false;
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    server.close();
+    server.closeAllConnections?.();
+    codex.dispose();
+    setTimeout(() => process.exit(0), codex.killGraceMs + 250);
+  });
+}
+
 // SSE 是长连接，别让默认超时把响应掐了。
 server.requestTimeout = 0;
 server.headersTimeout = 60000;
@@ -1497,6 +1541,7 @@ server.listen(PORT, HOST, () => {
   // 脚本读，日志里不打。
   try {
     writeFileSync(join(HERE, ".token"), NO_AUTH ? "" : AUTH_TOKEN, { mode: 0o600 });
+    chmodSync(join(HERE, ".token"), 0o600);
   } catch { /* 写不进去也不该影响服务本身 */ }
 
   if (NO_AUTH) console.log(`codex-web 已启动（无认证）：http://${HOST}:${PORT}/`);
