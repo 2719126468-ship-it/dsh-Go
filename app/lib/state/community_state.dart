@@ -204,6 +204,7 @@ class CommunityFeed {
         final compatibility = _localized(m['compatibility'], 140);
         if (repository == null ||
             !_repository.hasMatch(repository) ||
+            repository.split('/').any((segment) => segment == '.' || segment == '..') ||
             stars is! int ||
             stars < 0 ||
             license == null ||
