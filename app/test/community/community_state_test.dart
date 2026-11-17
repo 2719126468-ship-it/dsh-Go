@@ -54,6 +54,13 @@ void main() {
             'compatibility': {'zh': 'bad', 'en': 'bad'},
           },
           {
+            'repository': 'owner/..',
+            'stars': 10,
+            'license': 'MIT',
+            'note': {'zh': 'bad', 'en': 'bad'},
+            'compatibility': {'zh': 'bad', 'en': 'bad'},
+          },
+          {
             'repository': 'owner/negative-stars',
             'stars': -1,
             'license': 'MIT',
