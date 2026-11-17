@@ -236,7 +236,6 @@ class LaunchImport {
         );
       }
       created.clear();
-      await removeFiles(previous, except: custom);
       return (custom, null);
     } finally {
       for (final f in created) {
