@@ -188,7 +188,7 @@ DSH Go 提供聊天界面、本机运行环境和远程连接，是基于 [DeepS
 
 ## 安装
 
-安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。仓库没有 32 位 ARM 构建。
+安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。32 位 ARM 设备可使用 arm32 包（Android 8.1 / API 27+），但该包目前不包含本机 DSH/Linux 运行时，需要连接远程 DSH 主机。
 
 1. 从 [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) 或[官网下载页](https://go.dshtui.com/download)下载对应架构的 APK，并按系统提示允许该安装来源。
 2. 首次启动时，选择在本机安装运行环境，或连接远程主机。
@@ -244,7 +244,7 @@ DSH Go 是社区开发的非官方项目，与 DeepSeek 无关联，也不代表
 <summary><b>对手机有什么要求？</b></summary>
 <br>
 
-Android 8 及以上。手机直接下载 Release 页面上的安装包即可，模拟器用的 x86_64 版在发布说明末尾的「其他版本下载」里。在手机上运行 DSH 要先准备内置的运行环境，请预留约 1 GB 空间；只连电脑或服务器上的 DSH 可以不装。
+Android 8 及以上。64 位手机使用 arm64 包（含本机 Linux/DSH 运行时，建议预留约 1 GB 空间）；32 位 ARM 手机使用 arm32 包（Android 8.1 / API 27+，当前为远程 DSH 主机模式，不包含本机运行时）；x86_64 模拟器使用 x64 包。
 
 </details>
 

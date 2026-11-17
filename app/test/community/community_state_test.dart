@@ -48,14 +48,17 @@ void main() {
       expect(() => CommunityFeed.parse('{'), throwsFormatException);
     });
 
-    test('bad package names, javascript: links and link-like QR codes on http are dropped', () {
+    test('bad package names and non-HTTPS URI schemes are dropped from links and QR data', () {
       final feed = CommunityFeed.parse('''{
         "schema": 1, "revision": 1,
         "plugins": [{"name": "../evil"}, {"name": "@scope/ok-name"}],
         "groups": [
           {"title": "A", "url": "javascript:alert(1)"},
           {"title": "B", "qr": "http://plain.example"},
-          {"title": "C", "qr": "加群请搜 12345"}
+          {"title": "C", "qr": "加群请搜 12345"},
+          {"title": "D", "qr": "javascript:alert(1)"},
+          {"title": "E", "qr": "intent://scan/#Intent;scheme=zxing;end"},
+          {"title": "F", "qr": "data:text/html,<script>alert(1)</script>"}
         ],
         "updates": [{"date": "not a date", "title": "x"}]
       }''');

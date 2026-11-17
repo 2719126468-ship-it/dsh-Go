@@ -236,7 +236,8 @@ class CommunityFeed {
         final qr = _text(m['qr'], 500);
         final copy = _text(m['copy'], 64);
         // A QR code that looks like a link must be an https one too.
-        final qrOk = qr == null || !qr.contains('://') || _https(qr) != null;
+        final qrUri = qr == null ? null : Uri.tryParse(qr);
+    final qrOk = qr == null || qrUri?.hasScheme != true || _https(qr) != null;
         if (title == null || !qrOk || (url == null && qr == null && copy == null)) return null;
         return CommunityGroup(
           kind: _text(m['kind'], 16)?.toLowerCase() ?? 'link',
