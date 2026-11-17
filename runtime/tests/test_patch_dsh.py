@@ -203,7 +203,7 @@ class PatchDsh(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
     def test_pinned_fs_local_patch_provides_exclusive_create_fallback(self):
-        # The current ARM runtime is pinned to DSH 0.2.1-rc.4. Verify the
+        # The current ARM runtime is pinned to DSH 0.2.2-rc.1. Verify the
         # shipped strict patch against that exact upstream source, rather than
         # asserting that the upstream package already contains our patch.
         original_bytes = open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb").read()
