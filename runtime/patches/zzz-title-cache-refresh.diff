@@ -17,7 +17,7 @@
  	/**
  	* @param ctx - Host context carrying Session, query, persistence, and projection services.
  	* @param workSliceMs - Resolved positive integral list-work budget in milliseconds.
-	*/
+ 	*/
 @@ -1975,9 +1977,14 @@
  				yieldDeadline = performance.now() + this.workSliceMs;
  			}
