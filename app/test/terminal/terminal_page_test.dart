@@ -144,6 +144,25 @@ void main() {
     expect(find.text('ch'), findsNothing);
   });
 
+  testWidgets('a tap on the terminal screen reattaches the keyboard connection', (tester) async {
+    final backend = FakeTerminalBackend();
+    await pumpTerminalPage(tester, backend);
+    final attach = backend.attachOf(backend.created.single['id']! as String);
+    tester.testTextInput.log.clear();
+
+    await tester.tap(find.byType(TerminalView));
+    await tester.pump();
+    expect(
+      tester.testTextInput.log.map((call) => call.method),
+      containsAllInOrder(['TextInput.setClient', 'TextInput.show']),
+    );
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(text: '  ls', selection: TextSelection.collapsed(offset: 4)),
+    );
+    await settleTerminal(tester);
+    expect(attach.written, 'ls');
+  });
+
   testWidgets('ended: 已结束 with the exit code; 新建终端 starts a fresh one in place', (tester) async {
     final backend = FakeTerminalBackend(terminals: [infoJson('a', title: 'build')]);
     await pumpTerminalPage(tester, backend);
