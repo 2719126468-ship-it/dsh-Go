@@ -1,13 +1,5 @@
 {
   "patches": {
-    "fs-create-exclusive.diff": {},
-    "install-log-redaction.diff": {},
-    "plugin-manager-active-run-guard.diff": {},
-    "plugin-manager-cancel-tree-confirmation.diff": {},
-    "zz-direct-runtime.diff": {},
-    "zzz-title-cache-refresh.diff": {},
-    "zzzz-plugin-config-readability.diff": {},
-    "zzzzz-plugin-config-bundles.diff": {},
     "zzzzzz-session-deletion.diff": {},
     "zzzzzzz-input-recovery.diff": {},
     "zzzzzzzz-model-defaults.diff": {},
