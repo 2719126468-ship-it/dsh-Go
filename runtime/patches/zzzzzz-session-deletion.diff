@@ -118,7 +118,7 @@
  						await loopCtx.agents.announce(agent, source, abort.signal);
  						assertLive();
 +						agent.dshGoDispose = dispose;
- 						return {
+ 						ready = true;
 @@ -1807,6 +1807,23 @@
  			throw error;
  		}
