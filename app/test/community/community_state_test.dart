@@ -1,6 +1,7 @@
 // community.json: parsing and its guards, and where the hub's content comes
 // from — bundled, cached, network (newer revisions only), source order.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dsh_app/state/community_state.dart';
@@ -31,6 +32,49 @@ void main() {
       expect(feed.groups[1].qrData, 'https://example.com/wechat');
       expect(feed.groups[2].qrData, 'https://t.me/example', reason: 'the link is the QR by default');
       expect(feed.updates.last.url, 'https://example.com/releases');
+    });
+
+    test('parses safe GitHub project discovery entries', () {
+      final feed = CommunityFeed.parse(jsonEncode({
+        'schema': 1,
+        'revision': 4,
+        'projects': [
+          {
+            'repository': 'owner/project',
+            'stars': 1234,
+            'license': 'MIT',
+            'note': {'zh': '中文用途', 'en': 'English purpose'},
+            'compatibility': {'zh': '适配说明', 'en': 'Compatibility notes'},
+          },
+          {
+            'repository': '../unsafe',
+            'stars': 10,
+            'license': 'MIT',
+            'note': {'zh': 'bad', 'en': 'bad'},
+            'compatibility': {'zh': 'bad', 'en': 'bad'},
+          },
+          {
+            'repository': 'owner/..',
+            'stars': 10,
+            'license': 'MIT',
+            'note': {'zh': 'bad', 'en': 'bad'},
+            'compatibility': {'zh': 'bad', 'en': 'bad'},
+          },
+          {
+            'repository': 'owner/negative-stars',
+            'stars': -1,
+            'license': 'MIT',
+            'note': {'zh': 'bad', 'en': 'bad'},
+            'compatibility': {'zh': 'bad', 'en': 'bad'},
+          },
+        ],
+      }));
+      expect(feed.projects, hasLength(1));
+      expect(feed.projects.single.repository, 'owner/project');
+      expect(feed.projects.single.url, 'https://github.com/owner/project');
+      expect(feed.projects.single.stars, 1234);
+      expect(feed.projects.single.note.resolve('zh'), '中文用途');
+      expect(feed.projects.single.compatibility.resolve('en'), 'Compatibility notes');
     });
 
     test('the shipped file parses, and its unfilled groups stay hidden', () {
