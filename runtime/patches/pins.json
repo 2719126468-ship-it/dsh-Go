@@ -440,8 +440,8 @@
       },
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": {
-          "before": "10c20deb09ea9d954cd69a7f4c2b27d51bf400024398dc0a2835f143e9a7dca9",
-          "after": "96c264671ee86720bc8fd34cc64e0c894a50e3968c282bc05db7692c137717"
+          "before": "ae57c3f000ff11239ad9669449cdd5100beb2c73333cb4c0b0dde063e9245aa7",
+          "after": "074e5e4f67ab4810c40db223ece3f429ce1b347396d1d90f770ea4127ea1bb89"
         },
         "node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js": {
           "before": "11efab2777be2d8e66c16c475e6d67e7f0352a27a4a7ed8bfdda71a662aea0e6",
