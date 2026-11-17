@@ -16,14 +16,7 @@
         }
       }
     },
-    "plugin-manager-active-run-guard.diff": {
-      "0.2.1-rc.4": {
-        "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-          "after": "3a4b8bdaf6b5505e6890103bf14db11bd0e057d07fe02180d4ea64ceaf44204e",
-          "before": "1cc0c2d7eff5c72c35bb6bcac1551222280c4dcccf860a532bbcae9bc4385877"
-        }
-      }
-    },
+    "plugin-manager-active-run-guard.diff": {},
     "plugin-manager-cancel-tree-confirmation.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
