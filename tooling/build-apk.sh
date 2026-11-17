@@ -11,7 +11,7 @@
 #   tooling/build-apk.sh --dry-run -f all      print the commands, build nothing
 #   tooling/build-apk.sh -- --dart-define=K=V  extra flags for `flutter build apk`
 #
-#   -f, --flavor arm64|x64|all       default arm64
+#   -f, --flavor arm64|arm32|x64|all default arm64
 #   --release | --debug | --profile  default --release
 #   -t, --target FILE                Dart entry point, relative to app/
 #   -n, --build-number N             use 2..2100000000 instead of the build minute (never lower than installed)
@@ -62,7 +62,7 @@ case "$flavor" in
   all) flavors=(arm64 arm32 x64) ;;
   # 没有运行时的 flavor：本地引擎不出现，只做远端主机的客户端。
   portable) flavors=(arm32) ;;
-  *) die "flavor is arm64, x64 or all: $flavor" ;;
+  *) die "flavor is arm64, arm32, x64 or all: $flavor" ;;
 esac
 for arg in "${extra[@]}"; do
   case "$arg" in

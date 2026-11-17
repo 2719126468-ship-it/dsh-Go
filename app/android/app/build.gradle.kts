@@ -52,6 +52,11 @@ android {
             dimension = "abi"
             ndk { abiFilters += "arm64-v8a" }
         }
+        // Remote-host-only package; PR #3 adds the bundled ARMHF runtime separately.
+        create("arm32") {
+            dimension = "abi"
+            ndk { abiFilters += "armeabi-v7a" }
+        }
         create("x64") {
             dimension = "abi"
             ndk { abiFilters += "x86_64" }

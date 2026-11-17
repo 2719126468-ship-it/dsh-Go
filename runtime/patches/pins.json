@@ -307,7 +307,7 @@
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": {
           "before": "a6fa8e0c7c90191caf5f4a3bb5c624a86e9845cf3c79d020b71420d0e20ae4c1",
-          "after": "10c20deb09ea9d954cd69a7f4c2b27d51bf400024398dc0a2835f143e9a7dca9"
+          "after": "ae57c3f000ff11239ad9669449cdd5100beb2c73333cb4c0b0dde063e9245aa7"
         },
         "node_modules/@deepseek-ai/dsh-schedule/lib/index.js": {
           "before": "f06a57f6fd5d7b0d2666b4d1b1a27d96aa3035a66de40ad2fc9cef3eba580040",
