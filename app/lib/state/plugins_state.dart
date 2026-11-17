@@ -568,7 +568,17 @@ enum BundleGroup {
   hidden,
 }
 
+const dshGoPreinstalledBundleNames = {'@liustack/modsearch', 'dsh-context'};
+
+/// These optional bundles ship in DSH Go's local ARM64 runtime, not in the
+/// user's profile. They remain disabled until the user enables them.
+bool isDshGoPreinstalledBundle(PluginBundle bundle) =>
+    dshGoPreinstalledBundleNames.contains(bundle.name) &&
+    bundle.optional &&
+    bundle.availability == 'installation';
+
 BundleGroup bundleGroup(PluginBundle bundle) {
+  if (isDshGoPreinstalledBundle(bundle)) return BundleGroup.installed;
   if (bundle.installed) {
     return bundle.official ? BundleGroup.official : BundleGroup.installed;
   }
@@ -992,7 +1002,8 @@ enum MarketInstallStatus { notInstalled, installed, updateAvailable }
 MarketInstallStatus marketInstallStatus(MarketPlugin plugin, List<PluginBundle>? bundles) {
   if (bundles == null) return MarketInstallStatus.notInstalled;
   for (final bundle in bundles) {
-    if (bundle.name != plugin.name || !(bundle.installed || bundle.availability == 'profile')) {
+    if (bundle.name != plugin.name ||
+        !(bundle.installed || bundle.availability == 'profile' || isDshGoPreinstalledBundle(bundle))) {
       continue;
     }
     final installed = bundle.version;
