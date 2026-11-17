@@ -107,14 +107,11 @@
  			signal?.throwIfAborted();
 --- a/node_modules/@deepseek-ai/dsh-session/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-session/lib/index.js
-@@ -1852,6 +1852,7 @@
- 	*/
+@@ -1852,3 +1852,4 @@
  	enter(session) {
  		const id = session.id;
 +		this.ctx.get("sessionPersistence")?.dshGoDeletion?.assertAdmit(id);
  		const carrier = scopeTarget(session, scopeOf(this.ctx));
- 		if (this.store.has(id)) throw new Error(`session "${id}" already exists`);
- 		if (attachments.get(session) != null) throw new Error(`session "${id}" is already attached to a store`);
 --- a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 @@ -798,6 +798,8 @@
