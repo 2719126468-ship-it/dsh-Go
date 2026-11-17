@@ -218,64 +218,6 @@
  					exitCode = 1;
  					const restoration = repaired.exitCode === 0 ? "restored package.json, pnpm-lock.yaml, and node_modules" : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'";
  					const diagnostic = `\ndsh: installation rejected: ${warnings.join("\n")}\ndsh: ${restoration}.\n`;
-@@ -877,14 +877,50 @@
- 					await log.write(diagnostic);
- 					options.onOutput?.(diagnostic, "stderr");
- 					append(Buffer.from(diagnostic));
--				} else if (options.activateNewBundles !== false) await reconcile(before, dir, context.installAnchor, options);
-+				} else if (options.activateNewBundles !== false) {
-+					const unsupported = await reconcile(before, dir, context.installAnchor, options);
-+					if (unsupported.length > 0) {
-+						exitCode = 1;
-+						const diagnostic = `\ndsh: bundle activation rejected: ${unsupported.join("\n")}\ndsh: installed dependencies remain; bundle selection is unchanged. Use a supported Host or remove the unwanted dependencies with 'dsh plugin remove <package>'.\n`;
-+						await log.write(diagnostic);
-+						options.onOutput?.(diagnostic, "stderr");
-+						append(Buffer.from(diagnostic));
-+					}
-+				}
-+			}
-+			completed = true;
-+		} finally {
-+				control.settled = true;
-+				clearTimeout(idleTimer);
-+				if (grouped) {
-+					const mustStop = !completed || exitCode !== 0 || control.stalled || combinedSignal.aborted;
-+					try {
-+						if (mustStop) await stopOwnedRuns(ownedRuns);
-+					} catch (error) {
-+						// A stop failure must not rejoin a parent/collector that can remain alive.
-+						cut = true;
-+						for (const current of ownedChildren) {
-+							current.stdout?.destroy();
-+							current.stderr?.destroy();
-+						}
-+						throw error;
-+					} finally {
-+						try {
-+							if (ownedStopFailure(ownedRuns) !== void 0) {
-+								for (const run of ownedRuns) run.detach();
-+							} else if (mustStop || options.onRunGuard === void 0) {
-+								// Install retains a normal successful primary until its applying boundary.
-+								for (const run of ownedRuns) await run.release();
-+							}
-+						} finally {
-+							await log.close();
-+						}
-+					}
-+				} else {
-+					await rm(runRecordPath(dir), { force: true });
-+					await log.close();
-+				}
- 			}
--		} finally {
--			control.settled = true;
--			clearTimeout(idleTimer);
--			await rm(runRecordPath(dir), { force: true });
--			await log.close();
--		}
- 		return {
- 			exitCode,
- 			output: output.toString("utf8"),
 @@ -1972,6 +2117,7 @@
  			const control = {
  				abort: new AbortController(),
@@ -291,7 +233,7 @@
 +							await this.restoreFiles(files);
 +						}
 @@ -2035,7 +2184,7 @@
- 							spec,
+ 							installSpec,
  							...options?.saveExact === true ? ["--save-exact"] : [],
  							...registryArguments(registry)
 -						], control.abort.signal, requestId);
