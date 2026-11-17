@@ -5,12 +5,12 @@
 @@ -527,8 +527,9 @@
  * @param signal - cancellation checked before final publication.
  * @param internals - Test hook for pinning temp names and observing the staged file.
- * @param options - \`displayPath\` names the target in diagnostics (defaults to \`absolutePath\`);
--* \`createIfAbsent\` publishes with a hard-link no-replace primitive, so a concurrent creator's
--* file is preserved and this write is rejected with \`FS_NOT_OBSERVED\`; \`existingDestination\`
-+* \`createIfAbsent\` publishes with a hard-link no-replace primitive, falling back to exclusive
+ * @param options - `displayPath` names the target in diagnostics (defaults to `absolutePath`);
+-* `createIfAbsent` publishes with a hard-link no-replace primitive, so a concurrent creator's
+-* file is preserved and this write is rejected with `FS_NOT_OBSERVED`; `existingDestination`
++* `createIfAbsent` publishes with a hard-link no-replace primitive, falling back to exclusive
 +* direct creation on filesystems that reject hard links. A concurrent creator's file is
-+* preserved and this write is rejected with \`FS_NOT_OBSERVED\`; \`existingDestination\`
++* preserved and this write is rejected with `FS_NOT_OBSERVED`; `existingDestination`
  * states whether Windows must preserve destination security and defaults to mode presence,
  * while moves pass destination presence separately from the source mode.
  */
@@ -37,6 +37,6 @@
 +				handle = void 0;
 +			} catch (writeError) {
 +				// Do not unlink by path: another writer may have replaced the file we opened.
-+				throw new FsError(\`cannot finish creating "\${displayPath}": \${errorMessage(writeError)}; file may be incomplete\`, isAbortError(writeError) ? "FS_ABORTED" : "FS_IO_ERROR", { cause: writeError });
++				throw new FsError(`cannot finish creating "${displayPath}": ${errorMessage(writeError)}; file may be incomplete`, isAbortError(writeError) ? "FS_ABORTED" : "FS_IO_ERROR", { cause: writeError });
 +			}
  		}
