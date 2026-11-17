@@ -439,4 +439,23 @@
  	ctx.effect(() => {
  		const unregister = ctx.storage.backend.register("json", backend);
  		return async () => {
-@@ -263,6 +263,19
+@@ -263,6 +263,19 @@
+ 		return records;
+ 	}
+ 	publish() {
++		const seam = this.dshGoDeletion?.();
++		if (seam !== void 0) {
++			if (this.descriptor.name === "schedule") {
++				const tasks = this.state.tables.get("tasks");
++				for (const [id, task] of tasks ?? []) if (seam.deleted(task.sessionId)) tasks.delete(id);
++			}
++			if (this.descriptor.name === "workspace") {
++				for (const [id, record] of this.state.tables.get("workspaces") ?? [])
++					this.state.tables.get("workspaces").set(id, { ...record, sessionIds: record.sessionIds.filter((id) => !seam.deleted(id)) });
++				if (this.state.global !== null) for (const key of ["archivedSessionIds", "pinnedSessionIds"])
++					if (Array.isArray(this.state.global[key])) this.state.global[key] = this.state.global[key].filter((id) => !seam.deleted(id));
++			}
++		}
+ 		const write = writeAtomic(this.path, serialize(this.descriptor.name, this.state));
+ 		this.inFlight.add(write);
+ 		write.catch(() => {}).finally(() => this.inFlight.delete(write));

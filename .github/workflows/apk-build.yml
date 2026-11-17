@@ -17,16 +17,6 @@ on:
       - 'sdk/**'
       - 'tooling/**'
       - '.github/workflows/apk-build.yml'
-  push:
-    branches:
-      - 'feat/**'
-    paths:
-      - 'app/**'
-      - 'packages/**'
-      - 'runtime/**'
-      - 'sdk/**'
-      - 'tooling/**'
-      - '.github/workflows/apk-build.yml'
   workflow_dispatch:
     inputs:
       flavor:
