@@ -136,8 +136,7 @@
  			}
  		}
  	}
-@@ -924,4 +924,6 @@
- 					messages: context === void 0 ? claimed : [...claimed, context]
+@@ -924,3 +924,5 @@
  				});
  			});
 +			const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
