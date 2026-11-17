@@ -179,7 +179,7 @@ jobs:
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
           out="$RUNNER_TEMP/dsh-locks"
           mkdir -p "$out/dsh-$version" "$out/dsh-$version-android"
-          npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version" --legacy-peer-deps "@liustack/modsearch@5.10.12" "dsh-context@0.84.1"
           npm install --prefix "$out/dsh-$version-android" --cpu=arm --os=linux --libc=android --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
           test -s "$out/dsh-$version/package-lock.json"
           test -s "$out/dsh-$version-android/package-lock.json"
@@ -197,7 +197,9 @@ jobs:
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
           prefix="$RUNNER_TEMP/dsh"
           mkdir "$prefix"
-          npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          lockdir="$RUNNER_TEMP/dsh-locks/dsh-$version"
+          cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
+          npm ci --prefix "$prefix" --ignore-scripts --no-audit --no-fund --legacy-peer-deps
           echo '--- run-tree ---'
           grep -n -A14 -B6 'function treeAlive' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/run-tree.js" || true
           echo '--- operations activeRecordedRun / preflight / child / warning repair ---'
@@ -214,6 +216,7 @@ jobs:
           grep -n -A55 -B12 'warnings.length > 0' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 95 || true
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          python3 -I runtime/lib/preinstall_optional_bundles.py --prefix "$prefix" --manifest runtime/preinstalled-bundles.json
           cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
@@ -232,6 +235,7 @@ jobs:
           fi
           node --test runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
           python3 -I runtime/tests/test_patch_dsh.py
+          python3 -I runtime/tests/test_preinstall_optional_bundles.py
       - name: Capture patched DSH files for patch review
         if: failure()
         run: |
