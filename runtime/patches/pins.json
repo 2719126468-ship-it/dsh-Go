@@ -6,12 +6,6 @@
           "after": "dc077d91a07374d64900a45bb6288c941094c531237acc6e1994b0bd88deb1d6",
           "before": "63fbb41d2c33e07111884b798be507e68c2752acab8249c821c20ade436e894f"
         }
-      },
-      "0.2.1-rc.4": {
-        "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": {
-          "after": "dc077d91a07374d64900a45bb6288c941094c531237acc6e1994b0bd88deb1d6",
-          "before": "63fbb41d2c33e07111884b798be507e68c2752acab8249c821c20ade436e894f"
-        }
       }
     },
     "install-log-redaction.diff": {
