@@ -318,6 +318,61 @@
  			this.chain = pending.catch(() => void 0);
  			return pending;
  		}
+@@ -8,6 +8,7 @@
+ import { SessionId, SessionLogOffset } from "@deepseek-ai/dsh-session";
+ import { z as z$1 } from "zod";
+ import { MessageId } from "@deepseek-ai/dsh-llm/brand";
++import { readFile } from "node:fs/promises";
+ import { defineDomain, domainTable } from "@deepseek-ai/dsh-storage-domain";
+ import { isDeepStrictEqual } from "node:util";
+ //#region lib/types/domain.js
+@@ -2098,6 +2099,7 @@
+ 				if (refusal !== void 0) throw new ScheduleInputError("subagent_session", refusal.message);
+ 				const domain = await this.getDomain();
+ 				signal?.throwIfAborted();
++				this.ctx.sessionPersistence.dshGoDeletion?.assertAdmit(sessionId);
+ 				await domain.table("tasks").put(id, {
+ 					sessionId,
+ 					record,
+@@ -2252,6 +2254,7 @@
+ 		* @returns The stable refusal for a delegated child's Session, or undefined when the Session is eligible.
+ 		*/
+ 		reminderTargetRefusal(sessionId) {
++			this.ctx.sessionPersistence.dshGoDeletion?.assertAdmit(sessionId);
+ 			const agent = this.ctx.agents.get(sessionId);
+ 			if (agent === void 0 || delegationDepthOf(agent) === 0) return void 0;
+ 			return {
+@@ -2290,9 +2293,29 @@
+ 				if (failure !== void 0) throw failure;
+ 			});
+ 		}
++		dshGoDeletionVersion = 1;
++		async dshGoInspectDeletion(id) {
++			const domain = await this.getDomain();
++			const unit = domain.unit;
++			if (unit?.descriptor?.name !== "schedule" || typeof unit.path !== "string")
++				throw Object.assign(new Error("unsupported schedule backend"), { code: "unavailable" });
++			let document;
++			try { document = JSON.parse(await readFile(unit.path, "utf8")); }
++			catch (error) { if (error.code === "ENOENT") return false; throw error; }
++			if (document.unit?.name !== "schedule" || document.unit.version !== 1 || !document.tables?.tasks)
++				throw Object.assign(new Error("invalid schedule storage"), { code: "unavailable" });
++			return Object.values(document.tables.tasks).some((task) => task.sessionId === id);
++		}
++		async dshGoCanDelete() {
++			const unit = (await this.getDomain()).unit;
++			return unit?.descriptor?.name === "schedule" && typeof unit.path === "string";
++		}
+ 		serialize(work) {
+ 			if (this.stopping) return Promise.reject(/* @__PURE__ */ new Error("Schedule service is stopping"));
+-			const pending = this.chain.then(work);
++			const pending = this.chain.then(() => {
++				const seam = this.ctx.sessionPersistence.dshGoDeletion;
++				return seam === void 0 ? work() : seam.withMutation(work);
++			});
+ 			this.chain = pending.catch(() => void 0);
+ 			return pending;
+ 		}
 --- a/node_modules/@deepseek-ai/dsh-workspace/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-workspace/lib/index.js
 @@ -372,6 +372,21 @@
@@ -384,3 +439,4 @@
  	ctx.effect(() => {
  		const unregister = ctx.storage.backend.register("json", backend);
  		return async () => {
+@@ -263,6 +263,19

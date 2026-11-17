@@ -343,19 +343,34 @@
           "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": [
             4,
             5
+          ],
+          "node_modules/@deepseek-ai/dsh-schedule/lib/index.js": [
+            1,
+            2
+          ],
+          "node_modules/@deepseek-ai/dsh-storage-json/lib/index.js": [
+            1
           ]
         },
         "0.2.2-rc.1": {
           "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": [
             6,
             7
+          ],
+          "node_modules/@deepseek-ai/dsh-schedule/lib/index.js": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "node_modules/@deepseek-ai/dsh-storage-json/lib/index.js": [
+            4
           ]
         }
       },
       "superseded_files": {
         "0.2.1-rc.4": [
-          "node_modules/@deepseek-ai/dsh-session-query/lib/index.js",
-          "node_modules/@deepseek-ai/dsh-schedule/lib/index.js"
+          "node_modules/@deepseek-ai/dsh-session-query/lib/index.js"
         ]
       }
     },
