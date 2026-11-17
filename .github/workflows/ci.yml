@@ -237,7 +237,7 @@ jobs:
             sed -n '875,905p' "$manager"
             exit 1
           fi
-          node --test runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
+          DSH_PREFIX="$DSH_PREFIX" node --test runtime/tests/schedule-authorization-host.mjs runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
           python3 -I runtime/tests/test_patch_dsh.py
           python3 -I runtime/tests/test_preinstall_optional_bundles.py
       - name: Capture patched DSH files for patch review
