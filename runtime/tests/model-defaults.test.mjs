@@ -11,6 +11,7 @@ const base = join(resolve(process.env.DSH_PREFIX), 'node_modules/@deepseek-ai');
 const load = name => import(pathToFileURL(join(base, name, 'lib/index.js')));
 const { AgentDefaultModelConfig } = await load('dsh-agent-default-model');
 const { SettingsForms } = await load('dsh-settings');
+const { FiberState } = await load('cordis');
 const { ReasoningEffortId } = await load('dsh-llm');
 const { RemoteError, remoteErrorOf } = await load('dsh-typert-protocol');
 const source = readFileSync(join(base, 'dsh-api-session-controller/lib/index.js'), 'utf8');
@@ -37,7 +38,8 @@ function deferred() {
 function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
   const writes = [];
   const entry = { id: 'entry', options: { id: 'agent-default-model', config: structuredClone(raw) } };
-  entry.fiber = { uid: 1, state: 2, runtime: { Config: AgentDefaultModelConfig.Config }, ctx: {} };
+  entry.fiber = { uid: 1, state: FiberState.ACTIVE, runtime: { Config: AgentDefaultModelConfig.Config }, ctx: {} };
+  entry.fiber.ctx = { fiber: entry.fiber };
   const defaults = Object.create(AgentDefaultModelConfig.prototype);
   const update = value => {
     entry.options.config = structuredClone(value);
@@ -57,12 +59,12 @@ function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
     },
   };
   const events = [];
-  defaults.ownerContext = { fiber: { entry: missingEntry ? undefined : entry } };
+  defaults.ownerContext = { fiber: { ctx: { fiber: entry.fiber }, state: FiberState.ACTIVE, entry: missingEntry ? undefined : entry } };
   defaults.ctx = { get: name => name === 'configEditor' && !missingEditor ? editor : undefined };
   defaults.saves = Promise.resolve();
   const settings = Object.create(SettingsForms.prototype);
   Object.assign(settings, {
-    ownerContext: { configEditor: editor, emit: (...args) => events.push(args) },
+    ownerContext: { configEditor: editor, emit: (...args) => events.push(args), fiber: { state: FiberState.ACTIVE } },
     revisions: new Map(), presentations: new Map(),
   });
   settings.configure({ auto: false }, defaults.ownerContext.fiber);
