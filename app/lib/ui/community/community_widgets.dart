@@ -13,7 +13,7 @@ import '../../state/community_state.dart';
 import '../../state/plugins_state.dart';
 import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';
-import '../plugins/plugin_detail_sheet.dart' show showMarketPluginSheet;
+import '../plugins/plugin_detail_sheet.dart' show showBundleSheet, showMarketPluginSheet;
 import '../plugins/plugin_widgets.dart';
 import '../settings/settings_widgets.dart' show SettingsTile;
 import '../share/qr_code.dart';
@@ -84,30 +84,50 @@ class CommunityPluginRow extends ConsumerWidget {
 
   final CommunityPlugin pick;
 
-  /// The plugin in the market index; null while the index loads.
+  /// The plugin in the market index; null while the index loads or is unavailable.
   final MarketEntry? entry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entry = this.entry;
-    final plugin = entry?.plugin;
+    final marketEntry = entry;
+    final plugin = marketEntry?.plugin;
     final bundles = ref.watch(installedPluginsProvider.select((s) => s.value));
+    final bundled = bundles?.where((bundle) => bundle.name == pick.name && isDshGoPreinstalledBundle(bundle)).firstOrNull;
     final job = plugin == null ? null : ref.watch(pluginInstallsProvider.select((jobs) => jobs[plugin.name]));
-    final title = plugin?.displayTitle() ?? pick.name;
+    // A feed entry is only actionable when it exists in the live market
+    // or is part of this installation. Never present arbitrary package names
+    // from a stale or malformed feed as installable plugins.
+    if (plugin == null && bundled == null) return const SizedBox.shrink();
+
+    final locale = Localizations.localeOf(context).languageCode;
+    final chinese = locale == 'zh';
+    final title = bundled?.title(locale) ?? plugin?.displayTitle() ?? pick.name;
     final subtitle = pick.note ?? plugin?.displayDescription() ?? plugin?.author;
-    void open() => unawaited(showMarketPluginSheet(context, entry!));
+    void open() {
+      if (bundled != null) {
+        unawaited(showBundleSheet(context, bundled));
+      } else if (marketEntry != null) {
+        unawaited(showMarketPluginSheet(context, marketEntry));
+      }
+    }
+
     return ListPageRow(
-      leading: PluginAvatar(name: pick.name, title: title, icon: plugin?.icon),
+      leading: PluginAvatar(name: pick.name, title: title, icon: bundled?.meta?.icon ?? plugin?.icon),
       leadingWidth: 40,
       title: title,
       titleStyle: pluginRowTitle(context),
       subtitle: subtitle,
       trailing: PluginInstallButton(
-        status: plugin == null ? MarketInstallStatus.notInstalled : marketInstallStatus(plugin, bundles),
+        status: bundled != null
+            ? MarketInstallStatus.installed
+            : plugin == null
+            ? MarketInstallStatus.notInstalled
+            : marketInstallStatus(plugin, bundles),
         job: job,
-        onPressed: entry == null ? null : open,
+        installedLabel: bundled == null ? null : (chinese ? '管理' : 'Manage'),
+        onPressed: bundled != null || marketEntry != null ? open : null,
       ),
-      onTap: entry == null ? null : open,
+      onTap: bundled != null || marketEntry != null ? open : null,
     );
   }
 }

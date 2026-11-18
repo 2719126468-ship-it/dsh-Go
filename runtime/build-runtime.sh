@@ -40,8 +40,8 @@ LOCKS="$HERE/locks"
 PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
-RUNTIME_REVISION="${RUNTIME_REVISION:-r17}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
-DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
+RUNTIME_REVISION="${RUNTIME_REVISION:-r19}"  # DSH 0.2.2-rc.4 with curated optional ARM64 bundles
+DSH_VERSION="${DSH_VERSION:-0.2.2-rc.4}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
 # pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
@@ -381,7 +381,12 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
   local lock_suffix=""; [[ "$libc" != android ]] || lock_suffix="-android"
   local lockdir="$LOCKS/dsh-$DSH_VERSION$lock_suffix"
   rm -rf "$prefix"; mkdir -p "$prefix"
-  local -a npm_flags=(); npm_prefix_flags "$cpu" "$prefix" "$libc"
+  local -a npm_flags=() optional_bundles=(); npm_prefix_flags "$cpu" "$prefix" "$libc"
+  # Curated optional bundles ship only in the 64-bit local DSH runtime.
+  if [[ "$cpu" == arm64 ]]; then
+    optional_bundles=("@liustack/modsearch@5.10.12" "dsh-context@0.84.1")
+    # Keep npm's peer auto-installation enabled: DSH packages import these runtime peers.
+  fi
   if [[ -f "$lockdir/package-lock.json" ]]; then
     log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
     cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
@@ -389,14 +394,14 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
     PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
   else
     log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
-    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
+    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}"
     # npm nests an exact-pinned dependency in every dependent when another version wins the top
     # level (0.2.1-rc.2: 50 copies of zod 4.4.3, ~26k files). Pin those as direct dependencies so
     # one copy is hoisted, then reinstall.
     local -a hoist=(); mapfile -t hoist < <("${PY[@]}" hoist-candidates "$prefix/package-lock.json")
     if [[ ${#hoist[@]} -gt 0 ]]; then
       log "hoisting duplicated exact dependencies: ${hoist[*]}"
-      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${hoist[@]}"
+      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}" "${hoist[@]}"
     fi
     mkdir -p "$lockdir"
     cp "$prefix/package.json" "$lockdir/"
@@ -406,6 +411,10 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
   local got; got="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \
     "$prefix/node_modules/@deepseek-ai/dsh/package.json")"
   [[ "$got" == "$DSH_VERSION" ]] || die "installed dsh $got != $DSH_VERSION"
+}
+
+install_preinstalled_bundles() {  # $1 = DSH npm prefix
+  python3 -I "$HERE/lib/preinstall_optional_bundles.py" --prefix "$1" --manifest "$HERE/preinstalled-bundles.json"
 }
 
 # pnpm for the guest (zero dependencies, plain JS). Same lock-then-`npm ci` scheme as DSH; the
@@ -540,6 +549,10 @@ PYEOF
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
   "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
     --out "$work/dsh-patches.json" >&2
+  if [[ "$abi" == arm64-v8a ]]; then
+    log "registering curated optional bundles for ARM64"
+    install_preinstalled_bundles "$prefix"
+  fi
   local bridge="$HERE/bridge/dsh-go-bridge"
   local bridge_version
   bridge_version="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$bridge/package.json")"
@@ -555,7 +568,7 @@ PYEOF
       echo "$RUNTIME_REVISION $abi $DSH_VERSION $node_version $PNPM_VERSION $UBUNTU_VERSION $COMPRESS $XZ_PRESET $XZ_THREADS $PRUNE_DEV_METADATA $SOURCE_DATE_EPOCH $RUNTIME_LAYERS $TERMUX_ARM_NODE_VERSION"
       sha256 "$base"; sha256 "$node"; [[ -z "$python" ]] || sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
       sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
-      sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"
+      sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"; sha256 "$HERE/preinstalled-bundles.json"; sha256 "$HERE/lib/preinstall_optional_bundles.py"
       (cd "$HERE" && find patches bridge boot direct session-deletion -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
     } | sha256sum | cut -c1-12 )"
   local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${node_version}-ubuntu${UBUNTU_VERSION}-${inputs_sha}"
