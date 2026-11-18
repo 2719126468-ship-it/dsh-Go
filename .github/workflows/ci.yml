@@ -42,6 +42,7 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           # The paths outside each area's own are files its tests read.
+          # runtime/** includes shipped unified-diff patches; runtime tests parse and apply every hunk.
           filters: |
             ci: &ci .github/workflows/ci.yml
             app: [*ci, 'app/**', 'packages/**', 'sdk/plugin-kit/**', 'site/share/**', 'docs/guide/**', 'THIRD_PARTY_NOTICES.md']
