@@ -217,8 +217,10 @@
  					exitCode = 1;
  					const restoration = repaired.exitCode === 0 ? "restored package.json, pnpm-lock.yaml, and node_modules" : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'";
  					const diagnostic = `\ndsh: installation rejected: ${warnings.join("\n")}\ndsh: ${restoration}.\n`;
-@@ -926,6 +926,34 @@
- 		} finally {
+@@ -926,6 +926,35 @@
+-		} finally {
++		completed = true;
++		} finally {
 -			control.settled = true;
 -			clearTimeout(idleTimer);
 -			await rm(runRecordPath(dir), { force: true });
