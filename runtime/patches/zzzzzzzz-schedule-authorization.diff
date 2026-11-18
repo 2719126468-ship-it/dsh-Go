@@ -40,7 +40,7 @@
  				await this.validateTarget(target, signal);
  				signal?.throwIfAborted();
  				const createdAt = new Date(now).toISOString();
-@@ -2402,56 +2408,108 @@
+@@ -2402,55 +2408,107 @@
  		* @returns The updated task, the deletion outcome, or a non-mutating miss or conflict.
  		*/
  		async edit(request, actorSessionId, signal) {
