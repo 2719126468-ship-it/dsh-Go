@@ -1,5 +1,7 @@
 {
+  "schema": 1,
   "patches": {
+    "fs-create-exclusive.diff": {},
     "install-log-redaction.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
@@ -130,6 +132,5 @@
     "zzzzzzz-input-recovery.diff": {},
     "zzzzzzzz-model-defaults.diff": {},
     "zzzzzzzz-schedule-authorization.diff": {}
-  },
-  "schema": 1
+  }
 }
