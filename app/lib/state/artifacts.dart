@@ -255,17 +255,36 @@ class PhoneOutput {
 
 /// Markdown link destinations: `](<path with spaces>)` or `](path "title")`.
 final _linkTarget = RegExp(r'\]\(\s*(?:<([^>\n]+)>|([^)\s]+))');
+/// Fenced code (closed by a fence at least as long) and inline code are not links.
+final _code = RegExp(r'(`{3,}|~{3,})[\s\S]*?(?:\1|$)|`[^`\n]*`');
 final _scheme = RegExp(r'^[A-Za-z][A-Za-z0-9+.-]*:');
 final _drive = RegExp(r'^[A-Za-z]:[\\/]');
+
+/// Resolve a Windows drive path using the same query, fragment and percent rules as links.
+String? _drivePath(String target, {required bool decode, String? cwd}) {
+  final cut = target.indexOf(RegExp('[?#]'));
+  if (cut >= 0) target = target.substring(0, cut);
+  if (decode) {
+    try {
+      target = Uri.decodeFull(target);
+    } on ArgumentError {
+      // Keep it as written.
+    } on FormatException {
+      return null;
+    }
+  }
+  if (target.isEmpty) return null;
+  return resolveSessionPath(target, cwd: cwd);
+}
 
 /// A local Markdown destination, shared by artifact cards and inline links.
 /// Decode the URI path once; query strings and fragments are not filenames.
 String? resolveWorkspaceLink(String url, {String? baseDir}) {
   var target = url.trim();
-  if (target.startsWith('<') && target.endsWith('>')) {
-    target = target.substring(1, target.length - 1).trim();
-  }
+  final bracketed = target.startsWith('<') && target.endsWith('>');
+  if (bracketed) target = target.substring(1, target.length - 1).trim();
   if (target.isEmpty || target.startsWith('#') || target.startsWith('?') || target.startsWith('//')) return null;
+  if (_drive.hasMatch(target)) return _drivePath(target, decode: !bracketed, cwd: baseDir);
   final uri = Uri.tryParse(target);
   if (uri == null) return null;
   if (uri.hasScheme) {
@@ -297,26 +316,14 @@ String? resolveWorkspaceLink(String url, {String? baseDir}) {
 /// in order, resolved against [cwd]; web links and anchors dropped.
 List<String> linkedPaths(String text, {String? cwd}) {
   final out = <String>[];
-  for (final match in _linkTarget.allMatches(text)) {
-    var target = (match.group(1) ?? match.group(2) ?? '').trim();
-    final String? path;
-    if (_drive.hasMatch(target)) {
-      // Preserve existing artifact support for remote Windows paths.
-      final hash = target.indexOf('#');
-      if (hash >= 0) target = target.substring(0, hash);
-      if (match.group(1) == null) {
-        try {
-          target = Uri.decodeFull(target);
-        } on ArgumentError {
-          // Keep it as written.
-        } on FormatException {
-          continue;
-        }
-      }
-      path = resolveSessionPath(target, cwd: cwd);
-    } else {
-      path = resolveWorkspaceLink(target, baseDir: cwd);
-    }
+  // Markdown examples inside code fences or inline code are not deliverables.
+  final visible = text.replaceAll(_code, '');
+  for (final match in _linkTarget.allMatches(visible)) {
+    final target = (match.group(1) ?? match.group(2) ?? '').trim();
+    final path = resolveWorkspaceLink(
+      match.group(1) == null ? target : '<$target>',
+      baseDir: cwd,
+    );
     if (path != null && !out.contains(path)) out.add(path);
   }
   return out;

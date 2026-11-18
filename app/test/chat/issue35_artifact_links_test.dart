@@ -36,6 +36,8 @@ void main() {
     'out/%E6%96%87%E6%A1%A3.docx': '$cwd/out/文档.docx',
     '../report.docx': '/root/report.docx',
     '<out/word report.docx>': '$cwd/out/word report.docx',
+    '<C:/A/my%20shot.png>': 'C:/A/my%20shot.png',
+    'C:/A/report.pdf?download=1#page2': 'C:/A/report.pdf',
   };
 
   for (final MapEntry(key: target, value: expected) in cases.entries) {
@@ -76,6 +78,13 @@ void main() {
     expect(MarkdownBody.workspaceLinkPath('report.docx', baseDir: 'output'), 'output/report.docx');
   });
 
+  test('longer fenced code is not closed by a shorter fence', () {
+    expect(
+      linkedPaths('~~~~md\n~~~\n[example](fake.pdf)\n~~~~\n[real](real.pdf)', cwd: cwd),
+      ['$cwd/real.pdf'],
+    );
+  });
+
   test('existing Windows artifact paths keep their drive prefix', () {
     expect(linkedPaths(r'[document](C:\work\report.docx)', cwd: cwd), [r'C:\work\report.docx']);
     expect(linkedPaths('[document](C:/work/report.docx#L2)', cwd: cwd), ['C:/work/report.docx']);
@@ -109,6 +118,14 @@ void main() {
     expect((imageSourceOf('HTTP://example.com/chart.png') as WebImageSource).url, 'HTTP://example.com/chart.png');
     expect((imageSourceOf('data:image/png;base64,AAAA') as DataImageSource).url, 'data:image/png;base64,AAAA');
     expect((imageSourceOf(r'C:\work\chart.png') as WorkspaceImageSource).path, r'C:\work\chart.png');
+    expect(
+      (imageSourceOf('C:/A/report.pdf?download=1#page2') as WorkspaceImageSource).path,
+      'C:/A/report.pdf',
+    );
+    expect(
+      (imageSourceOf('<C:/A/my%20shot.png>') as WorkspaceImageSource).path,
+      'C:/A/my%20shot.png',
+    );
   });
 
   testWidgets('the real Markdown image reader receives one decoded local path', (tester) async {

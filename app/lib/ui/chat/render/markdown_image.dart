@@ -77,35 +77,17 @@ class UnsupportedImageSource extends ImageSource {
   const UnsupportedImageSource();
 }
 
-final _drive = RegExp(r'^[A-Za-z]:[\\/]');
-
 /// Classifies a Markdown image destination.
 ImageSource imageSourceOf(String url) {
-  var target = url.trim();
-  if (target.startsWith('<') && target.endsWith('>')) {
-    target = target.substring(1, target.length - 1).trim();
-  }
+  final target = url.trim();
   final lower = target.toLowerCase();
   if (lower.startsWith('http://') || lower.startsWith('https://')) {
     return WebImageSource(target);
   }
   if (lower.startsWith('data:')) return DataImageSource(target);
-  if (!_drive.hasMatch(target)) {
-    final path = resolveWorkspaceLink(target);
-    return path == null ? const UnsupportedImageSource() : WorkspaceImageSource(path);
-  }
-  // Keep remote Windows paths as paths rather than parsing their drive as a URI scheme.
-  final hash = target.indexOf('#');
-  if (hash > 0) target = target.substring(0, hash);
-  try {
-    target = Uri.decodeFull(target);
-  } on ArgumentError {
-    // Keep it as written.
-  } on FormatException {
-    return const UnsupportedImageSource();
-  }
-  if (target.isEmpty) return const UnsupportedImageSource();
-  return WorkspaceImageSource(target);
+  // Windows drive paths use the same query, fragment and angle-bracket rules as links.
+  final path = resolveWorkspaceLink(url);
+  return path == null ? const UnsupportedImageSource() : WorkspaceImageSource(path);
 }
 
 /// [path] (a workspace image as written) as the path to read.
