@@ -181,6 +181,7 @@
 +const CALLER_ERRORS = ["subagent_session", "internal_error", "authorization_required"];
  /** Errors of a new title, prompt, or recurrence. */
  const CREATE_ERRORS = [
+ 	"invalid_prompt",
 @@ -458,6 +458,10 @@
  	try {
  		return await operation(agent);
