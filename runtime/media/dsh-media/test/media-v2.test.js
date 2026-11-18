@@ -52,6 +52,7 @@ async function fixture(t, profile, behavior = {}) {
         : profile === 'ali-video' ? { output: { task_id: 'task-1', task_status: ({ queued: 'PENDING', running: 'RUNNING', succeeded: 'SUCCEEDED', failed: 'FAILED', cancelled: 'CANCELED' })[state], video_url: url } }
           : { status: ({ queued: 'InQueue', running: 'InProgress', succeeded: 'Succeed', failed: 'Failed' })[state], results: { videos: [{ url }] } };
     }
+    if (behavior.nullImageUrl) value.data[0].url = null;
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(value));
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -73,6 +74,16 @@ async function fixture(t, profile, behavior = {}) {
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await rm(directory, { recursive: true, force: true }); });
   return { directory, workspace, wires, controller, context, origin, setState(value) { state = value; } };
 }
+test('gateway: base64 with a null URL saves the original image without a download', async t => {
+  const f = await fixture(t, 'openai-gpt-image', { nullImageUrl: true });
+  const req = request('openai-gpt-image', { model: catalogModel('gpt-image-2.5-flare') });
+  f.context.admission = await admitGeneration(req, f.context);
+  const result = await generateMedia(req, f.context);
+  assert.deepEqual(await readFile(result.meta.items[0].path), PNG);
+  assert.deepEqual(f.wires.map(wire => wire.method), ['POST']);
+  assert.equal(f.wires[0].body.model, 'gpt-image-2.5-flare');
+  assert.equal((await createBudgetLedger(join(f.context.hostStateDir, 'budget')).snapshot()).requests[0].state, 'settled');
+});
 for (const profile of ['openai-gpt-image', 'ark-image', 'ali-wan-image', 'silicon-image']) {
   test(`${profile}: real HTTP generation saves exact original and private index with budget`, async t => {
     const f = await fixture(t, profile), req = request(profile);
