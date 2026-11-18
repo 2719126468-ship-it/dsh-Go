@@ -161,13 +161,5 @@
         }
       }
     }
-  },
-  "install-log-redaction.diff": {
-    "0.2.2-rc.4": {
-      "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-        "before": "243655dce25544cf2fa5741b87c48b9eaba5c02ab9ae248a102300c4bb37f365",
-        "after": "979bfcd0442b9aae95e9bad9a1285d6b0853c18ed2b2a69ff4d7314c9841b046"
-      }
-    }
   }
 }
