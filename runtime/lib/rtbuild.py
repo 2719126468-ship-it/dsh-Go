@@ -326,6 +326,26 @@ def apply_hunks(data, hunks, label):
     return data
 
 
+def nested_package_dirs(prefix, package, dsh_version):
+    """Find installed nested copies of an @deepseek-ai package at the requested version."""
+    scope = os.path.join(prefix, "node_modules", "@deepseek-ai")
+    matches = []
+    if os.path.isdir(scope):
+        for owner in sorted(os.listdir(scope)):
+            nested_root = os.path.join(scope, owner, "node_modules", "@deepseek-ai", package)
+            manifest = os.path.join(nested_root, "package.json")
+            if not os.path.isdir(nested_root) or not os.path.isfile(manifest):
+                continue
+            try:
+                with open(manifest, encoding="utf-8") as f:
+                    metadata = json.load(f)
+            except (OSError, ValueError):
+                continue
+            if metadata.get("version") == dsh_version:
+                matches.append(nested_root)
+    return matches
+
+
 def patch_target_paths(prefix, relpath, dsh_version):
     """Resolve a missing top-level @deepseek-ai package file to same-version nested copies.
 
@@ -342,22 +362,11 @@ def patch_target_paths(prefix, relpath, dsh_version):
         return [relpath]
     package = parts[2]
     suffix = parts[3:]
-    scope = os.path.join(prefix, "node_modules", "@deepseek-ai")
     matches = []
-    if os.path.isdir(scope):
-        for owner in sorted(os.listdir(scope)):
-            nested_root = os.path.join(scope, owner, "node_modules", "@deepseek-ai", package)
-            candidate = os.path.join(nested_root, *suffix)
-            manifest = os.path.join(nested_root, "package.json")
-            if not os.path.isfile(candidate) or not os.path.isfile(manifest):
-                continue
-            try:
-                with open(manifest, encoding="utf-8") as f:
-                    metadata = json.load(f)
-            except (OSError, ValueError):
-                continue
-            if metadata.get("version") == dsh_version:
-                matches.append(os.path.relpath(candidate, prefix).replace(os.sep, "/"))
+    for nested_root in nested_package_dirs(prefix, package, dsh_version):
+        candidate = os.path.join(nested_root, *suffix)
+        if os.path.isfile(candidate):
+            matches.append(os.path.relpath(candidate, prefix).replace(os.sep, "/"))
     return matches or [relpath]
 
 
@@ -430,14 +439,21 @@ def cmd_patch_dsh(args):
             f.write("\n")
         print("recorded pins for DSH %s in %s" % (args.dsh_version, pins_path))
     if "zzzzzz-session-deletion.diff" in applied:
-        # Source-owned companion module, installed only alongside the vetted rc4 seam.
+        # Source-owned companion module, installed alongside every same-version package copy.
         source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "session-deletion", "core.mjs")
-        target = os.path.join(args.prefix, "node_modules", "@deepseek-ai", "dsh-session-persistence-jsonl", "lib", "dsh-go-deletion.mjs")
-        tmp = target + ".dsh-app-patch"
-        with open(source, "rb") as src, open(tmp, "wb") as dst:
-            dst.write(src.read())
-        os.chmod(tmp, 0o644)
-        os.replace(tmp, target)
+        package = "dsh-session-persistence-jsonl"
+        top = os.path.join(args.prefix, "node_modules", "@deepseek-ai", package)
+        targets = [top] if os.path.isdir(top) else nested_package_dirs(args.prefix, package, args.dsh_version)
+        if not targets:
+            targets = [top]
+        for package_dir in targets:
+            target = os.path.join(package_dir, "lib", "dsh-go-deletion.mjs")
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            tmp = target + ".dsh-app-patch"
+            with open(source, "rb") as src, open(tmp, "wb") as dst:
+                dst.write(src.read())
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, target)
     if args.out:
         with open(args.out, "w") as f:
             json.dump(applied, f)

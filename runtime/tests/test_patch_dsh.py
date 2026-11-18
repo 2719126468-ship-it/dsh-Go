@@ -144,6 +144,38 @@ class PatchDsh(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("already patched", result.stdout)
 
+    def test_session_deletion_companion_is_copied_to_nested_package_copies(self):
+        os.remove(self.target)
+        os.remove(os.path.join(self.patches, "guard.diff"))
+        rel = "node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js"
+        nested_paths = []
+        for owner in ("dsh", "dsh-base"):
+            root = os.path.join(self.prefix, "node_modules", "@deepseek-ai", owner,
+                                "node_modules", "@deepseek-ai", "dsh-session-persistence-jsonl")
+            os.makedirs(os.path.join(root, "lib"))
+            with open(os.path.join(root, "package.json"), "w") as f:
+                json.dump({"version": "1.0.0"}, f)
+            target = os.path.join(root, "lib", "index.js")
+            with open(target, "w") as f:
+                f.write(ORIGINAL)
+            nested_paths.append(os.path.relpath(target, self.prefix).replace(os.sep, "/"))
+        nested_diff = DIFF.replace(REL, rel)
+        with open(os.path.join(self.patches, "zzzzzz-session-deletion.diff"), "w", encoding="utf-8") as f:
+            f.write(nested_diff)
+
+        result = self.run_cli("--dsh-version", "1.0.0", "--record")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        pins = load(os.path.join(self.patches, "pins.json"))["patches"]["zzzzzz-session-deletion.diff"]["1.0.0"]
+        self.assertEqual(set(pins), set(nested_paths))
+        core = os.path.join(os.path.dirname(__file__), "..", "session-deletion", "core.mjs")
+        expected = read(core)
+        for owner in ("dsh", "dsh-base"):
+            companion = os.path.join(
+                self.prefix, "node_modules", "@deepseek-ai", owner, "node_modules",
+                "@deepseek-ai", "dsh-session-persistence-jsonl", "lib", "dsh-go-deletion.mjs"
+            )
+            self.assertEqual(read(companion), expected)
+
     def test_unpinned_version_fails(self):
         self.run_cli("--dsh-version", "1.0.0", "--record")
         with open(self.target, "w") as f:
