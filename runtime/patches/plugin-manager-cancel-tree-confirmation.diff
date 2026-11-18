@@ -179,17 +179,12 @@
  			if (completion.status === "rejected") throw completion.reason;
  			const result = completion.value;
  			exitCode = result.exitCode ?? (result.code === "ENOENT" ? 127 : 1);
-@@ -738,7 +844,10 @@
- 					}
- 				}
+@@ -738,2 +844,5 @@
  				if (warnings.length > 0) {
 +					// Compatibility recovery writes the same files as outer rollback.
 +					await stopOwnedRuns(ownedRuns);
  					await restore();
 +					if (combinedSignal.aborted) throw new InstallCancelledError();
- 					const repair = ["install", savedFiles.some((file) => file.path.endsWith("pnpm-lock.yaml") && file.text !== void 0) ? "--frozen-lockfile" : "--config.lockfile=false"];
- 					const repairing = execa(options.command ?? "pnpm", [...options.args ?? [], ...repair], {
- 						cwd: dir,
 @@ -746,13 +855,22 @@
  						extendEnv: false,
  						reject: false,
