@@ -187,7 +187,7 @@
 +					if (hasImage) {
 @@ -1,2 +1,2 @@
 -const content = await this.ctx.attachments.admitPromptContent(admission.content);
--						if (this.hasPromptRequest(agent.session, request.requestId)) return { accepted: true };
+-					if (this.hasPromptRequest(agent.session, request.requestId)) return { accepted: true };
 +const content = await this.ctx.attachments.admitPromptContent(admission.content);
 +						if (this.hasPromptRequest(agent.session, request.requestId, agent)) return { accepted: true };
 @@ -1,3 +1,3 @@
