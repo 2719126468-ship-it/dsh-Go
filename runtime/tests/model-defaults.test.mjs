@@ -65,6 +65,7 @@ function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
     ownerContext: { configEditor: editor, emit: (...args) => events.push(args) },
     revisions: new Map(), presentations: new Map(),
   });
+  settings.configure({ auto: false }, entry.fiber);
   return { defaults, settings, entry, writes, events, update, raw: () => entry.options.config };
 }
 
@@ -145,7 +146,7 @@ test('selectModel waits for persistence and returns the normalized installed sel
   const gate = deferred();
   const entered = deferred();
   const f = fixture(old, { beforeEdit: () => { entered.resolve(); return gate.promise; } });
-  const normalized = { ...next, reasoningEffort: 'high' };
+  const normalized = { ...next };
   const c = commands(f.defaults, { resolveCallConfig: async () => normalized });
   let returned = false;
   const pending = c.controller.selectModel({ sessionId: 'session-fixture', ...next }).then(value => { returned = true; return value; });

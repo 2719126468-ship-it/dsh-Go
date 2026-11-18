@@ -163,7 +163,7 @@
 +			});
 +			const id = `dsh-go-schedule-authorization-${randomUUID()}`;
 +			const approve = "授权 / Authorize";
-+			const details = JSON.stringify({ operation, sessionId, target, task: record }, null, 2).replace(/[\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufeff]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
++			const details = JSON.stringify({ operation, sessionId, target, task: record }, null, 2).replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, (char) => `\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 +			try {
 +				const answer = await Promise.race([questions.ask({
 +					agent,

@@ -30,8 +30,13 @@ function region(name) {
 }
 
 class LlmError extends Error {}
+class AgentModel {
+  constructor(_projection, _session, options) { this.options = options; }
+  current() { return this.options; }
+}
 const bindings = {
   z$1: z,
+  AgentModel,
   agentEvents: (ctx, agent) => { ctx.constructingAgent = agent; return ctx.dispatch; },
   createScope: ctx => ({ ctx }),
   assembleContextFor: (agent, signal) => ({ agent, signal }),
@@ -86,6 +91,8 @@ function fixture({ events = [], assemble, preStep, prepareCall, failAppend, noti
     requestHeader: () => undefined,
   };
   const projections = {
+    inbox: () => state,
+    modelSelection: () => ({ provider: 'synthetic', model: 'test', reasoningEffort: 'max' }),
     stateOf(_session, key) {
       if (key === 'inbox') return state;
       if (key === 'turnBoundary') return { lastTurn: log.findLast(e => e.type === 'turn/start')?.data.turn ?? 0 };
@@ -116,7 +123,7 @@ function fixture({ events = [], assemble, preStep, prepareCall, failAppend, noti
       },
     },
   };
-  const agent = new api.ReactLoopAgent(ctx, session.id, { provider: 'synthetic', model: 'test', reasoningEffort: 'max' }, session);
+  const agent = new api.ReactLoopAgent(ctx, session.id, { provider: 'synthetic', model: 'test', reasoningEffort: 'max' }, session, projections, 0, new AbortController().signal);
   // Exercise the real step/admission path, then stop before starting any real model request.
   agent.buildRequest = () => { throw Error('synthetic post-admission failure'); };
   const originalWake = agent.wakeDriver;
@@ -499,7 +506,7 @@ test('real Session and JSONL codec preserve consumption markers and flush constr
     on: () => () => {},
   };
   const live = sessionApi.Session.create('synthetic-jsonl-recovery');
-  const inbox = new api.ReactLoopInbox(ctx.sessionProjections, live, dispatch);
+  const inbox = new api.ReactLoopInbox(() => projectionOf(live), live, dispatch);
   inbox.append('next-step', message('consumed'));
   inbox.append('next-turn', message('retained'));
   live.append('turn/start', { turn: 1 });
