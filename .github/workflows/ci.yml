@@ -179,7 +179,11 @@ jobs:
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
           out="$RUNNER_TEMP/dsh-locks"
           mkdir -p "$out/dsh-$version" "$out/dsh-$version-android"
-          npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version" --legacy-peer-deps "@liustack/modsearch@5.10.12" "dsh-context@0.84.1"
+          mapfile -t hoist < <(python3 -I runtime/lib/rtbuild.py hoist-candidates "$out/dsh-$version/package-lock.json")
+          if [[ ${#hoist[@]} -gt 0 ]]; then
+            npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact --legacy-peer-deps "@deepseek-ai/dsh@$version" "@liustack/modsearch@5.10.12" "dsh-context@0.84.1" "${hoist[@]}"
+          fi
           npm install --prefix "$out/dsh-$version-android" --cpu=arm --os=linux --libc=android --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
           test -s "$out/dsh-$version/package-lock.json"
           test -s "$out/dsh-$version-android/package-lock.json"
@@ -197,7 +201,9 @@ jobs:
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
           prefix="$RUNNER_TEMP/dsh"
           mkdir "$prefix"
-          npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          lockdir="$RUNNER_TEMP/dsh-locks/dsh-$version"
+          cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
+          npm ci --prefix "$prefix" --ignore-scripts --no-audit --no-fund --legacy-peer-deps
           echo '--- run-tree ---'
           grep -n -A14 -B6 'function treeAlive' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/run-tree.js" || true
           echo '--- operations activeRecordedRun / preflight / child / warning repair ---'
@@ -214,6 +220,7 @@ jobs:
           grep -n -A55 -B12 'warnings.length > 0' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 95 || true
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
           python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          python3 -I runtime/lib/preinstall_optional_bundles.py --prefix "$prefix" --manifest runtime/preinstalled-bundles.json
           cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
@@ -230,16 +237,24 @@ jobs:
             sed -n '875,905p' "$manager"
             exit 1
           fi
-          node --test runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
+          DSH_PREFIX="$DSH_PREFIX" node --test runtime/tests/schedule-authorization-host.mjs runtime/tests/*.test.mjs app/tool/engine_auth/*.test.mjs
           python3 -I runtime/tests/test_patch_dsh.py
+          python3 -I runtime/tests/test_preinstall_optional_bundles.py
       - name: Capture patched DSH files for patch review
         if: failure()
         run: |
           debug="$RUNNER_TEMP/dsh-patch-debug"
           mkdir -p "$debug"
-          for package in dsh-api-session-controller dsh-session-projection-cache dsh-storage-domain dsh-storage-json dsh-fs-local dsh-host-webserver dsh-agent-loop dsh-app-boot dsh-config-editor dsh-plugin-manager; do
+          for package in dsh-agent-default-model dsh-agent-loop dsh-api-session-controller dsh-app-boot dsh-config-editor dsh-fs-local dsh-home-paths dsh-host-webserver dsh-official-bundles dsh-plugin-manager dsh-sandbox dsh-sandbox-local dsh-fs-sandbox dsh-bash-sandbox dsh-pwsh-sandbox dsh-sandbox-policy dsh-sandbox-windows-acl dsh-schedule dsh-session dsh-session-persistence-jsonl dsh-session-projection-cache dsh-session-query dsh-session-query-sqlite dsh-skill-filesystem dsh-storage-domain dsh-storage-json dsh-subprocess-local dsh-tool-schedule dsh-workspace; do
             source="$RUNNER_TEMP/dsh/node_modules/@deepseek-ai/$package/lib/index.js"
             if [[ -f "$source" ]]; then cp "$source" "$debug/$package-index.js"; fi
+          done
+          for package in @liustack/modsearch dsh-context; do
+            source="$RUNNER_TEMP/dsh/node_modules/$package/package.json"
+            if [[ -f "$source" ]]; then
+              safe_name=$(printf '%s' "$package" | tr '/@' '--')
+              cp "$source" "$debug/$safe_name-package.json"
+            fi
           done
           cp runtime/patches/*.diff "$debug/" || true
           cp runtime/patches/pins.json "$debug/"
