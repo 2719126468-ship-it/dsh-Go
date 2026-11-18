@@ -146,10 +146,6 @@
         "node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js": {
           "after": "7f291129db8a1d70ca375e8eeec5c7f67772900258658efa7c7ffc910a5bca72",
           "before": "be3dd5ea108d713e34e826bc4e6c44d9318133b24f595c90319700afb6e82eef"
-        },
-        "node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js": {
-          "after": "253e1339e3f7172aa6f272c5209f45cc69519a2509e9684242ee004c22a50f88",
-          "before": "f980fc8d8a21c7c93da3c77a4c511bd968702c815bf61cc709a6b1b7643daccd"
         }
       }
     },
