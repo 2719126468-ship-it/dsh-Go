@@ -153,8 +153,13 @@ class BundleTile extends ConsumerWidget {
         : error.isNotEmpty
         ? error
         : [?bundle.version, ?summary].join(' · ');
+    final chinese = Localizations.localeOf(context).languageCode == 'zh';
+    final preinstalled = isDshGoPreinstalledBundle(bundle);
     final badges = [
-      if (bundle.official) PluginBadge(l10n.pluginsOfficial, tone: PluginBadgeTone.official),
+      if (preinstalled)
+        PluginBadge(chinese ? '预装' : 'Preinstalled', tone: PluginBadgeTone.neutral)
+      else if (bundle.official)
+        PluginBadge(l10n.pluginsOfficial, tone: PluginBadgeTone.official),
       if (blocked)
         PluginBadge(l10n.marketBlockedBadge, tone: PluginBadgeTone.danger)
       else if (update)
