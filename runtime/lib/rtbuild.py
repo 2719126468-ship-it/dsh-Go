@@ -350,7 +350,8 @@ def cmd_patch_dsh(args):
                 terminal[rel] = pin["after"]
     applied = []
     for name in names:
-        diff = parse_unified_diff(open(os.path.join(args.patches, name), encoding="utf-8").read())
+        # Patch comments may contain CJK; never rely on the Windows locale's default code page.
+diff = parse_unified_diff(open(os.path.join(args.patches, name), encoding="utf-8").read())
         want = pins["patches"].get(name, {}).get(args.dsh_version)
         if want is None and not args.record:
             sys.exit("patch %s has no pin for DSH %s: review the upstream files it touches, then run\n"
