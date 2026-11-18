@@ -326,6 +326,41 @@ def apply_hunks(data, hunks, label):
     return data
 
 
+def patch_target_paths(prefix, relpath, dsh_version):
+    """Resolve a missing top-level @deepseek-ai package file to same-version nested copies.
+
+    DSH 0.2.2 can keep a package under multiple dependents instead of hoisting it.
+    Patch every installed copy of the requested DSH version so imports from either
+    parent see the vetted runtime change. Preserve the original failure when no copy
+    can be resolved.
+    """
+    top = os.path.join(prefix, relpath)
+    if os.path.isfile(top):
+        return [relpath]
+    parts = relpath.split("/")
+    if len(parts) < 5 or parts[:2] != ["node_modules", "@deepseek-ai"]:
+        return [relpath]
+    package = parts[2]
+    suffix = parts[3:]
+    scope = os.path.join(prefix, "node_modules", "@deepseek-ai")
+    matches = []
+    if os.path.isdir(scope):
+        for owner in sorted(os.listdir(scope)):
+            nested_root = os.path.join(scope, owner, "node_modules", "@deepseek-ai", package)
+            candidate = os.path.join(nested_root, *suffix)
+            manifest = os.path.join(nested_root, "package.json")
+            if not os.path.isfile(candidate) or not os.path.isfile(manifest):
+                continue
+            try:
+                with open(manifest, encoding="utf-8") as f:
+                    metadata = json.load(f)
+            except (OSError, ValueError):
+                continue
+            if metadata.get("version") == dsh_version:
+                matches.append(os.path.relpath(candidate, prefix).replace(os.sep, "/"))
+    return matches or [relpath]
+
+
 def cmd_patch_dsh(args):
     """Apply runtime/patches/*.diff to a DSH npm prefix, refusing anything not pinned for this DSH version.
 
@@ -359,32 +394,33 @@ def cmd_patch_dsh(args):
                      % (name, args.dsh_version, args.dsh_version))
         observed = {}
         for rel, hunks in diff:
-            path = os.path.join(args.prefix, rel)
-            raw = open(path, "rb").read()
-            before = hashlib.sha256(raw).hexdigest()
-            pin = (want or {}).get(rel)
-            if not args.record:
-                if pin is None:
-                    sys.exit("%s: no pin for %s" % (name, rel))
-                if before == pin["after"] or before == terminal.get(rel):
-                    print("%s: %s already patched" % (name, rel))
-                    observed[rel] = pin
-                    continue
-                if before != pin["before"]:
-                    sys.exit("%s: %s sha256 %s differs from the vetted DSH %s original %s"
-                             % (name, rel, before, args.dsh_version, pin["before"]))
-            out = apply_hunks(raw.decode("utf-8"), hunks, "%s %s" % (name, rel)).encode("utf-8")
-            after = hashlib.sha256(out).hexdigest()
-            if not args.record and after != pin["after"]:
-                sys.exit("%s: %s patched sha256 %s != pinned %s" % (name, rel, after, pin["after"]))
-            mode = os.stat(path).st_mode & 0o777
-            tmp = path + ".dsh-app-patch"
-            with open(tmp, "wb") as f:
-                f.write(out)
-            os.chmod(tmp, mode)
-            os.replace(tmp, path)
-            observed[rel] = {"before": before, "after": after}
-            print("%s: patched %s (%s -> %s)" % (name, rel, before[:12], after[:12]))
+            for target_rel in patch_target_paths(args.prefix, rel, args.dsh_version):
+                path = os.path.join(args.prefix, target_rel)
+                raw = open(path, "rb").read()
+                before = hashlib.sha256(raw).hexdigest()
+                pin = (want or {}).get(target_rel)
+                if not args.record:
+                    if pin is None:
+                        sys.exit("%s: no pin for %s" % (name, target_rel))
+                    if before == pin["after"] or before == terminal.get(target_rel):
+                        print("%s: %s already patched" % (name, target_rel))
+                        observed[target_rel] = pin
+                        continue
+                    if before != pin["before"]:
+                        sys.exit("%s: %s sha256 %s differs from the vetted DSH %s original %s"
+                                 % (name, target_rel, before, args.dsh_version, pin["before"]))
+                out = apply_hunks(raw.decode("utf-8"), hunks, "%s %s" % (name, target_rel)).encode("utf-8")
+                after = hashlib.sha256(out).hexdigest()
+                if not args.record and after != pin["after"]:
+                    sys.exit("%s: %s patched sha256 %s != pinned %s" % (name, target_rel, after, pin["after"]))
+                mode = os.stat(path).st_mode & 0o777
+                tmp = path + ".dsh-app-patch"
+                with open(tmp, "wb") as f:
+                    f.write(out)
+                os.chmod(tmp, mode)
+                os.replace(tmp, path)
+                observed[target_rel] = {"before": before, "after": after}
+                print("%s: patched %s (%s -> %s)" % (name, target_rel, before[:12], after[:12]))
         if args.record:
             pins["patches"].setdefault(name, {})[args.dsh_version] = observed
         applied.append(name)
