@@ -179,11 +179,15 @@
  			if (completion.status === "rejected") throw completion.reason;
  			const result = completion.value;
  			exitCode = result.exitCode ?? (result.code === "ENOENT" ? 127 : 1);
-@@ -738,2 +844,5 @@
- 				if (warnings.length > 0) {
+@@ -738,3 +844,6 @@
+-				if (expected !== void 0 && !seen) fail("unexpected-package", `${expected.name}@${expected.version} is not installed`);
+-				if (warnings.length > 0) {
+-					await restore();
++				if (expected !== void 0 && !seen) fail("unexpected-package", `${expected.name}@${expected.version} is not installed`);
++				if (warnings.length > 0) {
 +					// Compatibility recovery writes the same files as outer rollback.
 +					await stopOwnedRuns(ownedRuns);
- 					await restore();
++					await restore();
 +					if (combinedSignal.aborted) throw new InstallCancelledError();
 @@ -746,13 +855,22 @@
  						extendEnv: false,
@@ -213,11 +217,33 @@
  					exitCode = 1;
  					const restoration = repaired.exitCode === 0 ? "restored package.json, pnpm-lock.yaml, and node_modules" : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'";
  					const diagnostic = `\ndsh: installation rejected: ${warnings.join("\n")}\ndsh: ${restoration}.\n`;
-@@ -877,14 +877,50 @@
- 					await log.write(diagnostic);
- 					options.onOutput?.(diagnostic, "stderr");
- 					append(Buffer.from(diagnostic));
--				} else if (options.activateNewBundles !== false) await reconcile(before, dir, context.installAnchor, options);
+@@ -877,23 +877,50 @@
+-					await log.write(diagnostic);
+-					options.onOutput?.(diagnostic, "stderr");
+-					append(Buffer.from(diagnostic));
+-				} else if (options.activateNewBundles !== false) {
+-					const unsupported = await reconcile(before, dir, context.installAnchor, options);
+-					if (unsupported.length > 0) {
+-						exitCode = 1;
+-						const diagnostic = `\ndsh: bundle activation rejected: ${unsupported.join("\n")}\ndsh: installed dependencies remain; bundle selection is unchanged. Use a supported Host or remove the unwanted dependencies with 'dsh plugin remove <package>'.\n`;
+-						await log.write(diagnostic);
+-						options.onOutput?.(diagnostic, "stderr");
+-						append(Buffer.from(diagnostic));
+-					}
+-				}
+-			}
+-		} finally {
+-			control.settled = true;
+-			clearTimeout(idleTimer);
+-			await rm(runRecordPath(dir), { force: true });
+-			await log.close();
+-		}
+-		return {
+-			exitCode,
+-			output: output.toString("utf8"),
++					await log.write(diagnostic);
++					options.onOutput?.(diagnostic, "stderr");
++					append(Buffer.from(diagnostic));
 +				} else if (options.activateNewBundles !== false) {
 +					const unsupported = await reconcile(before, dir, context.installAnchor, options);
 +					if (unsupported.length > 0) {
@@ -261,16 +287,10 @@
 +					await rm(runRecordPath(dir), { force: true });
 +					await log.close();
 +				}
- 			}
--		} finally {
--			control.settled = true;
--			clearTimeout(idleTimer);
--			await rm(runRecordPath(dir), { force: true });
--			await log.close();
--		}
- 		return {
- 			exitCode,
- 			output: output.toString("utf8"),
++			}
++		return {
++			exitCode,
++			output: output.toString("utf8"),
 @@ -1972,6 +2117,7 @@
  			const control = {
  				abort: new AbortController(),
@@ -286,14 +306,20 @@
 +							await this.restoreFiles(files);
 +						}
 @@ -2035,7 +2184,7 @@
- 							spec,
- 							...options?.saveExact === true ? ["--save-exact"] : [],
- 							...registryArguments(registry)
--						], control.abort.signal, requestId);
-+						], control.abort.signal, requestId, control.runs);
- 						result.packageResult = run;
- 						if (stopped()) throw new InstallCancelledError();
- 						if (run.incompatible !== void 0) throw new ManagementFailure("incompatible-version", run.incompatible);
+-							installSpec,
+-							...options?.saveExact === true ? ["--save-exact"] : [],
+-							...registryArguments(registry)
+-						], control.abort.signal, requestId, options?.expected);
+-						result.packageResult = run;
+-						if (stopped()) throw new InstallCancelledError();
+-						if (run.incompatible !== void 0) throw new ManagementFailure("incompatible-version", run.incompatible);
++							installSpec,
++							...options?.saveExact === true ? ["--save-exact"] : [],
++							...registryArguments(registry)
++						], control.abort.signal, requestId, options?.expected, control.runs);
++						result.packageResult = run;
++						if (stopped()) throw new InstallCancelledError();
++						if (run.incompatible !== void 0) throw new ManagementFailure("incompatible-version", run.incompatible);
 @@ -2077,12 +2226,20 @@
  					for (const file of bundlePatchPaths(dir, manifest.dsh.bundle)) loadOverlayPatches("dsh", file);
  					version = manifest.version;
@@ -326,19 +352,33 @@
  		}
  		/** Unload and remove a profile-owned bundle dependency through dsh plugin's pnpm path; a selected name no
 @@ -2201,7 +2360,7 @@
- 			};
- 		}
- 		/** Run one pnpm command in the profile, streaming its output as install-log chunks. */
--		async runPnpm(args, signal, requestId) {
-+		async runPnpm(args, signal, requestId, ownedRuns) {
- 			const jobId = randomUUID();
- 			// Log arguments are separate from execution arguments. Restrict userinfo
- 			// matching to URL authority; support aliases and --registry=URL too.
-@@ -2219,6 +2378,7 @@
- 				activateNewBundles: false,
- 				idleTimeoutMs: this.idleTimeoutMs,
- 				lookupTimeoutMs: this.inspectTimeoutMs,
+-			};
+-		}
+-		/** Run one pnpm command in the profile, streaming its output as install-log chunks; `expected` is the package an `add` must install. */
+-		async runPnpm(args, signal, requestId, expected) {
+-			const jobId = randomUUID();
+-			// Log arguments are separate from execution arguments. Restrict userinfo
+-			// matching to URL authority; support aliases and --registry=URL too.
++			};
++		}
++		/** Run one pnpm command in the profile, streaming its output as install-log chunks; `expected` is the package an `add` must install. */
++		async runPnpm(args, signal, requestId, expected, ownedRuns) {
++			const jobId = randomUUID();
++			// Log arguments are separate from execution arguments. Restrict userinfo
++			// matching to URL authority; support aliases and --registry=URL too.
+@@ -2219,7 +2378,8 @@
+-				activateNewBundles: false,
+-				idleTimeoutMs: this.idleTimeoutMs,
+-				lookupTimeoutMs: this.inspectTimeoutMs,
+-				...expected === void 0 ? {} : { expected },
+-				onOutput: (text, stream) => {
+-					this.ownerContext.emit("plugin-manager/install-log", {
+-						...identity,
++				activateNewBundles: false,
++				idleTimeoutMs: this.idleTimeoutMs,
++				lookupTimeoutMs: this.inspectTimeoutMs,
++				...expected === void 0 ? {} : { expected },
 +				...ownedRuns === void 0 ? {} : { onRunGuard: (guard) => ownedRuns.push(guard) },
- 				onOutput: (text, stream) => {
- 					this.ownerContext.emit("plugin-manager/install-log", {
- 						...identity,
++				onOutput: (text, stream) => {
++					this.ownerContext.emit("plugin-manager/install-log", {
++						...identity,
