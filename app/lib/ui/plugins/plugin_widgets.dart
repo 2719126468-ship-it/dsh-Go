@@ -147,11 +147,12 @@ enum PluginBadgeTone { neutral, official, featured, warning, danger }
 /// or a small ring with 安装中 while an install runs. Every state opens the
 /// detail sheet ([onPressed]); installing always goes through it.
 class PluginInstallButton extends StatelessWidget {
-  const PluginInstallButton({super.key, required this.status, this.job, this.onPressed});
+  const PluginInstallButton({super.key, required this.status, this.job, this.onPressed, this.installedLabel});
 
   final MarketInstallStatus status;
   final PluginInstallJob? job;
   final VoidCallback? onPressed;
+  final String? installedLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +168,7 @@ class PluginInstallButton extends StatelessWidget {
     final label = running
         ? l10n.pluginsInstalling
         : switch (status) {
-            MarketInstallStatus.installed => l10n.commonInstalled,
+            MarketInstallStatus.installed => installedLabel ?? l10n.commonInstalled,
             MarketInstallStatus.updateAvailable => l10n.commonUpdate,
             MarketInstallStatus.notInstalled => l10n.pluginsGet,
           };

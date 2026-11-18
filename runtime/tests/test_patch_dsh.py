@@ -102,6 +102,80 @@ class PatchDsh(unittest.TestCase):
         self.assertEqual(read(link), ORIGINAL)
         self.assertEqual(load(os.path.join(self.tmp.name, "applied.json")), ["guard.diff"])
 
+    def test_nested_same_version_package_copies_are_all_patched_and_pinned(self):
+        os.remove(self.target)
+        os.remove(os.path.join(self.patches, "guard.diff"))
+        rel = "node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js"
+        nested_paths = []
+        for owner, version in (("dsh", "1.0.0"), ("dsh-base", "1.0.0"), ("dsh-old", "0.9.0")):
+            root = os.path.join(self.prefix, "node_modules", "@deepseek-ai", owner,
+                                "node_modules", "@deepseek-ai", "dsh-skill-filesystem")
+            os.makedirs(os.path.join(root, "lib"))
+            with open(os.path.join(root, "package.json"), "w") as f:
+                json.dump({"version": version}, f)
+            target = os.path.join(root, "lib", "index.js")
+            with open(target, "w") as f:
+                f.write(ORIGINAL)
+            if version == "1.0.0":
+                nested_paths.append(os.path.relpath(target, self.prefix).replace(os.sep, "/"))
+        nested_diff = DIFF.replace(REL, rel)
+        with open(os.path.join(self.patches, "nested.diff"), "w", encoding="utf-8") as f:
+            f.write(nested_diff)
+
+        result = self.run_cli("--dsh-version", "1.0.0", "--record")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        pins = load(os.path.join(self.patches, "pins.json"))["patches"]["nested.diff"]["1.0.0"]
+        self.assertEqual(set(pins), set(nested_paths))
+        for path in nested_paths:
+            actual = read(os.path.join(self.prefix, path))
+            self.assertIn("guard(req, res)", actual)
+            self.assertEqual(pins[path]["after"], sha(actual))
+        wrong_version = os.path.join(self.prefix, "node_modules/@deepseek-ai/dsh-old/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js")
+        self.assertEqual(read(wrong_version), ORIGINAL)
+
+        for path in nested_paths:
+            with open(os.path.join(self.prefix, path), "w") as f:
+                f.write(ORIGINAL)
+        result = self.run_cli("--dsh-version", "1.0.0")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        for path in nested_paths:
+            self.assertIn("guard(req, res)", read(os.path.join(self.prefix, path)))
+        result = self.run_cli("--dsh-version", "1.0.0")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("already patched", result.stdout)
+
+    def test_session_deletion_companion_is_copied_to_nested_package_copies(self):
+        os.remove(self.target)
+        os.remove(os.path.join(self.patches, "guard.diff"))
+        rel = "node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js"
+        nested_paths = []
+        for owner in ("dsh", "dsh-base"):
+            root = os.path.join(self.prefix, "node_modules", "@deepseek-ai", owner,
+                                "node_modules", "@deepseek-ai", "dsh-session-persistence-jsonl")
+            os.makedirs(os.path.join(root, "lib"))
+            with open(os.path.join(root, "package.json"), "w") as f:
+                json.dump({"version": "1.0.0"}, f)
+            target = os.path.join(root, "lib", "index.js")
+            with open(target, "w") as f:
+                f.write(ORIGINAL)
+            nested_paths.append(os.path.relpath(target, self.prefix).replace(os.sep, "/"))
+        nested_diff = DIFF.replace(REL, rel)
+        with open(os.path.join(self.patches, "zzzzzz-session-deletion.diff"), "w", encoding="utf-8") as f:
+            f.write(nested_diff)
+
+        result = self.run_cli("--dsh-version", "1.0.0", "--record")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        pins = load(os.path.join(self.patches, "pins.json"))["patches"]["zzzzzz-session-deletion.diff"]["1.0.0"]
+        self.assertEqual(set(pins), set(nested_paths))
+        core = os.path.join(os.path.dirname(__file__), "..", "session-deletion", "core.mjs")
+        expected = read(core)
+        for owner in ("dsh", "dsh-base"):
+            companion = os.path.join(
+                self.prefix, "node_modules", "@deepseek-ai", owner, "node_modules",
+                "@deepseek-ai", "dsh-session-persistence-jsonl", "lib", "dsh-go-deletion.mjs"
+            )
+            self.assertEqual(read(companion), expected)
+
     def test_unpinned_version_fails(self):
         self.run_cli("--dsh-version", "1.0.0", "--record")
         with open(self.target, "w") as f:
@@ -177,7 +251,17 @@ class PatchDsh(unittest.TestCase):
             files = rtbuild.parse_unified_diff(read(os.path.join(shipped, name)))
             self.assertTrue(files and all(hunks for _, hunks in files), name)
             for version, by_file in pins["patches"][name].items():
-                self.assertEqual(sorted(by_file), sorted(rel for rel, _ in files), (name, version))
+                diff_paths = [rel for rel, _ in files]
+                for pinned_path in by_file:
+                    self.assertTrue(
+                        any(pinned_path == rel or pinned_path.endswith("/" + rel) for rel in diff_paths),
+                        (name, version, pinned_path, "pin does not resolve to a diff path"),
+                    )
+                for rel in diff_paths:
+                    self.assertTrue(
+                        any(pinned_path == rel or pinned_path.endswith("/" + rel) for pinned_path in by_file),
+                        (name, version, rel, "diff path has no pin"),
+                    )
 
     def test_shipped_patch_pins_form_ordered_hash_chains(self):
         shipped = os.path.join(HERE, "..", "patches")
@@ -203,7 +287,7 @@ class PatchDsh(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("DSH_FS_LOCAL_ORIGINAL_JS"),
                          "set DSH_FS_LOCAL_ORIGINAL_JS to the unpatched npm package lib/index.js")
     def test_pinned_fs_local_patch_provides_exclusive_create_fallback(self):
-        # The current ARM runtime is pinned to DSH 0.2.1-rc.4. Verify the
+        # The current ARM runtime is pinned to DSH 0.2.2-rc.4. Verify the
         # shipped strict patch against that exact upstream source, rather than
         # asserting that the upstream package already contains our patch.
         original_bytes = open(os.environ["DSH_FS_LOCAL_ORIGINAL_JS"], "rb").read()

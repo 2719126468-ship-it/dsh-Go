@@ -40,8 +40,8 @@ LOCKS="$HERE/locks"
 PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
-RUNTIME_REVISION="${RUNTIME_REVISION:-r17}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
-DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
+RUNTIME_REVISION="${RUNTIME_REVISION:-r19}"  # DSH 0.2.2-rc.4 with curated optional ARM64 bundles
+DSH_VERSION="${DSH_VERSION:-0.2.2-rc.4}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
 # pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
@@ -114,37 +114,46 @@ esac
 
 # fetch URL DEST [expected-sha256] [fallback-url]: verified cache, origin, then retained bytes.
 fetch() {
-  local url="$1" dest="$2" want="${3:-}"
-  mkdir -p "$(dirname "$dest")" || die "cannot create download directory for $dest"
-  if [[ -f "$dest" && -n "$want" && "$(sha256 "$dest")" == "$want" ]]; then return 0; fi
-  if [[ -f "$dest" && -z "$want" ]]; then return 0; fi
-  # Handle transport failure here: callers include command substitutions, where
-  # errexit is disabled, and a conditional fetch call would disable it too.
-  local candidate fetched=0 retained=""
-  if [[ -n "$want" && -n "$RUNTIME_INPUT_STORE_URL" ]]; then
-    retained="${RUNTIME_INPUT_STORE_URL%/}/sha256-$want"
+  local url="$1" dest="$2" want="${3:-}" fallback="${4:-}"
+  mkdir -p "$(dirname "$dest")"
+  if [[ -f "$dest" && -n "$want" ]]; then
+    local cached
+    cached="$(sha256 "$dest")" || die "cannot hash cached file $dest"
+    if [[ "$cached" == "$want" ]]; then return 0; fi
+    log "discarding stale cache with wrong sha256: $dest ($cached != $want)"
+    rm -f "$dest"
+  elif [[ -f "$dest" && -z "$want" ]]; then
+    return 0
   fi
-  for candidate in "$url" "${4:-}" "$retained"; do
+  local candidate fetched=0 retained="" got="" mismatch=""
+  # Prefer the configured mirror, then the official source, then a retained URL.
+  for candidate in "$url" "$fallback" "$retained"; do
     [[ -n "$candidate" ]] || continue
-    log "download $candidate"
+    rm -f "$dest.part"
     if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -sS -o "$dest.part" "$candidate"; then
-      fetched=1; break
+      if [[ -n "$want" ]]; then
+        got="$(sha256 "$dest.part")" || got=""
+        if [[ "$got" != "$want" ]]; then
+          mismatch="$candidate returned $got (expected $want)"
+          log "sha256 mismatch from $candidate; trying the next mirror"
+          rm -f "$dest.part"
+          continue
+        fi
+      fi
+      fetched=1
+      break
     fi
+    rm -f "$dest.part"
   done
   if [[ "$fetched" != 1 ]]; then
     rm -f "$dest.part"
-    if [[ -n "$want" && -z "$RUNTIME_INPUT_STORE_URL" ]]; then
-      log "自留回落不可用：未配置 RUNTIME_INPUT_STORE_URL"
+    if [[ -n "$mismatch" ]]; then
+      die "sha256 mismatch for $dest after trying all mirrors: $mismatch"
     fi
     die "download failed for $dest"
   fi
-  if [[ -n "$want" ]]; then
-    local got; got="$(sha256 "$dest.part")" || { rm -f "$dest.part"; die "cannot checksum download $dest"; }
-    [[ "$got" == "$want" ]] || { rm -f "$dest.part"; die "sha256 mismatch for $dest: got $got want $want"; }
-  fi
-  mv "$dest.part" "$dest" || { rm -f "$dest.part"; die "cannot publish download $dest"; }
+  mv "$dest.part" "$dest"
 }
-
 pin_of() {
   local name="$1"
   if [[ -n "${PIN[$name]:-}" ]]; then printf '%s' "${PIN[$name]}"; fi
@@ -381,7 +390,13 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
   local lock_suffix=""; [[ "$libc" != android ]] || lock_suffix="-android"
   local lockdir="$LOCKS/dsh-$DSH_VERSION$lock_suffix"
   rm -rf "$prefix"; mkdir -p "$prefix"
-  local -a npm_flags=(); npm_prefix_flags "$cpu" "$prefix" "$libc"
+  local -a npm_flags=() optional_bundles=(); npm_prefix_flags "$cpu" "$prefix" "$libc"
+  # Curated optional bundles ship only in the 64-bit local DSH runtime.
+  if [[ "$cpu" == arm64 ]]; then
+    # dsh-context 0.85.1 removes the unavailable dsh-timeout rc.5 peer from 0.84.1.
+    optional_bundles=("@liustack/modsearch@5.10.12" "dsh-context@0.85.1")
+    # Keep peer dependency installation enabled for required DSH runtime modules.
+  fi
   if [[ -f "$lockdir/package-lock.json" ]]; then
     log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
     cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
@@ -389,14 +404,14 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
     PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
   else
     log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
-    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
+    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}"
     # npm nests an exact-pinned dependency in every dependent when another version wins the top
     # level (0.2.1-rc.2: 50 copies of zod 4.4.3, ~26k files). Pin those as direct dependencies so
     # one copy is hoisted, then reinstall.
     local -a hoist=(); mapfile -t hoist < <("${PY[@]}" hoist-candidates "$prefix/package-lock.json")
     if [[ ${#hoist[@]} -gt 0 ]]; then
       log "hoisting duplicated exact dependencies: ${hoist[*]}"
-      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${hoist[@]}"
+      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}" "${hoist[@]}"
     fi
     mkdir -p "$lockdir"
     cp "$prefix/package.json" "$lockdir/"
@@ -406,6 +421,10 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
   local got; got="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \
     "$prefix/node_modules/@deepseek-ai/dsh/package.json")"
   [[ "$got" == "$DSH_VERSION" ]] || die "installed dsh $got != $DSH_VERSION"
+}
+
+install_preinstalled_bundles() {  # $1 = DSH npm prefix
+  python3 -I "$HERE/lib/preinstall_optional_bundles.py" --prefix "$1" --manifest "$HERE/preinstalled-bundles.json"
 }
 
 # pnpm for the guest (zero dependencies, plain JS). Same lock-then-`npm ci` scheme as DSH; the
@@ -540,6 +559,10 @@ PYEOF
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
   "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
     --out "$work/dsh-patches.json" >&2
+  if [[ "$abi" == arm64-v8a ]]; then
+    log "registering curated optional bundles for ARM64"
+    install_preinstalled_bundles "$prefix"
+  fi
   local bridge="$HERE/bridge/dsh-go-bridge"
   local bridge_version
   bridge_version="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$bridge/package.json")"
@@ -555,7 +578,7 @@ PYEOF
       echo "$RUNTIME_REVISION $abi $DSH_VERSION $node_version $PNPM_VERSION $UBUNTU_VERSION $COMPRESS $XZ_PRESET $XZ_THREADS $PRUNE_DEV_METADATA $SOURCE_DATE_EPOCH $RUNTIME_LAYERS $TERMUX_ARM_NODE_VERSION"
       sha256 "$base"; sha256 "$node"; [[ -z "$python" ]] || sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
       sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
-      sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"
+      sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime.sh"; sha256 "$HERE/lib/rtbuild.py"; sha256 "$HERE/preinstalled-bundles.json"; sha256 "$HERE/lib/preinstall_optional_bundles.py"
       (cd "$HERE" && find patches bridge boot direct session-deletion -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
     } | sha256sum | cut -c1-12 )"
   local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${node_version}-ubuntu${UBUNTU_VERSION}-${inputs_sha}"

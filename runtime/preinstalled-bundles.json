@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "name": "@liustack/modsearch",
+      "version": "5.10.12",
+      "license": "MIT",
+      "node": ">=22.13"
+    },
+    {
+      "name": "dsh-context",
+      "version": "0.85.1",
+      "license": "Apache-2.0",
+      "node": "^22.19.0 || >=24.0.0",
+      "dsh": ">=0.2.2-rc.3"
+    }
+  ]
+}

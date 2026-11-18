@@ -11,6 +11,7 @@ const base = join(resolve(process.env.DSH_PREFIX), 'node_modules/@deepseek-ai');
 const load = name => import(pathToFileURL(join(base, name, 'lib/index.js')));
 const { AgentDefaultModelConfig } = await load('dsh-agent-default-model');
 const { SettingsForms } = await load('dsh-settings');
+const { FiberState } = await load('cordis');
 const { ReasoningEffortId } = await load('dsh-llm');
 const { RemoteError, remoteErrorOf } = await load('dsh-typert-protocol');
 const source = readFileSync(join(base, 'dsh-api-session-controller/lib/index.js'), 'utf8');
@@ -37,11 +38,13 @@ function deferred() {
 function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
   const writes = [];
   const entry = { id: 'entry', options: { id: 'agent-default-model', config: structuredClone(raw) } };
-  entry.fiber = { uid: 1, state: 2, runtime: { Config: AgentDefaultModelConfig.Config }, ctx: {} };
+  entry.fiber = { uid: 1, state: FiberState.ACTIVE, runtime: { Config: AgentDefaultModelConfig.Config }, ctx: {} };
+  entry.fiber.ctx = { fiber: entry.fiber };
   const defaults = Object.create(AgentDefaultModelConfig.prototype);
   const update = value => {
     entry.options.config = structuredClone(value);
     entry.fiber.config = AgentDefaultModelConfig.Config(structuredClone(value));
+    entry.fiber.effectiveConfig = entry.fiber.config;
     defaults.config = entry.fiber.config;
   };
   update(raw);
@@ -57,21 +60,22 @@ function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
     },
   };
   const events = [];
-  defaults.ownerContext = { fiber: { entry: missingEntry ? undefined : entry } };
+  defaults.ownerContext = { fiber: { ctx: { fiber: entry.fiber }, state: FiberState.ACTIVE, entry: missingEntry ? undefined : entry } };
   defaults.ctx = { get: name => name === 'configEditor' && !missingEditor ? editor : undefined };
   defaults.saves = Promise.resolve();
   const settings = Object.create(SettingsForms.prototype);
   Object.assign(settings, {
-    ownerContext: { configEditor: editor, emit: (...args) => events.push(args) },
+    ownerContext: { configEditor: editor, emit: (...args) => events.push(args), fiber: { state: FiberState.ACTIVE } },
     revisions: new Map(), presentations: new Map(),
   });
+  settings.configure({ auto: false }, defaults.ownerContext.fiber);
   return { defaults, settings, entry, writes, events, update, raw: () => entry.options.config };
 }
 
 function commands(defaults, { resolveCallConfig, requireModel } = {}) {
   const selected = [];
   const logs = [];
-  const agent = { id: 'session-fixture' };
+  const agent = { id: 'session-fixture', model: { select: value => selected.push(value) } };
   const ctx = {
     agentDefaultModel: defaults,
     llm: { resolveCallConfig: resolveCallConfig ?? (async value => value) },
@@ -145,7 +149,7 @@ test('selectModel waits for persistence and returns the normalized installed sel
   const gate = deferred();
   const entered = deferred();
   const f = fixture(old, { beforeEdit: () => { entered.resolve(); return gate.promise; } });
-  const normalized = { ...next, reasoningEffort: 'high' };
+  const normalized = { ...next };
   const c = commands(f.defaults, { resolveCallConfig: async () => normalized });
   let returned = false;
   const pending = c.controller.selectModel({ sessionId: 'session-fixture', ...next }).then(value => { returned = true; return value; });
