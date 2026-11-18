@@ -40,8 +40,8 @@ LOCKS="$HERE/locks"
 PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
-RUNTIME_REVISION="${RUNTIME_REVISION:-r18}"  # DSH 0.2.2-rc.1 with curated optional ARM64 bundles
-DSH_VERSION="${DSH_VERSION:-0.2.2-rc.1}"
+RUNTIME_REVISION="${RUNTIME_REVISION:-r19}"  # DSH 0.2.2-rc.4 with curated optional ARM64 bundles
+DSH_VERSION="${DSH_VERSION:-0.2.2-rc.4}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
 # pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
