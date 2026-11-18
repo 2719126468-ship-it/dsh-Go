@@ -385,7 +385,7 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
   # Curated optional bundles ship only in the 64-bit local DSH runtime.
   if [[ "$cpu" == arm64 ]]; then
     optional_bundles=("@liustack/modsearch@5.10.12" "dsh-context@0.84.1")
-    npm_flags+=(--legacy-peer-deps)
+    # Keep peer dependency installation enabled for required DSH runtime modules.
   fi
   if [[ -f "$lockdir/package-lock.json" ]]; then
     log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
