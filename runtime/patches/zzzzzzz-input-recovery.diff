@@ -135,7 +135,8 @@
  			}
  		}
  	}
-@@ -697,2 +697,5 @@
+@@ -697,3 +697,6 @@
+ 				});
  			});
 +		// A returned reject/filter is intentional consumption, not a preparation failure.
 +		const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
