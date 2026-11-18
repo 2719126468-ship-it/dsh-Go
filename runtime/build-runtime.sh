@@ -384,7 +384,8 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
   local -a npm_flags=() optional_bundles=(); npm_prefix_flags "$cpu" "$prefix" "$libc"
   # Curated optional bundles ship only in the 64-bit local DSH runtime.
   if [[ "$cpu" == arm64 ]]; then
-    optional_bundles=("@liustack/modsearch@5.10.12" "dsh-context@0.84.1")
+    # dsh-context 0.84.1 currently requests unpublished dsh-timeout rc.5; keep it out until upstream fixes the peer range.
+    optional_bundles=("@liustack/modsearch@5.10.12")
     # Keep peer dependency installation enabled for required DSH runtime modules.
   fi
   if [[ -f "$lockdir/package-lock.json" ]]; then
