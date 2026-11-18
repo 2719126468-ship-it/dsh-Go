@@ -8,6 +8,11 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.View
+import android.view.ViewGroup
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -143,8 +148,40 @@ class MainActivity : FlutterActivity() {
             else -> if (framesActive) fastest else null
         }
         val target = want?.modeId ?: 0
-        if (window.attributes.preferredDisplayModeId == target) return
-        window.attributes = window.attributes.apply { preferredDisplayModeId = target }
+        if (window.attributes.preferredDisplayModeId != target) {
+            window.attributes = window.attributes.apply { preferredDisplayModeId = target }
+        }
+
+        // Android 11+: the Flutter SurfaceView also needs a frame-rate vote.
+        // Do not return early when the window mode already matches: the Surface may
+        // have been recreated, in which case its vote must be restored.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val view = flutterSurfaceView(findViewById<View>(FlutterActivity.FLUTTER_VIEW_ID)) ?: return
+        if (view !== votedView) {
+            votedView = view
+            view.holder.addCallback(object : SurfaceHolder.Callback {
+                override fun surfaceCreated(holder: SurfaceHolder) = applyRefreshRate()
+                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+                override fun surfaceDestroyed(holder: SurfaceHolder) {}
+            })
+        }
+        val surface = view.holder.surface
+        if (surface.isValid) {
+            surface.setFrameRate(want?.refreshRate ?: 0f, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT)
+        }
+    }
+
+    /** Flutter's SurfaceView, whose frame-rate vote is kept in sync with the window. */
+    private var votedView: SurfaceView? = null
+
+    private fun flutterSurfaceView(view: View?): SurfaceView? {
+        if (view is SurfaceView) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                flutterSurfaceView(view.getChildAt(index))?.let { return it }
+            }
+        }
+        return null
     }
 
     override fun onPause() {
