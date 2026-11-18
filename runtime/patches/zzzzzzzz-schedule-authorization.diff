@@ -1,15 +1,15 @@
 --- a/node_modules/@deepseek-ai/dsh-schedule/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-schedule/lib/index.js
 @@ -2108,6 +2108,7 @@
- 		runtime;
- 		resolveWebAgent;
- 		stopping = false;
-+		dshGoAuthorizationAbort = new AbortController();
- 		/**
- 		* @param ctx - Host services owning storage, dispatch, and Session restoration.
- 		* @param config - Validated delivery-history retention and new-Session admission configuration.
+ 	runtime;
+ 	resolveWebAgent;
+ 	stopping = false;
++	dshGoAuthorizationAbort = new AbortController();
+ 	/**
+ 	* @param ctx - Host services owning storage, dispatch, and Session restoration.
+ 	* @param config - Validated delivery-history retention and new-Session admission configuration.
 @@ -2153,6 +2154,7 @@
- 				try {
+ 			try {
  					cleanup = ctx.effect(() => async () => {
  						this.stopping = true;
 +						this.dshGoAuthorizationAbort.abort();
@@ -17,7 +17,6 @@
  						await this.chain;
  						await this.notifications;
 @@ -2160,6 +2162,7 @@
- 					});
  				} catch (error) {
  					this.stopping = true;
 +					this.dshGoAuthorizationAbort.abort();
@@ -143,7 +142,7 @@
 +			});
 +			const id = `dsh-go-schedule-authorization-${randomUUID()}`;
 +			const approve = "授权 / Authorize";
-+			const details = JSON.stringify({ operation, sessionId, target, task: record }, null, 2).replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
++			const details = JSON.stringify({ operation, sessionId, target, task: record }, null, 2).replace(/[\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufeff]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 +			try {
 +				const answer = await Promise.race([questions.ask({
 +					agent,
@@ -154,8 +153,21 @@
 +						header: "定时任务授权 / Schedule authorization",
 +						question: "是否授权以下完整任务？到点会唤醒助手并按会话权限执行，不只是通知。仅本次创建或修改有效。\nAuthorize this complete task? It will wake an agent and run with the session's permissions, not just display a notification. This confirmation covers only this creation or edit.\n\n" + details,
 +						options: [{ label: approve }, { label: "拒绝 / Reject" }],
-+						multiSelect: false
-+					}]
+ 						multiSelect: false
+ 					}]
+-				}), cancelled]);
+-				const accepted = answer?.answers;
+-				if (combined.aborted || this.stopping || !Array.isArray(accepted) || accepted.length !== 1 || accepted[0].id !== id || !Array.isArray(accepted[0].selected) || accepted[0].selected.length !== 1 || accepted[0].selected[0] !== approve || accepted[0].custom !== void 0) throw denied();
+-				this.dshGoAssertFuture(record);
+-			} catch (error) {
+-				if (error instanceof RemoteError) throw error;
+-				throw denied();
+-			} finally {
+-				clearTimeout(timer);
+-				combined.removeEventListener("abort", onAbort);
+-				deadline.abort();
+-			}
+-		}
 +				}), cancelled]);
 +				const accepted = answer?.answers;
 +				if (combined.aborted || this.stopping || !Array.isArray(accepted) || accepted.length !== 1 || accepted[0].id !== id || !Array.isArray(accepted[0].selected) || accepted[0].selected.length !== 1 || accepted[0].selected[0] !== approve || accepted[0].custom !== void 0) throw denied();
@@ -168,14 +180,13 @@
 +				combined.removeEventListener("abort", onAbort);
 +				deadline.abort();
 +			}
- 		}
- 		/**
- 		* Dispatch one post-commit `schedule/changed` notification, containing
++		}
+ 		/** Dispatch one post-commit `schedule/changed` notification, containing
 --- a/node_modules/@deepseek-ai/dsh-tool-schedule/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-tool-schedule/lib/index.js
 @@ -327,7 +327,7 @@
  	}
- };
+ }
  /** Errors every tool can return: a delegated caller and a withheld failure. */
 -const CALLER_ERRORS = ["subagent_session", "internal_error"];
 +const CALLER_ERRORS = ["subagent_session", "internal_error", "authorization_required"];
@@ -193,8 +204,8 @@
  		if (error instanceof ScheduleInputError) {
  			const code = codes.find((code) => code === error.code);
  			if (code !== void 0) return {
-
-@@ -2708,6 +2708,8 @@
+ 
+@@ -2708,4 +2708,6 @@
  			const pending = this.chain.then(() => {
  				const seam = this.ctx.sessionPersistence.dshGoDeletion;
  				return seam === void 0 ? work() : seam.withMutation(work);
