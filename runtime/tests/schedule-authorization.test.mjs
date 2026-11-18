@@ -75,6 +75,11 @@ function fixture({ provider = true, answer = grant, delegated = false } = {}) {
     chain: Promise.resolve(),
     stopping: false,
     dshGoAuthorizationAbort: new AbortController(),
+    resolveWebAgent: async id => {
+      const resolved = await ctx.sessionController.resolveAgent(id);
+      if (resolved.error !== void 0) throw resolved.error;
+      return resolved.agent;
+    },
     getDomain: async () => ({ table: name => {
       assert.equal(name, 'tasks');
       return table;
