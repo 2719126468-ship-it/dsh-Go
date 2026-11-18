@@ -44,6 +44,7 @@ function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
   const update = value => {
     entry.options.config = structuredClone(value);
     entry.fiber.config = AgentDefaultModelConfig.Config(structuredClone(value));
+    entry.fiber.effectiveConfig = entry.fiber.config;
     defaults.config = entry.fiber.config;
   };
   update(raw);
