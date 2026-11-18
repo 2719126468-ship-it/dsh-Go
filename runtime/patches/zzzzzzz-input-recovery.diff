@@ -104,8 +104,9 @@
  		const wakingAfterAbort = wakeup && this.phase.kind !== "idle" && this.phase.abort.signal.aborted;
  		const resolvedTarget = wakingAfterAbort ? "next-turn" : target;
  		this.inbox.splice(resolvedTarget, Infinity, 0, [message]);
-@@ -884,6 +912,7 @@
+@@ -884,7 +912,8 @@
  	wakeDriver(wakeAfterAbort = false) {
+ 		if (this.lifetimeSignal.aborted) return;
 +		if (this.phase.kind === "idle") this.inbox.recover();
  		if (this.phase.kind !== "idle") {
  			if (abortedCancelCause(this.phase.abort.signal)?.kind !== "disposed" && (this.phase.kind === "maintenance" || wakeAfterAbort)) this.phase.wakeRequested = true;
@@ -138,10 +139,10 @@
 @@ -697,3 +697,6 @@
  				});
  			});
-+		// A returned reject/filter is intentional consumption, not a preparation failure.
-+		const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
-+		this.inbox.settle(claimed.filter((message) => !retained.has(message.id)).map((message) => message.id));
- 		signal.throwIfAborted();
++			// A returned reject/filter is intentional consumption, not a preparation failure.
++			const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
++			this.inbox.settle(claimed.filter((message) => !retained.has(message.id)).map((message) => message.id));
+ 			signal.throwIfAborted();
 @@ -1031,6 +1078,18 @@
  			};
  			this.throwError(error);
@@ -161,14 +162,7 @@
  			try {
  				this.session.append("turn/end", {
  					turn,
---- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
-@@ -1131,7 +1131,7 @@
- 		const source = message.source;
- 		return source.kind === "user" && "rpcId" in source && source.rpcId === requestId;
- 	};
--	if (agent.inbox.nextTurn.some(matches) || agent.inbox.nextStep.some(matches)) return true;
-+	if (agent.inbox.nextTurn.some(matches) || agent.inbox.nextStep.some(matches) || agent.inbox.claimed?.some(matches)) return true;
+
  	return agent.session.snapshotEvents().some((event) => {
  		if (event.type !== "user/message") return false;
  		const source = event.data.source;
