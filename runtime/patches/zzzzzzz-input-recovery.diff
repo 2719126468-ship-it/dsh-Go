@@ -1,5 +1,6 @@
 # Preserve unadmitted inbox claims and request identity across failure, replay and fork.
 --- a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 @@ -25,12 +25,18 @@
  /** Standard fold that reconstructs pending input and rejects invalid durable splice history. */
  const inboxProjectionDefinition = {
