@@ -399,6 +399,9 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
     # level (0.2.1-rc.2: 50 copies of zod 4.4.3, ~26k files). Pin those as direct dependencies so
     # one copy is hoisted, then reinstall.
     local -a hoist=(); mapfile -t hoist < <("${PY[@]}" hoist-candidates "$prefix/package-lock.json")
+    # DSH 0.2.2 nests this package under dsh and dsh-base. Pin it directly so
+    # npm deduplicates the patched runtime dependency to the top-level path.
+    hoist+=("@deepseek-ai/dsh-skill-filesystem@$DSH_VERSION")
     if [[ ${#hoist[@]} -gt 0 ]]; then
       log "hoisting duplicated exact dependencies: ${hoist[*]}"
       PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${optional_bundles[@]}" "${hoist[@]}"
