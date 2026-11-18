@@ -12,8 +12,8 @@ const root = resolve(prefix, 'node_modules/@deepseek-ai');
 const schedulePath = join(root, 'dsh-schedule/lib/index.js');
 const toolPath = join(root, 'dsh-tool-schedule/lib/index.js');
 const source = await readFile(schedulePath, 'utf8');
-assert.match(source, /dshGoAuthorize\(actorSessionId, record, "create", signal\)/);
-assert.match(source, /dshGoAuthorize\(actorSessionId, preview\.record, "update", signal\)/);
+assert.match(source, /dshGoAuthorize\(actorSessionId, record, target, "create", signal\)/);
+assert.match(source, /dshGoAuthorize\(actorSessionId, prepared\.task\.record, prepared\.task\.target, "update", signal\)/);
 const { ScheduleService } = await import(pathToFileURL(schedulePath));
 const { apply: applyTools } = await import(pathToFileURL(toolPath));
 
