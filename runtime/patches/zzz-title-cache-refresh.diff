@@ -1,10 +1,11 @@
 # DSH rc4: refresh changed cold projection records without cross-process write-back.
 --- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
-@@ -1898,6 +1898,8 @@
+@@ -1898,7 +1898,9 @@
  var ApiSessionList = class {
  	ctx;
  	workSliceMs;
+ 	listMetadata;
 +	// Read-only fallback summaries for the current cold set; persistence owns revisions.
 +	coldHints = new Map();
  	/**
