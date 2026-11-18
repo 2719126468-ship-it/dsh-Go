@@ -1,6 +1,5 @@
 # Preserve unadmitted inbox claims and request identity across failure, replay and fork.
 --- a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
-+++ b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
 @@ -25,12 +25,18 @@
  /** Standard fold that reconstructs pending input and rejects invalid durable splice history. */
  const inboxProjectionDefinition = {
@@ -88,6 +87,13 @@
  	}
  	/** Locate one pending identity across both owned lists. */
  	locate(messageId) {
+@@ -697,3 +697,6 @@
+ 				});
+ 			});
++			// A returned reject/filter is intentional consumption, not a preparation failure.
++			const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
++			this.inbox.settle(claimed.filter((message) => !retained.has(message.id)).map((message) => message.id));
+ 			signal.throwIfAborted();
 @@ -786,6 +812,8 @@
  		};
  		this.runtimeContext = new RuntimeContextProjection(this.ctx, session);
@@ -136,13 +142,6 @@
  			}
  		}
  	}
-@@ -697,3 +697,6 @@
- 				});
- 			});
-+			// A returned reject/filter is intentional consumption, not a preparation failure.
-+			const retained = new Set(decision.kind === "reject" ? [] : decision.messages.filter((message) => message.source.kind !== "runtime-context").map((message) => message.id));
-+			this.inbox.settle(claimed.filter((message) => !retained.has(message.id)).map((message) => message.id));
- 			signal.throwIfAborted();
 @@ -1031,6 +1078,18 @@
  			};
  			this.throwError(error);
@@ -162,7 +161,3 @@
  			try {
  				this.session.append("turn/end", {
  					turn,
-
- 	return agent.session.snapshotEvents().some((event) => {
- 		if (event.type !== "user/message") return false;
- 		const source = event.data.source;
