@@ -21,7 +21,7 @@ spec.loader.exec_module(rtbuild)
 
 REL = "node_modules/@x/web/lib/index.js"
 ORIGINAL = "".join("line %d\n" % i for i in range(1, 41)).replace("line 20\n", "\tif (route) {\n\t\tawait route.handler(req, res);\n\t}\n")
-DIFF = """# comment lines before the first header are ignored
+DIFF = """# comment lines before the first header are ignored (Unicode: 中文)
 --- a/%s
 +++ b/%s
 @@ -19,4 +19,5 @@
@@ -57,7 +57,7 @@ class PatchDsh(unittest.TestCase):
         self.target = os.path.join(self.prefix, REL)
         with open(self.target, "w") as f:
             f.write(ORIGINAL)
-        with open(os.path.join(self.patches, "guard.diff"), "w") as f:
+        with open(os.path.join(self.patches, "guard.diff"), "w", encoding="utf-8") as f:
             f.write(DIFF)
 
     def tearDown(self):
@@ -67,7 +67,7 @@ class PatchDsh(unittest.TestCase):
         return subprocess.run([sys.executable, "-I", RTBUILD, "patch-dsh", "--prefix", self.prefix,
                                "--patches", self.patches, *extra],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                              env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                              env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C"})
 
     def test_parse_hunks(self):
         files = rtbuild.parse_unified_diff(DIFF)
