@@ -193,3 +193,12 @@
  		if (error instanceof ScheduleInputError) {
  			const code = codes.find((code) => code === error.code);
  			if (code !== void 0) return {
+
+@@ -2708,6 +2708,8 @@
+ 			const pending = this.chain.then(() => {
+ 				const seam = this.ctx.sessionPersistence.dshGoDeletion;
+ 				return seam === void 0 ? work() : seam.withMutation(work);
+ 			});
++			this.chain = pending.catch(() => void 0);
++			return pending;
+ 		}
