@@ -1,7 +1,14 @@
 {
   "schema": 1,
   "patches": {
-    "fs-create-exclusive.diff": {},
+    "fs-create-exclusive.diff": {
+      "0.2.2-rc.4": {
+        "node_modules/@deepseek-ai/dsh-fs-local/lib/index.js": {
+          "before": "610a3ba3658e55adaa3d8d21e017eb6787860adf317e889fb361e8802c8f5a13",
+          "after": "fe8df568504102a08e54763a82aec1296df98e517e11f1d8770cbfc5069b2d6c"
+        }
+      }
+    },
     "install-log-redaction.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
@@ -130,7 +137,29 @@
     },
     "zzzzzz-session-deletion.diff": {},
     "zzzzzzz-input-recovery.diff": {},
-    "zzzzzzzz-model-defaults.diff": {},
-    "zzzzzzzz-schedule-authorization.diff": {}
+    "zzzzzzzz-model-defaults.diff": {
+      "0.2.2-rc.4": {
+        "node_modules/@deepseek-ai/dsh-agent-default-model/lib/index.js": {
+          "before": "3685a0d4665007cfd377f6555a2a0eeea061cd9e7eb87102430771858ac0bbcb",
+          "after": "0ae601df6d8e7eb66264f6a554c4abb87f45c8d94c6411f0de2f32d02e169acc"
+        },
+        "node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js": {
+          "before": "50b6e388dedd08697525887da7e4bc0ebd09397c728d76825bd96dbdb1179d68",
+          "after": "11bfc2ba6b46956be8d970df0c729adbb9f3b14fdbe42073486dda6b258ea91d"
+        }
+      }
+    },
+    "zzzzzzzz-schedule-authorization.diff": {
+      "0.2.2-rc.4": {
+        "node_modules/@deepseek-ai/dsh-schedule/lib/index.js": {
+          "before": "83c1cb05c214f61068ae33a24fb3a5be1dfdc9ba025502f39ff73844a6b6872e",
+          "after": "3eaf2f3777067fd1c801b6ea670911d983ea078461043fa8315321fb0978ffe5"
+        },
+        "node_modules/@deepseek-ai/dsh-tool-schedule/lib/index.js": {
+          "before": "af717a4e8e3d48ff0a83266c1041c713784689c16eeec483251267c24a513852",
+          "after": "bb9c0abe46a7eefa6aaa8e10f985cb05518d89272d8e347b1261105d58d27a7b"
+        }
+      }
+    }
   }
 }
