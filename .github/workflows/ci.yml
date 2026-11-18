@@ -258,7 +258,7 @@ jobs:
             if [[ -f "$nested/lib/index.js" ]]; then cp "$nested/lib/index.js" "$debug/dsh-skill-filesystem-$owner-index.js"; fi
             if [[ -f "$nested/package.json" ]]; then cp "$nested/package.json" "$debug/dsh-skill-filesystem-$owner-package.json"; fi
           done
-          for package in @liustack/modsearch; do
+          for package in @liustack/modsearch dsh-context; do
             source="$RUNNER_TEMP/dsh/node_modules/$package/package.json"
             if [[ -f "$source" ]]; then
               safe_name=$(printf '%s' "$package" | tr '/@' '--')
