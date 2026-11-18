@@ -114,37 +114,46 @@ esac
 
 # fetch URL DEST [expected-sha256] [fallback-url]: verified cache, origin, then retained bytes.
 fetch() {
-  local url="$1" dest="$2" want="${3:-}"
-  mkdir -p "$(dirname "$dest")" || die "cannot create download directory for $dest"
-  if [[ -f "$dest" && -n "$want" && "$(sha256 "$dest")" == "$want" ]]; then return 0; fi
-  if [[ -f "$dest" && -z "$want" ]]; then return 0; fi
-  # Handle transport failure here: callers include command substitutions, where
-  # errexit is disabled, and a conditional fetch call would disable it too.
-  local candidate fetched=0 retained=""
-  if [[ -n "$want" && -n "$RUNTIME_INPUT_STORE_URL" ]]; then
-    retained="${RUNTIME_INPUT_STORE_URL%/}/sha256-$want"
+  local url="$1" dest="$2" want="${3:-}" fallback="${4:-}"
+  mkdir -p "$(dirname "$dest")"
+  if [[ -f "$dest" && -n "$want" ]]; then
+    local cached
+    cached="$(sha256 "$dest")" || die "cannot hash cached file $dest"
+    if [[ "$cached" == "$want" ]]; then return 0; fi
+    log "discarding stale cache with wrong sha256: $dest ($cached != $want)"
+    rm -f "$dest"
+  elif [[ -f "$dest" && -z "$want" ]]; then
+    return 0
   fi
-  for candidate in "$url" "${4:-}" "$retained"; do
+  local candidate fetched=0 retained="" got="" mismatch=""
+  # Prefer the configured mirror, then the official source, then a retained URL.
+  for candidate in "$url" "$fallback" "$retained"; do
     [[ -n "$candidate" ]] || continue
-    log "download $candidate"
+    rm -f "$dest.part"
     if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -sS -o "$dest.part" "$candidate"; then
-      fetched=1; break
+      if [[ -n "$want" ]]; then
+        got="$(sha256 "$dest.part")" || got=""
+        if [[ "$got" != "$want" ]]; then
+          mismatch="$candidate returned $got (expected $want)"
+          log "sha256 mismatch from $candidate; trying the next mirror"
+          rm -f "$dest.part"
+          continue
+        fi
+      fi
+      fetched=1
+      break
     fi
+    rm -f "$dest.part"
   done
   if [[ "$fetched" != 1 ]]; then
     rm -f "$dest.part"
-    if [[ -n "$want" && -z "$RUNTIME_INPUT_STORE_URL" ]]; then
-      log "自留回落不可用：未配置 RUNTIME_INPUT_STORE_URL"
+    if [[ -n "$mismatch" ]]; then
+      die "sha256 mismatch for $dest after trying all mirrors: $mismatch"
     fi
     die "download failed for $dest"
   fi
-  if [[ -n "$want" ]]; then
-    local got; got="$(sha256 "$dest.part")" || { rm -f "$dest.part"; die "cannot checksum download $dest"; }
-    [[ "$got" == "$want" ]] || { rm -f "$dest.part"; die "sha256 mismatch for $dest: got $got want $want"; }
-  fi
-  mv "$dest.part" "$dest" || { rm -f "$dest.part"; die "cannot publish download $dest"; }
+  mv "$dest.part" "$dest"
 }
-
 pin_of() {
   local name="$1"
   if [[ -n "${PIN[$name]:-}" ]]; then printf '%s' "${PIN[$name]}"; fi
