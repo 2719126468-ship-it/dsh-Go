@@ -185,6 +185,8 @@ jobs:
           mkdir -p "$out/dsh-$version" "$out/dsh-$version-android"
           npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version" "@liustack/modsearch@5.10.12" "dsh-context@0.84.1"
           mapfile -t hoist < <(python3 -I runtime/lib/rtbuild.py hoist-candidates "$out/dsh-$version/package-lock.json")
+          # The direct-runtime patch targets this package; npm otherwise keeps both copies nested.
+          hoist+=("@deepseek-ai/dsh-skill-filesystem@$version")
           if [[ ${#hoist[@]} -gt 0 ]]; then
             npm install --prefix "$out/dsh-$version" --cpu=arm64 --os=linux --libc=glibc --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version" "@liustack/modsearch@5.10.12" "dsh-context@0.84.1" "${hoist[@]}"
           fi
