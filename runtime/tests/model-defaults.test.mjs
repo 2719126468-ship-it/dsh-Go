@@ -65,7 +65,7 @@ function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
     ownerContext: { configEditor: editor, emit: (...args) => events.push(args) },
     revisions: new Map(), presentations: new Map(),
   });
-  settings.configure({ auto: false }, entry.fiber);
+  settings.configure({ auto: false }, defaults.ownerContext.fiber);
   return { defaults, settings, entry, writes, events, update, raw: () => entry.options.config };
 }
 
