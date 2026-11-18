@@ -10,16 +10,19 @@
  	static inject = ["loader", "profileContext"];
  	constructor(ownerContext) {
  		super(ownerContext, "configEditor");
-@@ -102,9 +104,10 @@
- 				if (!this.entries().includes(entry)) throw new Error("Configuration entry changed during reload");
- 				const current = structuredClone(entry.options.config ?? {});
- 				const inherited = this.inherited(entry, loadProfileDirectory("dsh", this.ownerContext.profileContext.dir, this.ownerContext.profileContext.installAnchor));
+@@ -102,7 +104,8 @@
+-				if (!this.entries().includes(entry)) throw new Error("Configuration entry changed during reload");
+-				const current = structuredClone(entry.options.config ?? {});
+-				const inherited = this.inherited(entry, loadProfileDirectory("dsh", this.ownerContext.profileContext.dir, this.ownerContext.profileContext.installAnchor));
+-				const fiber = entry.fiber;
 -				const next = change(current, inherited);
- 				const fiber = entry.fiber;
 -				if (fiber.state !== 2) throw new Error("Configuration plugin is no longer active");
+-				fiber.resolveConfig(next);
++				if (!this.entries().includes(entry)) throw new Error("Configuration entry changed during reload");
++				const current = structuredClone(entry.options.config ?? {});
++				const inherited = this.inherited(entry, loadProfileDirectory("dsh", this.ownerContext.profileContext.dir, this.ownerContext.profileContext.installAnchor));
++				const fiber = entry.fiber;
 +				// Async authorizers run under the same HMR and profile file locks.
 +				const next = await change(current, inherited);
 +				if (!this.entries().includes(entry) || entry.fiber !== fiber || fiber?.state !== 2) throw new Error("Configuration plugin is no longer active");
- 				const resolved = fiber.ctx.waterfall(fiber, "internal/config", next, () => next);
- 				resolveConfig(fiber.runtime, resolved);
- 				let before;
++				fiber.resolveConfig(next);
