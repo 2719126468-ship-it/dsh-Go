@@ -71,7 +71,7 @@ function fixture(raw = old, { beforeEdit, missingEntry, missingEditor } = {}) {
 function commands(defaults, { resolveCallConfig, requireModel } = {}) {
   const selected = [];
   const logs = [];
-  const agent = { id: 'session-fixture' };
+  const agent = { id: 'session-fixture', model: { select: value => selected.push(value) } };
   const ctx = {
     agentDefaultModel: defaults,
     llm: { resolveCallConfig: resolveCallConfig ?? (async value => value) },
