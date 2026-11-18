@@ -85,9 +85,9 @@
  				options.cwd = scope.cwd;
  				options.env = scope.env;
  			}
--			terminal = requireNodePty().spawn(scope?.command ?? file, scope?.args ?? [...launch.argv.slice(1)], options);
+-			terminal = loadNodePty().spawn(scope?.command ?? file, scope?.args ?? [...launch.argv.slice(1)], options);
 +			const direct = globalThis[Symbol.for("dsh.go.direct")]?.command(scope?.command ?? file, scope?.args ?? [...launch.argv.slice(1)], options);
-+			terminal = requireNodePty().spawn(direct?.file ?? scope?.command ?? file, direct?.args ?? scope?.args ?? [...launch.argv.slice(1)], direct?.options ?? options);
++			terminal = loadNodePty().spawn(direct?.file ?? scope?.command ?? file, direct?.args ?? scope?.args ?? [...launch.argv.slice(1)], direct?.options ?? options);
  		} catch (error) {
  			scope?.cleanup();
  			activity?.dispose();
