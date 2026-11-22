@@ -126,16 +126,20 @@ jobs:
           echo "apksigner exit status: $signer_status (strict scheme/certificate checks follow)"
           grep -qx "Verifies" verify.txt || { cat verify.txt; echo "APK 签名验证未通过"; exit 1; }
           for scheme in v1 v2 v3; do
-            grep -q "Verified using ${scheme} scheme.*: true" verify.txt || { cat verify.txt; echo "${scheme} 签名方案未通过"; exit 1; }
+            grep -Fq "Verified using ${scheme} scheme" verify.txt && grep -Fq "Verified using ${scheme} scheme" verify.txt || { cat verify.txt; echo "${scheme} 签名方案输出缺失"; exit 1; }
+            grep -Eq "Verified using ${scheme} scheme.*: true$" verify.txt || { echo "${scheme} 签名方案未通过"; exit 1; }
           done
-          ! grep -q "CN=Android Debug" verify.txt
+          if grep -q "CN=Android Debug" verify.txt; then echo "检测到 Android Debug 证书"; exit 1; fi
           actual_cert=$(grep -m1 "certificate SHA-256 digest:" verify.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          echo "actual_cert=$actual_cert"
           test "$actual_cert" = "$EXPECTED_CERT_SHA256" || { echo "签名证书不匹配：$actual_cert"; exit 1; }
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           "$AAPT" dump badging "$APK" > badging.txt
-          grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging.txt
-          grep -q "^sdkVersion:'26'" badging.txt
-          grep -q "^native-code:.*'arm64-v8a'" badging.txt || { cat badging.txt; echo "arm64 APK ABI 不匹配"; exit 1; }
+          echo "APK badging metadata:"
+          cat badging.txt
+          grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging.txt || { echo "包名检查失败"; exit 1; }
+          grep -q "^sdkVersion:'26'" badging.txt || { echo "最低 SDK 检查失败"; exit 1; }
+          grep -q "^native-code:.*'arm64-v8a'" badging.txt || { echo "arm64 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
         if: always()
@@ -228,16 +232,20 @@ jobs:
           echo "apksigner exit status: $signer_status (strict scheme/certificate checks follow)"
           grep -qx "Verifies" verify32.txt || { cat verify32.txt; echo "APK 签名验证未通过"; exit 1; }
           for scheme in v1 v2 v3; do
-            grep -q "Verified using ${scheme} scheme.*: true" verify32.txt || { cat verify32.txt; echo "${scheme} 签名方案未通过"; exit 1; }
+            grep -Fq "Verified using ${scheme} scheme" verify32.txt && grep -Fq "Verified using ${scheme} scheme" verify32.txt || { cat verify32.txt; echo "${scheme} 签名方案输出缺失"; exit 1; }
+            grep -Eq "Verified using ${scheme} scheme.*: true$" verify32.txt || { echo "${scheme} 签名方案未通过"; exit 1; }
           done
-          ! grep -q "CN=Android Debug" verify32.txt
+          if grep -q "CN=Android Debug" verify32.txt; then echo "检测到 Android Debug 证书"; exit 1; fi
           actual_cert=$(grep -m1 "certificate SHA-256 digest:" verify32.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          echo "actual_cert=$actual_cert"
           test "$actual_cert" = "$EXPECTED_CERT_SHA256" || { echo "签名证书不匹配：$actual_cert"; exit 1; }
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           "$AAPT" dump badging "$APK" > badging32.txt
-          grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging32.txt
-          grep -q "^sdkVersion:'26'" badging32.txt
-          grep -q "^native-code:.*'armeabi-v7a'" badging32.txt || { cat badging32.txt; echo "arm32 APK ABI 不匹配"; exit 1; }
+          echo "APK badging metadata:"
+          cat badging32.txt
+          grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging32.txt || { echo "包名检查失败"; exit 1; }
+          grep -q "^sdkVersion:'26'" badging32.txt || { echo "最低 SDK 检查失败"; exit 1; }
+          grep -q "^native-code:.*'armeabi-v7a'" badging32.txt || { echo "arm32 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
         if: always()
