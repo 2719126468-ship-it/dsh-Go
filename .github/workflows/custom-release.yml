@@ -201,7 +201,7 @@ jobs:
 
       - name: 打包 arm32
         working-directory: .
-        run: tooling/build-apk.sh -f arm32 ${VERSION:+--build-name "$VERSION"}
+        run: bash tooling/build-apk.sh -f arm32 ${VERSION:+--build-name "$VERSION"}
         env:
           VERSION: ${{ inputs.version }}
           DSH_SKIP_TAWCROOT: '1'
