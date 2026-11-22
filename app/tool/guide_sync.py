@@ -31,6 +31,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 SKILL = 'dsh-go-guide'
+HARMONY = 'harmony'
 LOCALES = ('zh', 'en')
 NAV = re.compile(r'^<!-- nav: ([A-Za-z][A-Za-z0-9_]*(?:,[A-Za-z][A-Za-z0-9_]*)*) -->$')
 SPAN = re.compile(r'`([^`\n]+)`')
