@@ -7,7 +7,7 @@
 ## 开启
 
 <!-- nav: commonSettings,systemActionsTitle -->
-`设置 › 系统操作` · [打开](dshgo://open/system-actions)
+`设置 › 系统操作` · [打开](dshgo://open/phone)
 
 打开页面顶部的开关。第一次会说明能做什么、什么时候做、发给谁、不会做什么、怎么停，点**同意并开启**。第一次打开 App 选权限时也可以勾选这一项。
 

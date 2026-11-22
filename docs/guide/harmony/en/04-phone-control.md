@@ -7,7 +7,7 @@ So HarmonyOS has no accessibility service, floating bar, app rules, lifted limit
 ## Turn it on
 
 <!-- nav: commonSettings,systemActionsTitle -->
-`Settings › System actions` · [Open](dshgo://open/system-actions)
+`Settings › System actions` · [Open](dshgo://open/phone)
 
 Turn on the switch at the top of the page. The first time, it explains what it can do, when, who gets the results, what it never does and how to stop; tap **Agree**. You can also pick it when choosing permissions the first time you open the app.
 

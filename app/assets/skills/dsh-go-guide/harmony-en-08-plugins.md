@@ -51,7 +51,7 @@ Plugins with a native UI can appear in these places:
 - **Message menu**: touch and hold an AI reply; plugin actions are below, grouped by plugin.
 - **Panels**: on the **Plugins** tab of chat details, and in the Plugins group of All features.
 - **Plus panel tools**: a plugin's tools in the composer's plus panel.
-- **Chat actions**: actions on this chat in the side panel's **Info**, with the plugin's name on the right.
+- **Chat actions**: actions on this chat in the side panel's Info, with the plugin's name on the right.
 - **Turn notes**: a few words at the end of a reply's footnote.
 
 Turn off any of these places in the plugin's details. To turn off the whole plugin, use **Enable**. Tap **Native UI** to see how it's running and any problems.
