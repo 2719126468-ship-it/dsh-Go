@@ -215,6 +215,11 @@ def check(repo: Path, guide: Path) -> list[str]:
             stated = VERSION_LINE.findall((root / 'README.md').read_text(encoding='utf-8'))
             if stated != [version]:
                 errors.append(f'{prefix}README.md: want one line `> dsh-go {version}` (app/pubspec.yaml), found {stated}')
+        # HarmonyOS pages describe a different native UI surface. Keep their
+        # bilingual file set and version in sync, but do not validate Android ARB
+        # labels or Android page routes against those platform-specific instructions.
+        if root != guide:
+            continue
         if (root / 'SKILL.md').is_file():
             errors += [prefix + error for error in check_skill((root / 'SKILL.md').read_text(encoding='utf-8'))]
         for locale in LOCALES:
