@@ -1,5 +1,8 @@
-// Portions derived from PiPilot (https://github.com/CikeSeven/pi_pilot), MIT, Copyright (c) 2026 CikeSeven. See THIRD_PARTY_NOTICES.md.
+// SPDX-FileCopyrightText: 2026 CikeSeven
+// SPDX-License-Identifier: MIT
+// See THIRD_PARTY_NOTICES.md.
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -64,6 +67,7 @@ import 'package:re_highlight/re_highlight.dart';
 
 import '../../../l10n/l10n.dart';
 import '../../common/edge_fade.dart';
+import '../../common/fluid_bits.dart';
 import '../../common/overscroll_forwarder.dart';
 import '../../theme/app_icons.dart';
 import '../../theme/theme.dart';
@@ -375,18 +379,41 @@ class CodeBlock extends StatefulWidget {
 }
 
 class _CodeBlockState extends State<CodeBlock> {
+  /// [_cachedCode] highlighted.
   TextSpan? _span;
+
+  /// What is drawn: [_span], plus the code that came after it, plain.
+  TextSpan? _shown;
   String? _cachedCode;
   String? _cachedLanguage;
   Brightness? _cachedBrightness;
   AppAccent? _cachedAccent;
   bool? _cachedDense;
+  String? _cachedFontFamily;
 
   /// 复制成功后图标原地闪成对勾再回退 —— 比 SnackBar 轻。
   bool _copied = false;
 
   /// 长行折回显示,而不是横向滚动。
   bool _wrap = false;
+
+  /// While code streams in, it is highlighted again at most this often (the
+  /// last chunk of up to 8000 characters, every delta, was the cost); what
+  /// came since shows plain until then.
+  static const _highlightEvery = Duration(milliseconds: 250);
+  Timer? _cooldown;
+
+  @override
+  void dispose() {
+    _cooldown?.cancel();
+    super.dispose();
+  }
+
+  void _cooled() {
+    _cooldown = null;
+    // Still behind the code: highlight the rest.
+    if (mounted && !identical(_shown, _span)) setState(() {});
+  }
 
   bool get _mermaid => widget.language?.trim().toLowerCase() == 'mermaid';
 
@@ -414,20 +441,43 @@ class _CodeBlockState extends State<CodeBlock> {
     final brightness = Theme.of(context).brightness;
     final accent = DshSurfaces.of(context).accent;
     final code = _trimmedCode;
-    final style = widget.dense ? AppType.monoSmall(color: dsh.codeWellFg) : AppType.mono(color: dsh.codeWellFg);
+    final themeStyle = DshThemeStyle.of(context);
+    final baseStyle = widget.dense ? AppType.monoSmall(color: dsh.codeWellFg) : AppType.mono(color: dsh.codeWellFg);
+    final style = themeStyle.pack == null ? baseStyle : themeStyle.codeTextStyle(baseStyle);
 
-    if (_span == null ||
-        _cachedCode != code ||
-        _cachedLanguage != widget.language ||
-        _cachedBrightness != brightness ||
-        _cachedAccent != accent ||
-        _cachedDense != widget.dense) {
-      _span = highlightCode(code, widget.language, brightness, style: style, accent: accent);
-      _cachedCode = code;
-      _cachedLanguage = widget.language;
-      _cachedBrightness = brightness;
-      _cachedAccent = accent;
-      _cachedDense = widget.dense;
+    final previous = _cachedCode;
+    final sameLook =
+        _span != null &&
+        _cachedLanguage == widget.language &&
+        _cachedBrightness == brightness &&
+        _cachedAccent == accent &&
+        _cachedDense == widget.dense &&
+        _cachedFontFamily == style.fontFamily;
+    if (!sameLook || previous != code) {
+      final grows = sameLook && previous != null && code.length > previous.length && code.startsWith(previous);
+      if (grows && _cooldown != null) {
+        _shown = TextSpan(
+          style: style,
+          children: [
+            _span!,
+            TextSpan(text: code.substring(previous.length)),
+          ],
+        );
+      } else {
+        _span = _shown = highlightCode(code, widget.language, brightness, style: style, accent: accent);
+        _cachedCode = code;
+        _cachedLanguage = widget.language;
+        _cachedBrightness = brightness;
+        _cachedAccent = accent;
+        _cachedDense = widget.dense;
+        _cachedFontFamily = style.fontFamily;
+        _cooldown?.cancel();
+        _cooldown = grows ? Timer(_highlightEvery, _cooled) : null;
+      }
+    } else if (!identical(_shown, _span)) {
+      // Back to exactly what was highlighted (a resync): drop the plain tail
+      // the cooldown was showing after it.
+      _shown = _span;
     }
 
     final diff = !widget.showLineNumbers && normalizedLanguage(widget.language) == 'diff';
@@ -442,7 +492,7 @@ class _CodeBlockState extends State<CodeBlock> {
           widget.dense ? 12 : 16,
           12,
         ),
-        child: Text.rich(_span!),
+        child: Text.rich(_shown!),
       );
       if (!_wrap) {
         body = HorizontalEdgeFade(
@@ -487,25 +537,46 @@ class _CodeBlockState extends State<CodeBlock> {
     if (widget.embedded) return body;
 
     final label = widget.language?.trim();
+    final codeRadius = themeStyle.pack == null ? AppShape.md : themeStyle.scaleRadius(AppShape.md);
+    final codeBorderRadius = themeStyle.pack == null
+        ? AppShape.radiusMd
+        : BorderRadius.all(Radius.circular(codeRadius));
+    final codeStyle = themeStyle.components.codeBlockStyle;
+    final boxFill = switch (codeStyle) {
+      ThemeCodeBlockStyle.well => dsh.codeWellBg,
+      ThemeCodeBlockStyle.outlined => colors.surface.withValues(alpha: 0.72),
+      ThemeCodeBlockStyle.card => DshSurfaces.of(context).card.fallbackFill,
+    };
+    final headerFill = switch (codeStyle) {
+      ThemeCodeBlockStyle.well => dsh.codeWellHeader,
+      ThemeCodeBlockStyle.outlined => dsh.codeWellHeader.withValues(alpha: 0.45),
+      ThemeCodeBlockStyle.card => dsh.codeWellHeader.withValues(alpha: 0.7),
+    };
+    final boxBorderColor = codeStyle == ThemeCodeBlockStyle.outlined ? colors.outlineVariant : dsh.codeWellBorder;
+    final boxBorderWidth = themeStyle.pack == null
+        ? 0.5
+        : (codeStyle == ThemeCodeBlockStyle.outlined
+            ? themeStyle.borderWidth.clamp(1.0, 2.0)
+            : themeStyle.borderWidth.clamp(0.5, 2.0));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DecoratedBox(
         decoration: ShapeDecoration(
-          color: dsh.codeWellBg,
+          color: boxFill,
           shape: RoundedSuperellipseBorder(
-            borderRadius: AppShape.radiusMd,
-            side: BorderSide(color: dsh.codeWellBorder, width: 0.5),
+            borderRadius: codeBorderRadius,
+            side: BorderSide(color: boxBorderColor, width: boxBorderWidth),
           ),
         ),
         child: Squircle.clip(
-          radius: AppShape.md,
+          radius: codeRadius,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 标题条:左边语言名、右边「复制」,两端各留 16(复制键自带 8
               // 的点按边,所以条的右内边距是 8)。
               ColoredBox(
-                color: dsh.codeWellHeader,
+                color: headerFill,
                 child: SizedBox(
                   height: math.max(36, _headerButtonHeight(context) + 8),
                   child: Row(
@@ -698,7 +769,10 @@ class _CopyButton extends StatelessWidget {
                   key: ValueKey(copied),
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(copied ? AppIcons.done : AppIcons.copy, size: 14, color: color),
+                    if (copied && AppMotion.fluid(context))
+                      DrawnCheck(size: 14, color: color)
+                    else
+                      Icon(copied ? AppIcons.done : AppIcons.copy, size: 14, color: color),
                     const SizedBox(width: 4),
                     Text(
                       copied ? l10n.commonCopied : l10n.commonCopy,
