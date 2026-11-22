@@ -139,7 +139,7 @@ jobs:
           cat badging.txt
           grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging.txt || { echo "包名检查失败"; exit 1; }
           "$AAPT" dump xmltree "$APK" --file AndroidManifest.xml > manifest.txt
-          grep -Eq 'android:minSdkVersion.*0x1a([[:space:]]|$)' manifest.txt || { cat manifest.txt; echo "最低 SDK 检查失败（要求 API 26 / Android 8.0+）"; exit 1; }
+          grep -Eq 'android:minSdkVersion.*(=26|0x1a)([[:space:]]|$)' manifest.txt || { cat manifest.txt; echo "最低 SDK 检查失败（要求 API 26 / Android 8.0+）"; exit 1; }
           grep -q "^native-code:.*'arm64-v8a'" badging.txt || { echo "arm64 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
@@ -246,7 +246,7 @@ jobs:
           cat badging32.txt
           grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging32.txt || { echo "包名检查失败"; exit 1; }
           "$AAPT" dump xmltree "$APK" --file AndroidManifest.xml > manifest32.txt
-          grep -Eq 'android:minSdkVersion.*0x1a([[:space:]]|$)' manifest32.txt || { cat manifest32.txt; echo "最低 SDK 检查失败（要求 API 26 / Android 8.0+）"; exit 1; }
+          grep -Eq 'android:minSdkVersion.*(=26|0x1a)([[:space:]]|$)' manifest32.txt || { cat manifest32.txt; echo "最低 SDK 检查失败（要求 API 26 / Android 8.0+）"; exit 1; }
           grep -q "^native-code:.*'armeabi-v7a'" badging32.txt || { echo "arm32 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
@@ -262,7 +262,7 @@ jobs:
 
   bundle:
     needs: [arm64, arm32]
-    if: always() && (needs.arm64.result == 'success' || needs.arm32.result == 'success')
+    if: always() && needs.arm64.result == 'success' && needs.arm32.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -295,7 +295,7 @@ jobs:
         run: echo "::warning::arm64 与 arm32 必须全部成功才允许发布；本次只保留已构建的 artifact。"
 
       - name: 发布到 Release
-        if: (github.event_name == 'push' || inputs.publish_release) && needs.arm64.result == 'success' && needs.arm32.result == 'success'
+        if: inputs.publish_release && needs.arm64.result == 'success' && needs.arm32.result == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
