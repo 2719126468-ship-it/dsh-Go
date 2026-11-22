@@ -95,6 +95,28 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
+      - name: 配置 Gradle 镜像（覆盖 Flutter 内置构建）
+        working-directory: .
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cat > "$HOME/.gradle/init.d/00-dsh-maven-mirrors.gradle" <<'GRADLE'
+          gradle.settingsEvaluated { settings ->
+              settings.pluginManagement.repositories {
+                  maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                  maven { url 'https://maven.aliyun.com/repository/central' }
+              }
+          }
+          gradle.beforeProject { project ->
+              project.buildscript.repositories {
+                  maven { url 'https://maven.aliyun.com/repository/central' }
+                  maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+              }
+              project.repositories {
+                  maven { url 'https://maven.aliyun.com/repository/central' }
+              }
+          }
+          GRADLE
+
       - name: 依赖
         run: flutter pub get --enforce-lockfile
 
@@ -205,6 +227,28 @@ jobs:
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: 配置 Gradle 镜像（覆盖 Flutter 内置构建）
+        working-directory: .
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cat > "$HOME/.gradle/init.d/00-dsh-maven-mirrors.gradle" <<'GRADLE'
+          gradle.settingsEvaluated { settings ->
+              settings.pluginManagement.repositories {
+                  maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                  maven { url 'https://maven.aliyun.com/repository/central' }
+              }
+          }
+          gradle.beforeProject { project ->
+              project.buildscript.repositories {
+                  maven { url 'https://maven.aliyun.com/repository/central' }
+                  maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+              }
+              project.repositories {
+                  maven { url 'https://maven.aliyun.com/repository/central' }
+              }
+          }
+          GRADLE
 
       - name: 依赖
         run: flutter pub get --enforce-lockfile
