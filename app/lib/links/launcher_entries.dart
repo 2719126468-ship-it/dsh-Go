@@ -1,9 +1,11 @@
 // The ways in from outside the app other than links and
 // shares — the launcher icon's long-press shortcuts (新对话, 语音输入, the
-// three latest conversations) and the Quick Settings tile (新对话). Native
+// three latest conversations), the Quick Settings tile (新对话), and a
+// screenshot taken explicitly from the floating pet. Native
 // side: android/.../shortcuts/ (EntryActivity, ShortcutsPlugin — MethodChannel
 // `dsh/shortcuts`) and tile/NewChatTileService.kt. Routed by
-// lib/ui/shell/system_entry_host.dart.
+// lib/ui/shell/system_entry_host.dart. HarmonyOS has the two static shortcuts
+// (ohos/.../ShortcutsPlugin.ets): no tile, and no public API for recent ones.
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/services.dart';
@@ -25,13 +27,20 @@ sealed class LauncherEntry {
     final sessionId = raw['sessionId'];
     final host = raw['host'];
     final text = raw['text'] is String ? raw['text'] as String : '';
+    final path = raw['path'];
+    final taskId = raw['taskId'];
+    final taskRev = raw['taskRev'];
     return switch (raw['kind']) {
       'new' => NewChatEntry(text: text),
       'voice' => NewChatEntry(voice: true, text: text),
+      'screenshot' when path is String && path.startsWith('/') && !path.contains('\u0000') => ScreenshotEntry(path),
       'chat' when sessionId is String && sessionId.isNotEmpty => OpenChatEntry(
         HostRef.decode(host is String ? host : null),
         sessionId,
       ),
+      'companion_task'
+          when taskId is String && taskId.isNotEmpty && !taskId.contains('\u0000') && taskRev is int && taskRev > 0 =>
+        OpenCompanionTaskEntry(taskId, taskRev),
       _ => null,
     };
   }
@@ -46,12 +55,29 @@ class NewChatEntry extends LauncherEntry {
   final bool voice;
 }
 
+/// A pet screenshot in the app's private cache, authenticated by the native
+/// entry bridge. It is attached to a new-chat draft, never sent automatically.
+class ScreenshotEntry extends LauncherEntry {
+  const ScreenshotEntry(this.path);
+
+  final String path;
+}
+
 /// One of the recent conversations.
 class OpenChatEntry extends LauncherEntry {
   const OpenChatEntry(this.host, this.sessionId);
 
   final HostRef host;
   final String sessionId;
+}
+
+/// A trusted reminder notification opens its stored task, without choosing a
+/// host or claiming that the current revision is the one that fired.
+class OpenCompanionTaskEntry extends LauncherEntry {
+  const OpenCompanionTaskEntry(this.taskId, this.taskRev);
+
+  final String taskId;
+  final int taskRev;
 }
 
 /// A conversation as a launcher shortcut.
@@ -86,10 +112,14 @@ class LauncherBridge extends NativeInbox<LauncherEntry> {
   /// What the launcher has, as far as this run knows.
   List<RecentShortcut>? _published;
 
+  /// Publishes not answered yet: one of them may still replace [_published].
+  int _sending = 0;
+
   /// Publishes [recents] (newest first) unless the launcher already has
   /// them. True when the launcher has them now.
   Future<bool> setRecent(List<RecentShortcut> recents) async {
-    if (_published != null && listEquals(_published, recents)) return true;
+    if (_sending == 0 && _published != null && listEquals(_published, recents)) return true;
+    _sending++;
     try {
       final ok = await channel.invokeMethod<bool>('setRecent', {
         'items': [for (final r in recents) r.toJson()],
@@ -101,6 +131,8 @@ class LauncherBridge extends NativeInbox<LauncherEntry> {
       return false;
     } on PlatformException {
       return false;
+    } finally {
+      _sending--;
     }
   }
 }

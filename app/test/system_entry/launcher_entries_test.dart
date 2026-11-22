@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dsh_app/links/launcher_entries.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
@@ -58,6 +60,35 @@ void main() {
       expect((LauncherEntry.parse({'kind': 'chat', 'sessionId': 's2'}) as OpenChatEntry).host, HostRef.local);
     });
 
+    test('a pet screenshot carries only its private cache path', () {
+      final entry = LauncherEntry.parse({'kind': 'screenshot', 'path': '/cache/pet-screenshots/slot/screen.png'});
+      expect(entry, isA<ScreenshotEntry>());
+      expect((entry as ScreenshotEntry).path, '/cache/pet-screenshots/slot/screen.png');
+    });
+
+    test('a reminder notification retains its task and the revision that was opened', () {
+      final entry = LauncherEntry.parse({'kind': 'companion_task', 'taskId': 'task-one', 'taskRev': 2});
+      expect(entry, isA<OpenCompanionTaskEntry>());
+      entry as OpenCompanionTaskEntry;
+      expect(entry.taskId, 'task-one');
+      expect(entry.taskRev, 2);
+      for (final invalid in [
+        {'taskId': '', 'taskRev': 1},
+        {'taskId': 'bad\u0000id', 'taskRev': 1},
+        {'taskId': 'task-one', 'taskRev': 0},
+        {'taskId': 'task-one', 'taskRev': '2'},
+        {'taskId': 'task-one'},
+      ]) {
+        expect(LauncherEntry.parse({'kind': 'companion_task', ...invalid}), isNull);
+      }
+    });
+
+    test('malformed screenshot entries are dropped', () {
+      for (final path in [null, 42, '', 'screen.png', 'content://screen', '/cache/bad\u0000.png']) {
+        expect(LauncherEntry.parse({'kind': 'screenshot', 'path': path}), isNull);
+      }
+    });
+
     test('anything else is dropped', () {
       expect(LauncherEntry.parse(null), isNull);
       expect(LauncherEntry.parse({'kind': 'chat'}), isNull);
@@ -69,16 +100,18 @@ void main() {
   group('setRecent', () {
     late List<Object?> sent;
     late bool accept;
+    Completer<bool>? held;
 
     setUp(() {
       sent = [];
       accept = true;
+      held = null;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, (
         call,
       ) async {
         if (call.method == 'setRecent') {
           sent.add(call.arguments);
-          return accept;
+          return held?.future ?? accept;
         }
         return true;
       });
@@ -105,6 +138,24 @@ void main() {
       await bridge.setRecent([b, a]);
       await bridge.setRecent(const []);
       expect(sent, hasLength(3));
+    });
+
+    test('back to the published list while another is on its way: it still goes out', () async {
+      final bridge = LauncherBridge();
+      addTearDown(bridge.dispose);
+      expect(await bridge.setRecent([a]), isTrue);
+      final reply = held = Completer<bool>();
+      final toB = bridge.setRecent([b]);
+      await Future<void>.delayed(Duration.zero);
+      held = null;
+      final backToA = bridge.setRecent([a]);
+      reply.complete(true);
+      expect(await toB, isTrue);
+      expect(await backToA, isTrue);
+      expect(sent, hasLength(3));
+      expect((sent.last! as Map)['items'], [
+        {'id': 'a', 'title': '周报', 'host': HostRef.local.encode()},
+      ]);
     });
 
     test('tries again after the launcher refused (rate limit)', () async {
