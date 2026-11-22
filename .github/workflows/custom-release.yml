@@ -124,7 +124,7 @@ jobs:
             grep -q "Verified using ${scheme} scheme.*: true" verify.txt || { cat verify.txt; echo "${scheme} 签名方案未通过"; exit 1; }
           done
           ! grep -q "CN=Android Debug" verify.txt
-          actual_cert=$(grep -m1 "Signer #1 certificate SHA-256 digest:" verify.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          actual_cert=$(grep -m1 "certificate SHA-256 digest:" verify.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
           test "$actual_cert" = "$EXPECTED_CERT_SHA256" || { echo "签名证书不匹配：$actual_cert"; exit 1; }
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           "$AAPT" dump badging "$APK" > badging.txt
@@ -221,7 +221,7 @@ jobs:
             grep -q "Verified using ${scheme} scheme.*: true" verify32.txt || { cat verify32.txt; echo "${scheme} 签名方案未通过"; exit 1; }
           done
           ! grep -q "CN=Android Debug" verify32.txt
-          actual_cert=$(grep -m1 "Signer #1 certificate SHA-256 digest:" verify32.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          actual_cert=$(grep -m1 "certificate SHA-256 digest:" verify32.txt | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
           test "$actual_cert" = "$EXPECTED_CERT_SHA256" || { echo "签名证书不匹配：$actual_cert"; exit 1; }
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           "$AAPT" dump badging "$APK" > badging32.txt
