@@ -230,15 +230,6 @@ jobs:
                   maven { url 'https://maven.aliyun.com/repository/central' }
               }
           }
-          gradle.beforeProject { project ->
-              project.buildscript.repositories {
-                  maven { url 'https://maven.aliyun.com/repository/central' }
-                  maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-              }
-              project.repositories {
-                  maven { url 'https://maven.aliyun.com/repository/central' }
-              }
-          }
           GRADLE
 
       - name: 依赖
