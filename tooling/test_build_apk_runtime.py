@@ -15,7 +15,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-ABIS = {"arm64": "arm64-v8a", "x64": "x86_64"}
+ABIS = {"arm64": "arm64-v8a", "arm32": "armeabi-v7a", "x64": "x86_64"}
 JNI = ("libproot.so", "libproot-loader.so", "libtalloc.so", "libandroid-shmem.so")
 
 
@@ -184,12 +184,13 @@ apk.write_bytes(b'fake APK: shell flow only')
         self.assertEqual(self.calls(), [], "preflight must finish before any Flutter build")
 
     def test_release_missing_runtime_blocks_each_flavor(self):
-        for flavor in ("arm64", "x64", "all"):
+        for flavor in ("arm64", "arm32", "x64", "all"):
             with self.subTest(flavor=flavor):
                 self.assert_blocked(self.run_script("--release", "-f", flavor), "manifest.json")
 
     def test_all_preflights_both_before_building_either(self):
         self.make_bundle("arm64", 1)
+        self.make_bundle("arm32", 1)
         self.assert_blocked(self.run_script("-f", "all"), "x86_64/assets/runtime/manifest.json")
 
     def test_both_schemas_and_abis_accept_complete_bundles(self):
@@ -203,13 +204,14 @@ apk.write_bytes(b'fake APK: shell flow only')
 
     def test_all_complete_flavors_build_with_one_number(self):
         self.make_bundle("arm64", 1)
+        self.make_bundle("arm32", 1)
         self.make_bundle("x64", 2)
         result = self.run_script("-f", "all")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([args[args.index("--flavor") + 1] for args in self.calls()], ["arm64", "x64"])
+        self.assertEqual([args[args.index("--flavor") + 1] for args in self.calls()], ["arm64", "arm32", "x64"])
         self.assertEqual({args[args.index("--build-number") + 1] for args in self.calls()}, {"10251234"})
         checked = [Path(line).name for line in self.jni_file.read_text().splitlines()]
-        self.assertEqual(checked, ["app-arm64-release.apk", "app-x64-release.apk"])
+        self.assertEqual(checked, ["app-arm64-release.apk", "app-arm32-release.apk", "app-x64-release.apk"])
 
     def test_an_apk_without_the_onnx_jni_classes_stops_the_build(self):
         self.make_bundle("arm64", 1)
@@ -279,7 +281,7 @@ apk.write_bytes(b'fake APK: shell flow only')
         result = self.run_script("--dry-run", "-f", "all")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls(), [])
-        self.assertEqual(result.stdout.count("flutter build apk"), 2)
+        self.assertEqual(result.stdout.count("flutter build apk"), 3)
 
     def test_public_release_builds_ask_for_a_star(self):
         star = "--dart-define-from-file=../tooling/star-prompt-on.json"
