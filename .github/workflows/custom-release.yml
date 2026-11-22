@@ -119,7 +119,12 @@ jobs:
           echo "APK size: $SIZE bytes (limit: $MAX_APK_BYTES)"
           (( SIZE <= MAX_APK_BYTES )) || { echo "arm64 APK exceeds 600 MB"; exit 1; }
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          set +e
           "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify.txt
+          signer_status=${PIPESTATUS[0]}
+          set -e
+          echo "apksigner exit status: $signer_status (strict scheme/certificate checks follow)"
+          grep -qx "Verifies" verify.txt || { cat verify.txt; echo "APK 签名验证未通过"; exit 1; }
           for scheme in v1 v2 v3; do
             grep -q "Verified using ${scheme} scheme.*: true" verify.txt || { cat verify.txt; echo "${scheme} 签名方案未通过"; exit 1; }
           done
@@ -216,7 +221,12 @@ jobs:
           echo "APK size: $SIZE bytes (limit: $MAX_APK_BYTES)"
           (( SIZE <= MAX_APK_BYTES )) || { echo "arm32 APK exceeds 600 MB"; exit 1; }
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          set +e
           "$APKSIGNER" verify -v --min-sdk-version 21 --print-certs "$APK" | tee verify32.txt
+          signer_status=${PIPESTATUS[0]}
+          set -e
+          echo "apksigner exit status: $signer_status (strict scheme/certificate checks follow)"
+          grep -qx "Verifies" verify32.txt || { cat verify32.txt; echo "APK 签名验证未通过"; exit 1; }
           for scheme in v1 v2 v3; do
             grep -q "Verified using ${scheme} scheme.*: true" verify32.txt || { cat verify32.txt; echo "${scheme} 签名方案未通过"; exit 1; }
           done
