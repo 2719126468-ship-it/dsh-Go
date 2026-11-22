@@ -174,42 +174,56 @@ def check_skill(text: str) -> list[str]:
 
 
 def guide_files(guide: Path) -> dict[str, Path]:
-    files = {'SKILL.md': guide / 'SKILL.md', 'README.md': guide / 'README.md'}
-    for locale in LOCALES:
-        for page in sorted((guide / locale).glob('*.md')):
-            files[f'{locale}/{page.name}'] = page
+    files: dict[str, Path] = {}
+    for root, prefix in ((guide, ''), (guide / HARMONY, HARMONY + '/')):
+        if not root.is_dir():
+            continue
+        files[prefix + 'SKILL.md'] = root / 'SKILL.md'
+        files[prefix + 'README.md'] = root / 'README.md'
+        for locale in LOCALES:
+            for page in sorted((root / locale).glob('*.md')):
+                files[prefix + f'{locale}/{page.name}'] = page
     return files
 
 
 def check(repo: Path, guide: Path) -> list[str]:
     errors: list[str] = []
-    for required in ('SKILL.md', 'README.md'):
-        if not (guide / required).is_file():
-            return [f'{guide}: missing {required}']
-    pages = {locale: {p.name for p in (guide / locale).glob('*.md')} for locale in LOCALES}
-    if not pages['zh']:
-        errors.append(f'{guide}/zh: no pages')
-    if pages['zh'] != pages['en']:
-        errors.append(f'zh/en pages differ: only zh {sorted(pages["zh"] - pages["en"])}, '
-                      f'only en {sorted(pages["en"] - pages["zh"])}')
-    for other in guide.rglob('*'):
-        rel = other.relative_to(guide).as_posix()
-        if other.is_file() and rel not in guide_files(guide):
-            errors.append(f'{rel}: not part of the guide (SKILL.md, README.md, zh/*.md, en/*.md)')
+    roots = [(guide, '')]
+    harmony = guide / HARMONY
+    if harmony.is_dir():
+        roots.append((harmony, HARMONY + '/'))
     version = app_version(repo / 'app/pubspec.yaml')
-    stated = VERSION_LINE.findall((guide / 'README.md').read_text(encoding='utf-8'))
-    if stated != [version]:
-        errors.append(f'README.md: want one line `> dsh-go {version}` (app/pubspec.yaml), found {stated}')
-    errors += check_skill((guide / 'SKILL.md').read_text(encoding='utf-8'))
     ids = read_page_ids(repo / 'app/lib/links/page_links.dart', repo / 'app/lib/ui/settings/index/spots.dart')
     res = repo / 'app/android/app/src/main/res'
-    for locale in LOCALES:
-        arb = read_arb(repo / 'app/lib/l10n/parts', locale)
-        labels = set(arb.values()) | read_android(res, locale)
-        for page in sorted((guide / locale).glob('*.md')):
-            errors += check_page(page, guide, locale, arb, labels, ids)
-    for name in ('SKILL.md', 'README.md'):
-        errors += check_links(guide / name, guide, ids)
+    for root, prefix in roots:
+        for required in ('SKILL.md', 'README.md'):
+            if not (root / required).is_file():
+                errors.append(f'{root}: missing {required}')
+        pages = {locale: {p.name for p in (root / locale).glob('*.md')} for locale in LOCALES}
+        if not pages['zh']:
+            errors.append(f'{root}/zh: no pages')
+        if pages['zh'] != pages['en']:
+            errors.append(f'{prefix}zh/en pages differ: only zh {sorted(pages["zh"] - pages["en"])}, '
+                          f'only en {sorted(pages["en"] - pages["zh"])}')
+        allowed = {str(p.relative_to(root).as_posix()) for p in guide_files(root).values()}
+        for other in root.rglob('*'):
+            rel = other.relative_to(root).as_posix()
+            if other.is_file() and rel not in allowed:
+                errors.append(f'{prefix}{rel}: not part of the guide')
+        if (root / 'README.md').is_file():
+            stated = VERSION_LINE.findall((root / 'README.md').read_text(encoding='utf-8'))
+            if stated != [version]:
+                errors.append(f'{prefix}README.md: want one line `> dsh-go {version}` (app/pubspec.yaml), found {stated}')
+        if (root / 'SKILL.md').is_file():
+            errors += [prefix + error for error in check_skill((root / 'SKILL.md').read_text(encoding='utf-8'))]
+        for locale in LOCALES:
+            arb = read_arb(repo / 'app/lib/l10n/parts', locale)
+            labels = set(arb.values()) | read_android(res, locale)
+            for page in sorted((root / locale).glob('*.md')):
+                errors += check_page(page, root, locale, arb, labels, ids)
+        for name in ('SKILL.md', 'README.md'):
+            if (root / name).is_file():
+                errors += check_links(root / name, root, ids)
     return errors
 
 
