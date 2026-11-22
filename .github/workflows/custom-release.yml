@@ -269,7 +269,7 @@ jobs:
           name: apks
           path: out/
       - name: 发布到 Release
-        if: github.event_name == 'push' && needs.arm64.result == 'success'
+        if: (github.event_name == 'push' || inputs.publish_release) && needs.arm64.result == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
