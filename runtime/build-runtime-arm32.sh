@@ -1,0 +1,653 @@
+#!/usr/bin/env bash
+# Builds the bundled Linux runtime for dsh-app (Ubuntu Base + Node.js + DeepSeek Harness,
+# run through Termux proot) for each Android ABI, entirely on an x86_64 Linux host without
+# executing any foreign-architecture code.
+#
+#   runtime/build-runtime.sh                 # both ABIs (x86_64 first)
+#   runtime/build-runtime.sh x86_64          # one ABI
+#   COMPRESS=gz runtime/build-runtime.sh     # .tar.gz instead of .tar.xz
+#   RUNTIME_LAYERS=1 runtime/build-runtime.sh # opt in to base + engine assets
+#   RUNTIME_OUT=/path runtime/build-runtime.sh   # stage outputs outside runtime/out (not packaged)
+#
+# The DSH tree is patched with runtime/patches/*.diff (pinned per DSH version in
+# runtime/patches/pins.json; an unvetted DSH version fails the build) and the dsh-go-bridge
+# plugin (runtime/bridge/dsh-go-bridge) is installed at /opt/dsh-go/dsh-go-bridge and loaded by
+# the `dsh web` overlay. Check both on the host with runtime/tests/run-guard-tests.sh
+# runtime/.work/x86_64/dsh-prefix, or end to end with runtime/test-host.sh.
+#
+# Outputs (consumed by app/android/app/build.gradle.kts flavors):
+#   runtime/out/<abi>/assets/runtime/rootfs-<abi>.tar.xz
+#     or base-<abi>.tar.xz + engine-<abi>.tar.xz when RUNTIME_LAYERS=1
+#   runtime/out/<abi>/assets/runtime/manifest.json      (versions, hashes, launch template)
+#   runtime/out/<abi>/assets/runtime/licenses/...
+#   runtime/out/<abi>/jniLibs/<abi>/lib{proot,proot-loader,talloc,android-shmem}.so
+#   runtime/out/<abi>/build-report.json                  (ELF audit, pruned files, warnings)
+#   runtime/out/manifest.json                            (index of all built ABIs)
+#
+# Idempotent: downloads are cached in runtime/.cache and verified on every run; the npm
+# trees are pinned by runtime/locks/dsh-<version>/package-lock.json and
+# runtime/locks/pnpm-<version>/package-lock.json (created on the first run, reused with
+# `npm ci` afterwards; pnpm's tarball integrity is additionally pinned below).
+set -euo pipefail
+
+HERE="$(CDPATH= cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CACHE="$HERE/.cache"
+WORK="$HERE/.work"
+OUT="${RUNTIME_OUT:-$HERE/out}"   # the app build reads runtime/out; RUNTIME_OUT stages a build elsewhere
+RUNTIME_LAYERS="${RUNTIME_LAYERS:-0}"  # opt in until Android/host validation completes
+BASE_LAYER_CACHE="${BASE_LAYER_CACHE:-$CACHE/base-layers}"
+LOCKS="$HERE/locks"
+PY=(python3 -I "$HERE/lib/rtbuild-arm32.py")
+
+# ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
+RUNTIME_REVISION="${RUNTIME_REVISION:-r17}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
+DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
+NODE_VERSION="${NODE_VERSION:-24.22.1}"
+TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
+# pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
+PNPM_VERSION="${PNPM_VERSION:-11.28.5}"
+# dist.integrity of pnpm-$PNPM_VERSION.tgz, identical on registry.npmjs.org and npmmirror
+PNPM_INTEGRITY="${PNPM_INTEGRITY:-sha512-SEVj0wtMKtJ8tIqpT/KzAtvOvI/2vyiBbCWJiG4UbOf3bzVPO8GkOOb16XaMMCqgpvet2CMpA81M+BQmy8FNng==}"
+UBUNTU_VERSION="${UBUNTU_VERSION:-24.04.5}"
+PROOT_VERSION="5.1.107.102"
+TALLOC_VERSION="2.5.0"
+SHMEM_VERSION="0.7"
+UBUNTU_EXTRA="${UBUNTU_EXTRA:-tzdata ca-certificates git}"   # extra noble debs (+ dependency closure)
+PYTHON_VERSION="${PYTHON_VERSION:-3.12.15}"
+PBS_RELEASE="${PBS_RELEASE:-20261021}"    # astral-sh/python-build-standalone release tag
+COMPRESS="${COMPRESS:-xz}"          # xz | gz
+XZ_PRESET="${XZ_PRESET:-6}"         # 8 MiB dictionary: modest memory for xz-java on phones
+XZ_THREADS="${XZ_THREADS:-4}"       # xz 5.8.1 -6, 136704-byte sample: -T1=408 B, -T2/-T4=416 B; threads can change bytes
+PRUNE_DEV_METADATA="${PRUNE_DEV_METADATA:-1}"   # drop *.map / *.d.ts from node_modules
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1767225600}"  # 2026-01-01T00:00:00Z, fixed tar mtimes
+
+UBUNTU_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/24.04/release"
+UBUNTU_OFFICIAL="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release"
+NODE_MIRROR="https://npmmirror.com/mirrors/node"
+NPM_REGISTRY="https://registry.npmmirror.com"
+TERMUX_REPO="https://packages.termux.dev/apt/termux-main"
+UBUNTU_ARCHIVE_AMD64="https://archive.ubuntu.com/ubuntu"        # InRelease verified with gpgv
+UBUNTU_ARCHIVE_ARM64="https://ports.ubuntu.com/ubuntu-ports"
+UBUNTU_DEB_FALLBACK="https://launchpad.net/ubuntu/+archive/primary/+files"
+PBS_OFFICIAL="https://github.com/astral-sh/python-build-standalone/releases/download"
+PBS_MIRROR="https://registry.npmmirror.com/-/binary/python-build-standalone"
+
+# sha256 pins, cross-checked against cdimage.ubuntu.com / nodejs.org / the Termux Packages
+# index. Unpinned version overrides still resolve the upstream checksum metadata.
+declare -A PIN=(
+  [ubuntu-base-24.04.5-base-arm64.tar.gz]=a91d5a93010193712d346d761372b7c9db6dfcf093893161c64ca107f05914f2
+  [ubuntu-base-24.04.5-base-armhf.tar.gz]=4fcee4d278f1c5232e085a021a85e4c6cef3853557a88d98ff380b5e5d5841bb
+  [ubuntu-base-24.04.5-base-amd64.tar.gz]=e77b6f10c2590cef872b33ee9f635a0e3fd1f57fb074c0e52b5c7f56147a0c86
+  [node-v24.22.1-linux-arm64.tar.xz]=dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e
+  [node-v24.22.1-linux-x64.tar.xz]=6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6
+  # 102 is the current Termux build; 98 left the pool, so its URL 404s.
+  [proot_5.1.107.102_aarch64.deb]=10a394b585c2fc2b2c8502544f4e5f1be581dc8bfff79e8ba62f16207423e030
+  [proot_5.1.107.102_x86_64.deb]=2497064226c15971be8131c7facead94a06c225347796326a383c832dca57758
+  [proot_5.1.107.102_arm.deb]=d6912a83e1a149b3403afc116109d2974b378af599599b0124a68b07b2ca0c78
+  [libtalloc_2.5.0_arm.deb]=98ace4f1fcbb04b75e859a12b689a9ae4ac91ff8fd34ab221e5359c95ba47f52
+  [libandroid-shmem_0.7_arm.deb]=5832fd11dca9be2a288dd8fbc2b2799b289c812c7a8764f1f8234c425aa64ce5
+  [libtalloc_2.5.0_aarch64.deb]=556591f43bb773ad8777e1a29522640866a55f95dab71914418b94a8c58ad5a7
+  [libtalloc_2.5.0_x86_64.deb]=b8c6d95f20075dc1f9ec6573575b2444e8d526e48e0d8d6d5cf4e071e6e06530
+  [libandroid-shmem_0.7_aarch64.deb]=0da3a24d558b93c92bcf8d611e0826a99ff96e396b148e6cdf33b47c47c57ff6
+  [libandroid-shmem_0.7_x86_64.deb]=ffa9e4c87467b158b148d0ff92dda796aa038276c2075af3269cdcdb06f25797
+  [cpython-3.12.15+20261021-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz]=b4567aa5a11f51b540c4dfd9e082ebf23e554f8ac17b85caa6cea23e83693394
+  [cpython-3.12.15+20261021-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz]=6d7521138fd33afddc1ccd08abb007d9a2829e38117c2576f9efdc0ec73ce772
+  # GPL-2.0 source of the proot binary (same archive Termux's build recipe pins); used for COPYING.
+  [proot-v5.1.107.102.zip]=30d12a6e2cc4147123756ff58edea262d3083bbc238c12d0ab9b39e3d1c40852
+)
+
+log() { printf '\033[1;34m[runtime %s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
+die() { printf '\033[1;31m[runtime] error:\033[0m %s\n' "$*" >&2; exit 1; }
+sha256() { sha256sum "$1" | cut -d' ' -f1; }
+
+case "$RUNTIME_LAYERS" in 0|1) ;; *) die "RUNTIME_LAYERS must be 0 or 1" ;; esac
+
+for tool in curl sha256sum python3 tar xz; do
+  command -v "$tool" >/dev/null || die "missing host tool: $tool"
+done
+
+RUNTIME_INPUT_STORE_URL="${RUNTIME_INPUT_STORE_URL:-}"  # explicit HTTPS or local file:// CAS directory
+case "$RUNTIME_INPUT_STORE_URL" in
+  ""|https://*|file:///*) ;;
+  *) die "RUNTIME_INPUT_STORE_URL must be an HTTPS or absolute file:// URL" ;;
+esac
+
+# fetch URL DEST [expected-sha256] [fallback-url]: verified cache, origin, then retained bytes.
+fetch() {
+  local url="$1" dest="$2" want="${3:-}"
+  mkdir -p "$(dirname "$dest")" || die "cannot create download directory for $dest"
+  if [[ -f "$dest" && -n "$want" && "$(sha256 "$dest")" == "$want" ]]; then return 0; fi
+  if [[ -f "$dest" && -z "$want" ]]; then return 0; fi
+  # Handle transport failure here: callers include command substitutions, where
+  # errexit is disabled, and a conditional fetch call would disable it too.
+  local candidate fetched=0 retained=""
+  if [[ -n "$want" && -n "$RUNTIME_INPUT_STORE_URL" ]]; then
+    retained="${RUNTIME_INPUT_STORE_URL%/}/sha256-$want"
+  fi
+  for candidate in "$url" "${4:-}" "$retained"; do
+    [[ -n "$candidate" ]] || continue
+    log "download $candidate"
+    if curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -sS -o "$dest.part" "$candidate"; then
+      fetched=1; break
+    fi
+  done
+  if [[ "$fetched" != 1 ]]; then
+    rm -f "$dest.part"
+    if [[ -n "$want" && -z "$RUNTIME_INPUT_STORE_URL" ]]; then
+      log "自留回落不可用：未配置 RUNTIME_INPUT_STORE_URL"
+    fi
+    die "download failed for $dest"
+  fi
+  if [[ -n "$want" ]]; then
+    local got; got="$(sha256 "$dest.part")" || { rm -f "$dest.part"; die "cannot checksum download $dest"; }
+    [[ "$got" == "$want" ]] || { rm -f "$dest.part"; die "sha256 mismatch for $dest: got $got want $want"; }
+  fi
+  mv "$dest.part" "$dest" || { rm -f "$dest.part"; die "cannot publish download $dest"; }
+}
+
+pin_of() {
+  local name="$1"
+  if [[ -n "${PIN[$name]:-}" ]]; then printf '%s' "${PIN[$name]}"; fi
+}
+
+# ---------------------------------------------------------------------------
+# inputs
+# ---------------------------------------------------------------------------
+ubuntu_base() {  # $1 = ubuntu arch; echoes path
+  local arch="$1" name="ubuntu-base-${UBUNTU_VERSION}-base-$1.tar.gz"
+  local dir="$CACHE/ubuntu/$UBUNTU_VERSION"
+  local pin; pin="$(pin_of "$name")"
+  if [[ -z "$pin" ]]; then
+    fetch "$UBUNTU_MIRROR/SHA256SUMS" "$dir/SHA256SUMS" "" "$UBUNTU_OFFICIAL/SHA256SUMS"
+    pin="$(awk -v f="$name" '{n=$2; sub(/^\*/,"",n); if (n==f) print $1}' "$dir/SHA256SUMS")"
+    [[ -n "$pin" ]] || { rm -f "$dir/SHA256SUMS"; die "$name not listed in SHA256SUMS (stale cache removed, rerun)"; }
+  fi
+  fetch "$UBUNTU_MIRROR/$name" "$dir/$name" "$pin" "$UBUNTU_OFFICIAL/$name"
+  printf '%s' "$dir/$name"
+}
+
+node_dist() {  # $1 = arm64|x64|armv7l; echoes a Node tar archive
+  if [[ "$1" == armv7l ]]; then
+    local version="$TERMUX_ARM_NODE_VERSION" arch=arm
+    local dir="$CACHE/node/termux-arm" extract="$CACHE/node/termux-arm/extract"
+    local stage="$CACHE/node/termux-arm/stage/node-v${version}-android-armv7l"
+    local archive="$dir/node-v${version}-android-armv7l.tar.xz"
+    mkdir -p "$dir"
+    if [[ ! -s "$archive" ]]; then
+      local -a debs=()
+      debs+=("$(termux_deb nodejs-lts "$version" "$arch")")
+      local pkg
+      for pkg in libc++ openssl ca-certificates zlib c-ares resolv-conf libicu libsqlite npm; do
+        debs+=("$(termux_latest_deb "$pkg" "$arch")")
+      done
+      rm -rf "$extract" "$stage"
+      mkdir -p "$extract" "$stage/bin" "$stage/lib" "$stage/licenses"
+      local deb
+      for deb in "${debs[@]}"; do "${PY[@]}" deb-extract "$deb" "$extract"; done
+      local prefix="$extract/data/data/com.termux/files/usr"
+      [[ -x "$prefix/bin/node" ]] || die "Termux nodejs-lts did not contain bin/node"
+      cp "$prefix/bin/node" "$stage/bin/node-bionic"
+      find "$prefix/lib" -maxdepth 1 \( -type f -o -type l \) -name '*.so*' -exec cp -a -t "$stage/lib" {} +
+      if [[ -d "$prefix/share/icu" ]]; then
+        mkdir -p "$stage/share"
+        cp -a "$prefix/share/icu" "$stage/share/icu"
+      fi
+      mkdir -p "$stage/lib/node_modules"
+      cp -a "$prefix/lib/node_modules/npm" "$stage/lib/node_modules/npm"
+      cp -a "$prefix/bin/npm" "$prefix/bin/npx" "$stage/bin/"
+      cat > "$stage/bin/node" <<'SH'
+#!/bin/sh
+LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib
+export LD_LIBRARY_PATH
+exec /opt/node/bin/node-bionic "$@"
+SH
+      chmod 0755 "$stage/bin/node" "$stage/bin/node-bionic"
+      local notice
+      for notice in nodejs-lts libc++ openssl ca-certificates zlib c-ares resolv-conf libicu libsqlite npm; do
+        [[ ! -s "$prefix/share/doc/$notice/copyright" ]] || cp "$prefix/share/doc/$notice/copyright" "$stage/licenses/$notice.txt"
+      done
+      tar -cJf "$archive" -C "$dir/stage" "node-v${version}-android-armv7l"
+    fi
+    printf '%s' "$archive"
+    return
+  fi
+  local name="node-v${NODE_VERSION}-linux-$1.tar.xz" dir="$CACHE/node/v$NODE_VERSION"
+  local pin; pin="$(pin_of "$name")"
+  if [[ -z "$pin" ]]; then
+    fetch "$NODE_MIRROR/v$NODE_VERSION/SHASUMS256.txt" "$dir/SHASUMS256.txt"
+    pin="$(awk -v f="$name" '$2==f {print $1}' "$dir/SHASUMS256.txt")"
+    [[ -n "$pin" ]] || die "$name not listed in SHASUMS256.txt"
+  fi
+  fetch "$NODE_MIRROR/v$NODE_VERSION/$name" "$dir/$name" "$pin"
+  printf '%s' "$dir/$name"
+}
+
+termux_deb() {  # $1 = package, $2 = version, $3 = termux arch; echoes path
+  local pkg="$1" ver="$2" arch="$3" name="$1_$2_$3.deb"
+  local dest="$CACHE/termux/$name" pin; pin="$(pin_of "$name")"
+  local file
+  if [[ -n "$pin" ]]; then
+    # Debian pool convention: lib* uses four characters, other names use one.
+    local pool="${pkg:0:1}"; [[ "$pkg" != lib* ]] || pool="${pkg:0:4}"
+    file="pool/main/$pool/$pkg/$name"
+  else
+    # Unknown overrides still resolve path + hash from the original Packages index.
+    local idx="$CACHE/termux/Packages-$arch"
+    fetch "$TERMUX_REPO/dists/stable/main/binary-$arch/Packages" "$idx.new" && mv "$idx.new" "$idx"
+    local rec; rec="$(awk -v RS= -v p="$pkg" -v v="$ver" '{
+      n = split($0, lines, "\n"); has_pkg = has_version = 0
+      for (i = 1; i <= n; i++) {
+        if (lines[i] == "Package: " p) has_pkg = 1
+        if (lines[i] == "Version: " v) has_version = 1
+      }
+      if (has_pkg && has_version) { print; exit }
+    }' "$idx")"
+    [[ -n "$rec" ]] || die "Termux index no longer has $pkg $ver for $arch (bump the pin in build-runtime.sh)"
+    file="$(sed -n 's/^Filename: //p' <<<"$rec")"; pin="$(sed -n 's/^SHA256: //p' <<<"$rec")"
+  fi
+  fetch "$TERMUX_REPO/$file" "$dest" "$pin"
+  printf '%s' "$dest"
+}
+
+termux_latest_deb() {  # $1 = package, $2 = termux arch
+  local pkg="$1" arch="$2" idx="$CACHE/termux/Packages-$2" version
+  fetch "$TERMUX_REPO/dists/stable/main/binary-$arch/Packages" "$idx"
+  version="$(python3 -I - "$idx" "$pkg" <<'PYEOF'
+import sys
+for block in open(sys.argv[1]).read().split("\n\n"):
+    fields = {}
+    key = None
+    for line in block.splitlines():
+        if line[:1].isspace() and key:
+            fields[key] += "\n" + line
+        elif ": " in line:
+            key, value = line.split(": ", 1)
+            fields[key] = value
+    if fields.get("Package") == sys.argv[2]:
+        print(fields["Version"])
+        break
+PYEOF
+)"
+  [[ -n "$version" ]] || die "Termux package $pkg not found for $arch"
+  termux_deb "$pkg" "$version" "$arch"
+}
+
+# Extra Ubuntu noble packages (tzdata, ca-certificates, git and their dependency closure).
+# Chain of trust: InRelease of noble / noble-updates / noble-security verified with gpgv against
+# ubuntu-archive-keyring.gpg from the checksum-verified Ubuntu Base tarball -> Packages.xz hash
+# -> each .deb hash. The resolved set is pinned in runtime/locks/ubuntu-noble-<arch>.json
+# (re-resolve with UPDATE_DEB_LOCK=1).
+ubuntu_extra_debs() {  # $1 = ubuntu arch, $2 = verified base tarball; echoes deb paths, one per line
+  local arch="$1" base="$2" lock="$LOCKS/ubuntu-noble-$1.json" mirror
+  [[ "$arch" == amd64 ]] && mirror="$UBUNTU_ARCHIVE_AMD64" || mirror="$UBUNTU_ARCHIVE_ARM64"
+  if [[ ! -f "$lock" || "${UPDATE_DEB_LOCK:-0}" == 1 ]] || \
+     ! python3 -I -c 'import json,sys; sys.exit(json.load(open(sys.argv[1]))["want"] != sys.argv[2].split())' "$lock" "$UBUNTU_EXTRA"; then
+    command -v gpgv >/dev/null || die "gpgv is required to resolve Ubuntu packages"
+    local dir="$CACHE/ubuntu/dists-$arch"; rm -rf "$dir"; mkdir -p "$dir"
+    python3 -I - "$base" "$dir/archive-keyring.gpg" <<'PYEOF'
+import sys, tarfile
+with tarfile.open(sys.argv[1], "r:gz") as t:
+    for m in t:
+        if m.name.lstrip("./") == "usr/share/keyrings/ubuntu-archive-keyring.gpg":
+            open(sys.argv[2], "wb").write(t.extractfile(m).read()); break
+    else:
+        sys.exit("keyring not found in base tarball")
+PYEOF
+    local -a idx=() ; local suite want
+    for suite in noble noble-updates noble-security; do
+      fetch "$mirror/dists/$suite/InRelease" "$dir/$suite.InRelease"
+      gpgv --keyring "$dir/archive-keyring.gpg" "$dir/$suite.InRelease" 2>/dev/null \
+        || die "InRelease signature check failed for $suite"
+      want="$(awk -v f="main/binary-$arch/Packages.xz" '/^SHA256:/{s=1;next} /^[A-Za-z]/{s=0} s && $3==f {print $1}' "$dir/$suite.InRelease")"
+      [[ -n "$want" ]] || die "no Packages.xz hash for $suite/$arch"
+      fetch "$mirror/dists/$suite/main/binary-$arch/Packages.xz" "$dir/$suite.Packages.xz" "$want"
+      idx+=(--packages "$dir/$suite.Packages.xz")
+    done
+    mkdir -p "$LOCKS"
+    # shellcheck disable=SC2086
+    "${PY[@]}" resolve-debs --base "$base" --arch "$arch" "${idx[@]}" --want $UBUNTU_EXTRA --out "$lock" >&2
+  fi
+  local name file sum
+  # pipefail must carry lock-reader errors to the caller, including after output.
+  python3 -I -c 'import json,sys; [print(p["filename"], p["sha256"]) for p in json.load(open(sys.argv[1]))["packages"]]' "$lock" |
+  while read -r file sum; do
+    name="$(basename "$file")"
+    # Superseded versions can leave the mirror; keep the locked bytes and hash.
+    fetch "$mirror/$file" "$CACHE/ubuntu/debs/$name" "$sum" "$UBUNTU_DEB_FALLBACK/$name"
+    printf '%s\n' "$CACHE/ubuntu/debs/$name"
+  done
+}
+
+# Relocatable CPython (python-build-standalone, install_only_stripped). Checksums come from the
+# checked-in pins, or SHA256SUMS on GitHub for an unpinned version override.
+python_dist() {  # $1 = aarch64|x86_64; echoes path
+  local name="cpython-${PYTHON_VERSION}+${PBS_RELEASE}-$1-unknown-linux-gnu-install_only_stripped.tar.gz"
+  local dir="$CACHE/python/$PBS_RELEASE" pin; pin="$(pin_of "$name")"
+  if [[ -z "$pin" ]]; then
+    fetch "$PBS_OFFICIAL/$PBS_RELEASE/SHA256SUMS" "$dir/SHA256SUMS"
+    pin="$(awk -v f="$name" '$2==f {print $1}' "$dir/SHA256SUMS")"
+    [[ -n "$pin" ]] || die "$name not in SHA256SUMS of $PBS_RELEASE"
+  fi
+  fetch "$PBS_MIRROR/$PBS_RELEASE/$name" "$dir/$name" "$pin" \
+    "$PBS_OFFICIAL/$PBS_RELEASE/$name"
+  printf '%s' "$dir/$name"
+}
+
+# Node used to run npm on the build host (the official x64 build; never the foreign one).
+host_npm() {
+  if [[ "$(uname -m)" == "x86_64" ]]; then
+    local tarball; tarball="$(node_dist x64)"
+    local dir="$CACHE/host-node/node-v${NODE_VERSION}-linux-x64"
+    # node can exist before the rest of an interrupted extraction is complete.
+    if [[ ! -x "$dir/bin/node" || ! -f "$dir/.complete" ]]; then
+      rm -rf "$dir" || die "cannot clear incomplete host Node cache $dir"
+      mkdir -p "$CACHE/host-node" || die "cannot create host Node cache"
+      tar -xJf "$tarball" -C "$CACHE/host-node" || die "cannot extract host Node $tarball"
+      touch "$dir/.complete" || die "cannot mark host Node cache complete"
+    fi
+    printf '%s' "$dir/bin"
+  else
+    command -v npm >/dev/null || die "non-x86_64 host without npm on PATH"
+    dirname "$(command -v npm)"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# DSH npm tree
+# ---------------------------------------------------------------------------
+# npm flags for a host-side install into a prefix (no user/global config, no scripts).
+npm_prefix_flags() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc's npm_flags array
+  : > "$WORK/empty-user-npmrc"; : > "$WORK/empty-global-npmrc"
+  npm_flags=(
+    --prefix "$2" --cpu="$1" --os=linux --libc="$3"
+    --registry="$NPM_REGISTRY" --cache "$CACHE/npm"
+    --userconfig "$WORK/empty-user-npmrc" --globalconfig "$WORK/empty-global-npmrc"
+    --ignore-scripts --no-audit --no-fund --update-notifier=false --loglevel=warn
+  )
+}
+
+warm_npm_cache() {  # ARM32 uses its own pinned Termux Node lock and skips the 64-bit input store.
+  [[ "${RUNTIME_SKIP_INPUT_STORE:-0}" == 1 ]] && return 0
+  [[ -n "$RUNTIME_INPUT_STORE_URL" ]] || return 0
+  PATH="$1:$PATH" python3 -I "$HERE/lib/input_store.py" warm-npm \
+    --repo "$HERE/.." --lock "$2" --store "$CACHE/input-store" \
+    --mirror-base "$RUNTIME_INPUT_STORE_URL" --npm "$1/npm" --npm-cache "$CACHE/npm" \
+    --userconfig "$WORK/empty-user-npmrc" --globalconfig "$WORK/empty-global-npmrc" >&2 \
+    || die "cannot prepare retained npm inputs for $2"
+  npm_flags+=(--offline)
+}
+
+install_dsh() {  # $1 = npm cpu, $2 = prefix dir, $3 = libc
+  local cpu="$1" prefix="$2" libc="$3" bin; bin="$(host_npm)"
+  local lock_suffix=""; [[ "$libc" != android ]] || lock_suffix="-android"
+  local lockdir="$LOCKS/dsh-$DSH_VERSION$lock_suffix"
+  rm -rf "$prefix"; mkdir -p "$prefix"
+  local -a npm_flags=(); npm_prefix_flags "$cpu" "$prefix" "$libc"
+  if [[ -f "$lockdir/package-lock.json" ]]; then
+    log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
+    cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
+    warm_npm_cache "$bin" "$lockdir/package-lock.json"
+    PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
+  else
+    log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
+    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
+    # npm nests an exact-pinned dependency in every dependent when another version wins the top
+    # level (0.2.1-rc.2: 50 copies of zod 4.4.3, ~26k files). Pin those as direct dependencies so
+    # one copy is hoisted, then reinstall.
+    local -a hoist=(); mapfile -t hoist < <("${PY[@]}" hoist-candidates "$prefix/package-lock.json")
+    if [[ ${#hoist[@]} -gt 0 ]]; then
+      log "hoisting duplicated exact dependencies: ${hoist[*]}"
+      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${hoist[@]}"
+    fi
+    mkdir -p "$lockdir"
+    cp "$prefix/package.json" "$lockdir/"
+    cp "$prefix/package-lock.json" "$lockdir/package-lock.json.tmp"
+    mv "$lockdir/package-lock.json.tmp" "$lockdir/package-lock.json"
+  fi
+  local got; got="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \
+    "$prefix/node_modules/@deepseek-ai/dsh/package.json")"
+  [[ "$got" == "$DSH_VERSION" ]] || die "installed dsh $got != $DSH_VERSION"
+}
+
+# pnpm for the guest (zero dependencies, plain JS). Same lock-then-`npm ci` scheme as DSH; the
+# lock's integrity must equal PNPM_INTEGRITY, so a regenerated lock cannot swap the tarball.
+install_pnpm() {  # $1 = npm cpu, $2 = prefix dir
+  local cpu="$1" prefix="$2" bin; bin="$(host_npm)"
+  local lockdir="$LOCKS/pnpm-$PNPM_VERSION"
+  rm -rf "$prefix"; mkdir -p "$prefix"
+  local -a npm_flags=(); npm_prefix_flags "$cpu" "$prefix" glibc
+  if [[ -f "$lockdir/package-lock.json" ]]; then
+    log "npm ci pnpm@$PNPM_VERSION (pinned lock)"
+    cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
+    warm_npm_cache "$bin" "$lockdir/package-lock.json"
+    PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
+  else
+    log "npm install pnpm@$PNPM_VERSION — first run, will pin the lock"
+    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "pnpm@$PNPM_VERSION"
+    mkdir -p "$lockdir"
+    cp "$prefix/package.json" "$lockdir/"
+    cp "$prefix/package-lock.json" "$lockdir/package-lock.json.tmp"
+    mv "$lockdir/package-lock.json.tmp" "$lockdir/package-lock.json"
+  fi
+  python3 -I - "$prefix" "$PNPM_VERSION" "$PNPM_INTEGRITY" <<'PYEOF' || die "pnpm lock/install does not match the pins"
+import json, os, sys
+prefix, version, integrity = sys.argv[1:4]
+lock = json.load(open(os.path.join(prefix, "package-lock.json")))
+pkgs = lock["packages"]
+entry = pkgs.get("node_modules/pnpm", {})
+others = sorted(k for k in pkgs if k not in ("", "node_modules/pnpm"))
+got = json.load(open(os.path.join(prefix, "node_modules/pnpm/package.json")))["version"]
+ok = entry.get("version") == version and entry.get("integrity") == integrity and got == version and not others
+print("pnpm lock: version=%s integrity=%s... installed=%s extra=%s -> %s" % (
+    entry.get("version"), (entry.get("integrity") or "")[:20], got, others, "ok" if ok else "MISMATCH"), file=sys.stderr)
+sys.exit(0 if ok else 1)
+PYEOF
+}
+
+# ---------------------------------------------------------------------------
+# per-ABI build
+# ---------------------------------------------------------------------------
+build_abi() {
+  local abi="$1" ubuntu_arch node_arch npm_cpu termux_arch
+  case "$abi" in
+    arm64-v8a)   ubuntu_arch=arm64; node_arch=arm64;  npm_cpu=arm64; termux_arch=aarch64 ;;
+    armeabi-v7a) ubuntu_arch=armhf; node_arch=armv7l; npm_cpu=arm;   termux_arch=arm ;;
+    x86_64)      ubuntu_arch=amd64; node_arch=x64;    npm_cpu=x64;   termux_arch=x86_64 ;;
+    *) die "unknown ABI $abi (use armeabi-v7a, arm64-v8a or x86_64)" ;;
+  esac
+  log "=== $abi ==="
+  local work="$WORK/$abi" out="$OUT/$abi"
+  local assets="$out/assets/runtime" jni="$out/jniLibs/$abi"
+  mkdir -p "$work"
+  rm -rf "$out"; mkdir -p "$assets/licenses" "$jni"
+
+  local base node proot_deb talloc_deb shmem_deb proot_src node_version
+  base="$(ubuntu_base "$ubuntu_arch")"
+  node="$(node_dist "$node_arch")"
+  node_version="$NODE_VERSION"
+  if [[ "$node_arch" == armv7l ]]; then
+    node_version="${node##*/node-v}"
+    node_version="${node_version%-android-armv7l.tar.xz}"
+  fi
+  ubuntu_extra_debs "$ubuntu_arch" "$base" > "$work/extra-debs.txt"   # set -e aborts on any failure inside
+  local -a extra_debs=(); mapfile -t extra_debs < "$work/extra-debs.txt"
+  [[ ${#extra_debs[@]} -gt 0 ]] || die "Ubuntu package resolution produced nothing"
+  local python=''
+  [[ "$termux_arch" == arm ]] || python="$(python_dist "$termux_arch")"
+  proot_deb="$(termux_deb proot "$PROOT_VERSION" "$termux_arch")"
+  talloc_deb="$(termux_deb libtalloc "$TALLOC_VERSION" "$termux_arch")"
+  shmem_deb="$(termux_deb libandroid-shmem "$SHMEM_VERSION" "$termux_arch")"
+  proot_src="$CACHE/termux/proot-v$PROOT_VERSION.zip"
+  # codeload serves the tag archive directly; github.com/…/archive/… redirects and stalls.
+  fetch "https://codeload.github.com/termux/proot/zip/refs/tags/v$PROOT_VERSION" "$proot_src" "$(pin_of "proot-v$PROOT_VERSION.zip")"
+
+  # -- jniLibs: Termux binaries, renamed lib*.so so the package manager extracts them --
+  local debx="$work/debs"; rm -rf "$debx"
+  local d
+  for d in "$proot_deb" "$talloc_deb" "$shmem_deb"; do "${PY[@]}" deb-extract "$d" "$debx"; done
+  local tprefix="$debx/data/data/com.termux/files/usr"
+  cp "$tprefix/bin/proot"                  "$jni/libproot.so"
+  cp "$tprefix/libexec/proot/loader"       "$jni/libproot-loader.so"
+  cp "$tprefix/lib/libtalloc.so.$TALLOC_VERSION" "$jni/libtalloc.so"
+  cp "$tprefix/lib/libandroid-shmem.so"    "$jni/libandroid-shmem.so"
+  local orig_proot orig_talloc
+  orig_proot="$(sha256 "$jni/libproot.so")"; orig_talloc="$(sha256 "$jni/libtalloc.so")"
+  # APKs can only carry lib*.so, so the DT_NEEDED/SONAME "libtalloc.so.2" becomes "libtalloc.so".
+  "${PY[@]}" patch-dynstr "$jni/libproot.so" libtalloc.so.2 libtalloc.so >&2
+  "${PY[@]}" patch-dynstr "$jni/libtalloc.so" libtalloc.so.2 libtalloc.so >&2
+  chmod 0755 "$jni"/*.so
+  "${PY[@]}" elf-info "$jni"/*.so > "$work/jni-elf.json"
+
+  python3 -I - "$jni" "$work/jni-elf.json" "$work/jnilibs.json" <<PYEOF
+import hashlib, json, os, sys
+jni, elf, out = sys.argv[1:4]
+info = json.load(open(elf))
+src = {
+  "libproot.so": ("proot", "$PROOT_VERSION", "$(basename "$proot_deb")", "usr/bin/proot",
+                  "DT_NEEDED libtalloc.so.2 -> libtalloc.so", "$orig_proot"),
+  "libproot-loader.so": ("proot", "$PROOT_VERSION", "$(basename "$proot_deb")", "usr/libexec/proot/loader", None, None),
+  "libtalloc.so": ("libtalloc", "$TALLOC_VERSION", "$(basename "$talloc_deb")", "usr/lib/libtalloc.so.$TALLOC_VERSION",
+                   "DT_SONAME libtalloc.so.2 -> libtalloc.so", "$orig_talloc"),
+  "libandroid-shmem.so": ("libandroid-shmem", "$SHMEM_VERSION", "$(basename "$shmem_deb")", "usr/lib/libandroid-shmem.so", None, None),
+}
+res = {}
+for name, (pkg, ver, deb, inner, patch, orig) in src.items():
+    path = os.path.join(jni, name)
+    e = info[path]
+    res[name] = {
+        "sha256": hashlib.sha256(open(path, "rb").read()).hexdigest(),
+        "bytes": os.path.getsize(path),
+        "source": "termux-main %s %s (%s:/data/data/com.termux/files/%s)" % (pkg, ver, deb, inner),
+        "patch": patch, "originalSha256": orig,
+        "class": e["class"], "machine": e["machine"], "type": e["type"], "needed": e.get("needed"),
+        "soname": e.get("soname"), "minLoadAlign": e["minLoadAlign"],
+    }
+json.dump(res, open(out, "w"), indent=2)
+PYEOF
+  # licenses for the native bits
+  python3 -I - "$proot_src" "$assets/licenses/proot-COPYING.txt" <<'PYEOF'
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+name = next(n for n in z.namelist() if n.endswith("/COPYING") and n.count("/") == 1)
+open(sys.argv[2], "wb").write(z.read(name))
+PYEOF
+  cp "$debx/data/data/com.termux/files/usr/share/doc/libandroid-shmem/copyright" "$assets/licenses/libandroid-shmem-copyright.txt"
+  sed -n '1,/\*\//p' "$tprefix/include/talloc.h" > "$assets/licenses/libtalloc-notice.txt"
+
+  # -- DSH --
+  local prefix="$work/dsh-prefix"
+  local npm_libc=glibc; [[ "$abi" != armeabi-v7a ]] || npm_libc=android
+  install_dsh "$npm_cpu" "$prefix" "$npm_libc"
+  log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
+  "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches-arm32" \
+    --out "$work/dsh-patches.json" >&2
+  local bridge="$HERE/bridge/dsh-go-bridge"
+  local bridge_version
+  bridge_version="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$bridge/package.json")"
+  local pnpm_prefix="$work/pnpm-prefix"
+  install_pnpm "$npm_cpu" "$pnpm_prefix"
+
+  # -- runtimeVersion: hash of every input + the recipe itself --
+  local dsh_lock_suffix=""; [[ "$npm_libc" != android ]] || dsh_lock_suffix="-android"
+  local lockfile="$LOCKS/dsh-$DSH_VERSION$dsh_lock_suffix/package-lock.json"
+  local pnpm_lockfile="$LOCKS/pnpm-$PNPM_VERSION/package-lock.json"
+  local inputs_sha
+  inputs_sha="$( {
+      echo "$RUNTIME_REVISION $abi $DSH_VERSION $node_version $PNPM_VERSION $UBUNTU_VERSION $COMPRESS $XZ_PRESET $XZ_THREADS $PRUNE_DEV_METADATA $SOURCE_DATE_EPOCH $RUNTIME_LAYERS $TERMUX_ARM_NODE_VERSION"
+      sha256 "$base"; sha256 "$node"; [[ -z "$python" ]] || sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
+      sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
+      sha256 "$lockfile"; sha256 "$pnpm_lockfile"; sha256 "$HERE/build-runtime-arm32.sh"; sha256 "$HERE/lib/rtbuild-arm32.py"
+      (cd "$HERE" && find patches-arm32 bridge boot direct session-deletion -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+    } | sha256sum | cut -c1-12 )"
+  local runtime_version="${RUNTIME_REVISION}-dsh${DSH_VERSION}-node${node_version}-ubuntu${UBUNTU_VERSION}-${inputs_sha}"
+  local runtime_info
+  runtime_info="$(printf '{"runtimeVersion":"%s","abi":"%s","dshVersion":"%s","nodeVersion":"%s","pnpmVersion":"%s","ubuntuVersion":"%s","prootVersion":"%s","dshPatches":%s,"dshGoBridge":"%s"}' \
+    "$runtime_version" "$abi" "$DSH_VERSION" "$node_version" "$PNPM_VERSION" "$UBUNTU_VERSION" "$PROOT_VERSION" \
+    "$(cat "$work/dsh-patches.json")" "$bridge_version")"
+
+  # -- rootfs archive --
+  local -a archives=("$assets/rootfs-$abi.tar.$COMPRESS")
+  local -a archive_args=(--out "${archives[0]}")
+  if [[ "$RUNTIME_LAYERS" == 1 ]]; then
+    archives=("$assets/base-$abi.tar.$COMPRESS" "$assets/engine-$abi.tar.$COMPRESS")
+    archive_args=(--base-out "${archives[0]}" --engine-out "${archives[1]}" --base-cache "$BASE_LAYER_CACHE")
+  fi
+  local -a prune=(); [[ "$PRUNE_DEV_METADATA" == 1 ]] && prune=(--prune-dev-metadata)
+  local -a python_args=(); [[ -z "$python" ]] || python_args=(--python "$python")
+  log "assembling rootfs ($COMPRESS)"
+  "${PY[@]}" assemble --abi "$abi" --base "$base" --node "$node" --dsh-prefix "$prefix" --pnpm-prefix "$pnpm_prefix" \
+    "${archive_args[@]}" --report "$out/build-report.json" --runtime-info "$runtime_info" \
+    --compress "$COMPRESS" --xz-preset "$XZ_PRESET" --threads "$XZ_THREADS" --epoch "$SOURCE_DATE_EPOCH" "${prune[@]}" \
+    "${extra_debs[@]/#/--deb=}" "${python_args[@]}" --bridge "$bridge"
+
+  local versions
+  versions="$(printf '{"runtimeVersion":"%s","dshVersion":"%s","nodeVersion":"%s","pnpmVersion":"%s","ubuntuVersion":"%s","prootVersion":"%s","tallocVersion":"%s","androidShmemVersion":"%s","dshPatches":%s,"dshGoBridge":"%s","build":{"inputsSha256_12":"%s","ubuntuBaseSha256":"%s","nodeSha256":"%s","dshLockSha256":"%s","pnpmIntegrity":"%s","sourceDateEpoch":%s}}' \
+    "$runtime_version" "$DSH_VERSION" "$node_version" "$PNPM_VERSION" "$UBUNTU_VERSION" "$PROOT_VERSION" "$TALLOC_VERSION" "$SHMEM_VERSION" \
+    "$(cat "$work/dsh-patches.json")" "$bridge_version" \
+    "$inputs_sha" "$(sha256 "$base")" "$(sha256 "$node")" "$(sha256 "$lockfile")" "$PNPM_INTEGRITY" "$SOURCE_DATE_EPOCH")"
+  "${PY[@]}" manifest --abi "$abi" --report "$out/build-report.json" --jnilibs "$work/jnilibs.json" \
+    --versions "$versions" --out "$assets/manifest.json" >&2
+
+  # -- verification: every jniLib and every ELF in the rootfs must match the ABI --
+  python3 -I - "$work/jnilibs.json" "$out/build-report.json" "$abi" <<'PYEOF' || die "ABI verification failed for $abi"
+import json, sys
+jni = json.load(open(sys.argv[1]))
+report = json.load(open(sys.argv[2]))
+expected = {
+    "arm64-v8a": ("aarch64", 64),
+    "armeabi-v7a": ("arm", 32),
+    "x86_64": ("x86-64", 64),
+}[sys.argv[3]]
+machine, bits = expected
+bad_jni = [(name, item.get("class"), item.get("machine")) for name, item in jni.items()
+           if item.get("class") != bits or item.get("machine") != machine]
+bad_root = [(item["path"], item.get("class"), item.get("machine")) for item in report["elf"]
+            if item.get("class") != bits or item.get("machine") != machine]
+print("JNI ELF objects: %d, wrong ABI/class: %d; rootfs ELF objects: %d, wrong ABI/class: %d; warnings: %d" %
+      (len(jni), len(bad_jni), len(report["elf"]), len(bad_root), len(report["warnings"])), file=sys.stderr)
+for item in bad_jni:
+    print("wrong JNI ELF: %s class=%s machine=%s" % item, file=sys.stderr)
+for item in bad_root:
+    print("wrong rootfs ELF: %s class=%s machine=%s" % item, file=sys.stderr)
+sys.exit(1 if bad_jni or bad_root else 0)
+PYEOF
+  log "$abi done: $(du -ch "${archives[@]}" | tail -n1 | cut -f1) archive total, version $runtime_version"
+}
+
+write_index() {
+  python3 -I - "$OUT" <<'PYEOF'
+import json, os, sys
+out = sys.argv[1]
+index = {"schema": 1, "abis": {}}
+for abi in ("x86_64", "arm64-v8a", "armeabi-v7a"):
+    p = os.path.join(out, abi, "assets", "runtime", "manifest.json")
+    if not os.path.isfile(p):
+        continue
+    m = json.load(open(p))
+    index["abis"][abi] = {k: m.get(k) for k in (  # .get: another ABI may still hold an older build
+        "runtimeVersion", "rootfs", "rootfsSha256", "rootfsBytes", "uncompressedBytes", "entries",
+        "dshVersion", "nodeVersion", "pnpmVersion", "ubuntuVersion", "prootVersion")}
+    if m.get("schema", 1) == 2:
+        index["schema"] = 2
+        for key in ("rootfs", "rootfsSha256"):
+            del index["abis"][abi][key]
+        index["abis"][abi].update({key: m[key] for key in ("schema", "layers", "baseCompatibility", "upgrade")})
+    index["abis"][abi]["jniLibs"] = {n: {"sha256": v["sha256"], "bytes": v["bytes"]} for n, v in m["jniLibs"].items()}
+json.dump(index, open(os.path.join(out, "manifest.json"), "w"), indent=2)
+print("wrote " + os.path.join(out, "manifest.json"))
+PYEOF
+}
+
+main() {
+  local -a abis=("$@")
+  [[ ${#abis[@]} -gt 0 ]] || abis=(armeabi-v7a)
+  [[ "${abis[*]}" == "armeabi-v7a" ]] || die "build-runtime-arm32.sh only builds armeabi-v7a"
+  export RUNTIME_SKIP_INPUT_STORE=1
+  export RUNTIME_LAYERS=0
+  mkdir -p "$CACHE" "$WORK" "$OUT"
+  local abi
+  for abi in "${abis[@]}"; do build_abi "$abi"; done
+  write_index
+}
+
+main "$@"
