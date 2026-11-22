@@ -138,7 +138,8 @@ jobs:
           echo "APK badging metadata:"
           cat badging.txt
           grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging.txt || { echo "包名检查失败"; exit 1; }
-          grep -q "^sdkVersion:'26'" badging.txt || { echo "最低 SDK 检查失败"; exit 1; }
+          "$AAPT" dump xmltree "$APK" --file AndroidManifest.xml > manifest.txt
+          grep -Eq 'android:minSdkVersion.*0x1a([[:space:]]|$)' manifest.txt || { cat manifest.txt; echo "最低 SDK 检查失败（要求 API 26 / Android 8.0+）"; exit 1; }
           grep -q "^native-code:.*'arm64-v8a'" badging.txt || { echo "arm64 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
@@ -244,7 +245,8 @@ jobs:
           echo "APK badging metadata:"
           cat badging32.txt
           grep -q "^package: name='io.github.ccch1mneyyy.dsh_app'" badging32.txt || { echo "包名检查失败"; exit 1; }
-          grep -q "^sdkVersion:'26'" badging32.txt || { echo "最低 SDK 检查失败"; exit 1; }
+          "$AAPT" dump xmltree "$APK" --file AndroidManifest.xml > manifest32.txt
+          grep -Eq 'android:minSdkVersion.*0x1a([[:space:]]|$)' manifest32.txt || { cat manifest32.txt; echo "最低 SDK 检查失败（要求 API 26 / Android 8.0+）"; exit 1; }
           grep -q "^native-code:.*'armeabi-v7a'" badging32.txt || { echo "arm32 APK ABI 不匹配"; exit 1; }
 
       - name: 清理密钥
