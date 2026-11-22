@@ -36,7 +36,7 @@ WORK="$HERE/.work"
 OUT="${RUNTIME_OUT:-$HERE/out}"   # the app build reads runtime/out; RUNTIME_OUT stages a build elsewhere
 RUNTIME_LAYERS="${RUNTIME_LAYERS:-0}"  # opt in until Android/host validation completes
 BASE_LAYER_CACHE="${BASE_LAYER_CACHE:-$CACHE/base-layers}"
-LOCKS="$HERE/locks"
+LOCKS="$HERE/locks-arm32"
 PY=(python3 -I "$HERE/lib/rtbuild-arm32.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
