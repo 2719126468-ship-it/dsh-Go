@@ -216,7 +216,7 @@ jobs:
           echo '--- bundled index warning-repair path ---'
           grep -n -A55 -B12 'warnings.length > 0' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 95 || true
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
-          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --target android --record
           cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
