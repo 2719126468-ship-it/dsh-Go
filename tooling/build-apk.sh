@@ -18,11 +18,15 @@
 #   --build-name X.Y.Z               version name instead of app/pubspec.yaml's
 #   --keep-daemon                    leave the Gradle daemon running afterwards
 #   --beta                           embed the beta channel token (internal builds only)
+#   --no-companion                   omit the credited companion pack
+#   --no-star                         omit the public-release star prompt
+#   --side                            side-load build; omit the public-release star prompt
 #   --dry-run                        print what would run
 #
 # The version name comes from app/pubspec.yaml; its `+N` is only a placeholder.
-# Public release builds ask GitHub only. `--beta` embeds the beta channel token
-# (lib/update/update_config.dart) for internal builds; the token file is
+# Public release builds include the star prompt and credited companion pack.
+# `--no-star` and `--no-companion` opt out explicitly. `--beta` embeds the beta
+# channel token (lib/update/update_config.dart) for internal builds; the token file is
 # ~/keys/dshgo-beta-channel.token (mode 600), DSH_BETA_TOKEN_FILE points
 # elsewhere. Never printed, never part of a public release.
 # This script takes no machine locks; callers add their own.
@@ -35,7 +39,7 @@ OUT="$APP/build/app/outputs/flutter-apk"
 usage() { sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 die() { echo "build-apk: $*" >&2; exit 1; }
 
-flavor=arm64 mode=release target='' code='' name='' dry=0 keep_daemon=0 want_beta=0
+flavor=arm64 mode=release target='' code='' name='' dry=0 keep_daemon=0 want_beta=0 no_companion=0 no_star=0 side=0
 extra=()
 while (($#)); do
   case "$1" in
@@ -50,6 +54,9 @@ while (($#)); do
     --build-name=*) name=${1#*=}; shift ;;
     --keep-daemon) keep_daemon=1; shift ;;
     --beta) want_beta=1; shift ;;
+    --no-companion) no_companion=1; shift ;;
+    --no-star) no_star=1; shift ;;
+    --side) side=1; shift ;;
     --dry-run) dry=1; shift ;;
     -h | --help) usage; exit 0 ;;
     --) shift; extra=("$@"); break ;;
@@ -62,7 +69,7 @@ case "$flavor" in
   all) flavors=(arm64 arm32 x64) ;;
   # 没有运行时的 flavor：本地引擎不出现，只做远端主机的客户端。
   portable) flavors=(arm32) ;;
-  *) die "flavor is arm64, x64 or all: $flavor" ;;
+  *) die "flavor is arm64, arm32, x64, portable or all: $flavor" ;;
 esac
 for arg in "${extra[@]}"; do
   case "$arg" in
@@ -120,6 +127,9 @@ for f in "${flavors[@]}"; do
     --build-name "$name" --build-number "$code" "--dart-define=DSH_APP_VERSION=$name+$code")
   [[ -n $target ]] && cmd+=(-t "$target")
   ((beta)) && cmd+=("--dart-define-from-file=$beta_json")
+  if [[ $mode == release && $beta == 0 && $side == 0 && $no_star == 0 ]]; then
+    cmd+=(--dart-define-from-file=../tooling/star-prompt-on.json)
+  fi
   cmd+=("${extra[@]}")
   commands+=("$(printf '%q ' "${cmd[@]}")")
 done
@@ -139,15 +149,27 @@ runtime_abi_of() {
   esac
 }
 
-# Check every selected local-engine flavor before starting any build or writing build config.
+# Validate every selected local-engine bundle before starting any APK build.
 # The portable ARM32 flavor intentionally skips the runtime and remains remote-only.
 if [[ $mode == release ]]; then
+  runtime_flavors=()
   for f in "${flavors[@]}"; do
-    flavor_has_runtime "$f" || continue
-    abi="$(runtime_abi_of "$f")"
-    [[ -s "$ROOT/runtime/out/$abi/assets/runtime/manifest.json" ]] ||
-      die "$f: runtime bundle missing; run bash runtime/build-runtime.sh $abi"
+    flavor_has_runtime "$f" && runtime_flavors+=("$f")
   done
+  if ((${#runtime_flavors[@]})); then
+    python3 -I "$ROOT/tooling/check_runtime_bundle.py" "${runtime_flavors[@]}" ||
+      die "runtime bundle integrity check failed"
+  fi
+fi
+
+companion=0
+if [[ $mode == release && $no_companion == 0 ]]; then
+  companion_src=${DSH_COMPANION_PACK:-}
+  [[ -n $companion_src && -s $companion_src ]] ||
+    die "companion pack source missing; set DSH_COMPANION_PACK or pass --no-companion"
+  python3 -I "$ROOT/tooling/companion_pack.py" place "$companion_src" ||
+    die "companion pack could not be placed"
+  companion=1
 fi
 
 # Toolchain: use what's on PATH; the gitignored tooling/env.sh is the fallback.
@@ -196,6 +218,12 @@ for i in "${!flavors[@]}"; do
   (cd "$APP" && eval "${commands[$i]}")
   apk="$OUT/app-$f-$mode.apk"
   [[ -f $apk ]] || die "$f: no APK at $apk"
+  python3 -I "$ROOT/tooling/check_apk_jni.py" "$apk" ||
+    die "$f: APK JNI classes missing; check app/proguard-rules.pro"
+  if ((companion)); then
+    python3 -I "$ROOT/tooling/companion_pack.py" check "$apk" ||
+      die "$f: companion pack verification failed"
+  fi
   if [[ -n $aapt2 ]]; then
     badge=$("$aapt2" dump badging "$apk" 2>/dev/null | sed -n '/^package:/p' || true)
     [[ $badge == *"versionCode='$code'"* && $badge == *"versionName='$name'"* ]] ||
