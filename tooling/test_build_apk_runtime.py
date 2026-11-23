@@ -281,7 +281,7 @@ apk.write_bytes(b'fake APK: shell flow only')
         result = self.run_script("--dry-run", "-f", "all")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls(), [])
-        self.assertEqual(result.stdout.count("flutter build apk"), 2)
+        self.assertEqual(result.stdout.count("flutter build apk"), 3)
 
     def test_public_release_builds_ask_for_a_star(self):
         star = "--dart-define-from-file=../tooling/star-prompt-on.json"
