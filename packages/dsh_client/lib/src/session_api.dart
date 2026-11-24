@@ -17,6 +17,7 @@ import 'models.dart';
 import 'mux.dart';
 import 'rpc.dart';
 import 'rpc_envelope.dart';
+import 'workspace_upload.dart';
 
 /// `queue` waits for the next turn; `steer` injects into the running turn's
 /// next step.
@@ -296,6 +297,27 @@ class DshClient {
   /// tunnels serve a fixed allow-list; `fileUploads/upload` is not on it).
   bool supportsEndpoint(String endpoint) => carrier.allowsEndpoint(endpoint);
 
+  /// Receipt staging or the current connection's workspace upload protocol.
+  bool get supportsFileUpload =>
+      supportsEndpoint('fileUploads/upload') ||
+      (carrier is WorkspaceUploadCarrier && (carrier as WorkspaceUploadCarrier).supportsWorkspaceUpload);
+
+  /// The live connection carries the workspace upload protocol
+  /// (ds-harness-remote `workspace.upload.v1`): [uploadWorkspaceFile] works.
+  bool get supportsWorkspaceUpload =>
+      carrier is WorkspaceUploadCarrier && (carrier as WorkspaceUploadCarrier).supportsWorkspaceUpload;
+
+  /// Publishes a file into this session's workspace, without a receipt.
+  /// The returned relative path must be included in the prompt instead.
+  Future<WorkspaceUploadedFile> uploadWorkspaceFile(String sessionId, List<int> bytes, {required String name}) {
+    final transport = carrier is WorkspaceUploadCarrier ? carrier as WorkspaceUploadCarrier : null;
+    if (transport == null || !transport.supportsWorkspaceUpload) {
+      throw const DshRemoteException('WORKSPACE_UPLOAD_UNSUPPORTED', 'This Host does not support workspace uploads.');
+    }
+    return transport.uploadWorkspaceFile(sessionId, bytes, name: name);
+  }
+
+
   /// All `$events` items (session added/status/error, approvals, ...).
   Stream<HostEvent> get hostEvents => mux.hostEvents;
 
@@ -525,16 +547,55 @@ class DshClient {
     return FileReceipt(receiptId, FileAttachment.fromJson(value['file']));
   }
 
-  /// `session/attachment`: bytes of an image referenced by the session log.
-  Future<({ImageAttachment attachment, Uint8List bytes})> attachment(String sessionId, String attachmentId) async {
-    final value = asMapOrEmpty(
-      await rpc.call('session/attachment', {
-        'request': {'sessionId': sessionId, 'attachmentId': attachmentId},
-      }),
-    );
+  /// new request before dispatch; only that explicit validation failure falls back.
+  Future<({ImageAttachment attachment, Uint8List bytes})> attachment(
+    String sessionId,
+    ImageAttachment reference,
+  ) async {
+    final generation = mux.generation;
+    if (generation == null || !identical(generation, _attachmentReferenceGeneration)) {
+      _attachmentReferenceSupported = null;
+      _attachmentReferenceGeneration = generation;
+    }
+    final knownSupport = _attachmentReferenceSupported;
+    void remember(bool supported) {
+      // HTTP-only/disconnected reads have no Host-generation identity. A late
+      // response from a retired connection must not seed the next generation.
+      if (generation != null &&
+          identical(mux.generation, generation) &&
+          identical(_attachmentReferenceGeneration, generation)) {
+        _attachmentReferenceSupported = supported;
+      }
+    }
+
+    Future<Object?> read(bool fullReference) => rpc.call('session/attachment', {
+      'request': {
+        'sessionId': sessionId,
+        if (fullReference) 'attachment': reference.toJson() else 'attachmentId': reference.attachmentId,
+      },
+    });
+    Object? response;
+    if (knownSupport == false) {
+      response = await read(false);
+    } else {
+      try {
+        response = await read(true);
+        remember(true);
+      } on DshRemoteException catch (error) {
+        if (knownSupport == true ||
+            !const {'gateway/arguments-invalid', 'gateway/input-invalid'}.contains(error.code)) {
+          rethrow;
+        }
+        response = await read(false);
+        remember(false);
+      }
+    }
+    final value = asMapOrEmpty(response);
+    final attachment = ImageAttachment.fromJson(value['attachment']);
+    final data = asString(value['data']) ?? '';
     return (
-      attachment: ImageAttachment.fromJson(value['attachment']),
-      bytes: base64Decode(asString(value['data']) ?? ''),
+      attachment: attachment,
+      bytes: data.length > 256 * 1024 ? await _decodeLargeAttachment(data) : base64Decode(data),
     );
   }
 
