@@ -32,10 +32,11 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      app: ${{ github.event_name != 'pull_request' || steps.filter.outputs.app == 'true' }}
-      packages: ${{ github.event_name != 'pull_request' || steps.filter.outputs.packages == 'true' }}
-      runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.runtime == 'true' }}
-      codex: ${{ github.event_name != 'pull_request' || steps.filter.outputs.codex == 'true' }}
+      # GitHub's PR-files API stops at 3,000 entries; large merge PRs must run every area.
+      app: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.app == 'true' }}
+      packages: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.packages == 'true' }}
+      runtime: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.runtime == 'true' }}
+      codex: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.codex == 'true' }}
     steps:
       - id: filter
         if: github.event_name == 'pull_request'
