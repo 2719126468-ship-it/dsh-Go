@@ -196,6 +196,13 @@ jobs:
             ${{ runner.temp }}/dsh-locks/dsh-*/package-lock.json
           if-no-files-found: error
           retention-days: 3
+      - name: Record OHOS DSH patch pins from a clean prefix
+        run: |
+          version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
+          prefix="$RUNNER_TEMP/dsh-ohos"
+          mkdir "$prefix"
+          npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund --save-exact "@deepseek-ai/dsh@$version"
+          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --target ohos --record
       - name: Install a throwaway patched DSH
         run: |
           version=$(sed -nE 's/^DSH_VERSION="\$\{DSH_VERSION:-(.+)\}"$/\1/p' runtime/build-runtime.sh)
