@@ -854,8 +854,11 @@ class DshClient {
 
   /// `commands/execute` (slash commands as typed in the composer).
   Future<CommandResult> executeCommand(String sessionId, String line) async {
+    // /compact can legitimately outlive the normal 120-second request deadline.
+    // Keep the exception exact so unrelated commands retain the normal bound.
+    final timeout = line.trim() == '/compact' ? const Duration(minutes: 30) : null;
     final value = asMap(
-      await rpc.call('commands/execute', {'agentId': sessionId, 'line': line, 'submittedAttachments': <Object?>[]}),
+      await rpc.call('commands/execute', {'agentId': sessionId, 'line': line, 'submittedAttachments': <Object?>[]}, timeout),
     );
     final result = asMapOrEmpty(value?['result']);
     return CommandResult(asString(value?['commandId']), result['kind'] == 'success', asString(result['text']));

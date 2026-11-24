@@ -81,7 +81,7 @@ extension DshFilesApi on DshClient {
   /// [maxBytes] refuses larger files up front (`workspace-file/too-large`)
   /// when the size is known. [onProgress] gets (received, total?).
   /// Failures are [DshRemoteException]s with `workspace-file/*` codes
-  /// (`not-found`, `not-allowed`, `too-large`, `unsupported`), or the
+  /// (`not-found`, `not-allowed`, `too-large`, `unsupported`, `changed`), or the
   /// carrier's transport errors.
   Future<int> readFile(
     String sessionId,
@@ -109,7 +109,7 @@ extension DshFilesApi on DshClient {
     }
 
     try {
-      return await _readWindows(sessionId, path, sink, onProgress, maxBytes, total);
+      return await _readWindows(sessionId, path, sink, onProgress, maxBytes, total, stat.version.isEmpty ? null : stat.version);
     } on DshProtocolException {
       // An HTTP answer this client cannot decode: the plain file route, if
       // nothing has been handed out yet.
@@ -152,8 +152,10 @@ extension DshFilesApi on DshClient {
     void Function(int received, int? total)? onProgress,
     int? maxBytes,
     int? total,
+    String? expectedVersion,
   ) async {
     var offset = 0;
+    var version = expectedVersion;
     while (true) {
       final value = asMapOrEmpty(
         await rpc.call('workspaceFiles/readBytes', {
@@ -164,6 +166,17 @@ extension DshFilesApi on DshClient {
           },
         }),
       );
+      final pageVersion = asString(value['version']);
+      if (pageVersion != null && pageVersion.isNotEmpty) {
+        if (version != null && pageVersion != version) {
+          throw DshRemoteException(
+            'workspace-file/changed',
+            '"$path" changed while it was being read',
+            {'path': path},
+          );
+        }
+        version ??= pageVersion;
+      }
       final data = _bytesOf(value['data']);
       offset += data.length;
       if (maxBytes != null && offset > maxBytes) {
