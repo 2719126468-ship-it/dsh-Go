@@ -252,9 +252,11 @@ jobs:
             source="$RUNNER_TEMP/dsh/node_modules/@deepseek-ai/$package/lib/index.js"
             if [[ -f "$source" ]]; then cp "$source" "$debug/$package-index.js"; fi
           done
-          pi_ai="$RUNNER_TEMP/dsh/node_modules/@earendil-works/pi-ai/dist/api"
-          for file in anthropic-messages.js openai-completions.js openai-responses.js; do
-            if [[ -f "$pi_ai/$file" ]]; then cp "$pi_ai/$file" "$debug/pi-ai-$file"; fi
+          for prefix in "$RUNNER_TEMP/dsh-ohos" "$RUNNER_TEMP/dsh"; do
+            pi_ai="$prefix/node_modules/@earendil-works/pi-ai/dist/api"
+            for file in anthropic-messages.js openai-completions.js openai-responses.js; do
+              if [[ -f "$pi_ai/$file" ]]; then cp "$pi_ai/$file" "$debug/pi-ai-$file"; fi
+            done
           done
           cp runtime/patches/*.diff "$debug/" || true
           cp runtime/patches/pins.json "$debug/"
