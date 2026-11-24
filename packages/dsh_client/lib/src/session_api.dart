@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -547,6 +548,11 @@ class DshClient {
     return FileReceipt(receiptId, FileAttachment.fromJson(value['file']));
   }
 
+  /// new request before dispatch; only that explicit validation failure falls back.
+  bool? _attachmentReferenceSupported;
+  MuxGeneration? _attachmentReferenceGeneration;
+
+  /// Read a durable image using its real log reference. Legacy Hosts reject the
   /// new request before dispatch; only that explicit validation failure falls back.
   Future<({ImageAttachment attachment, Uint8List bytes})> attachment(
     String sessionId,
@@ -1301,3 +1307,5 @@ class _SessionWatch {
     return out;
   }
 }
+
+Future<Uint8List> _decodeLargeAttachment(String data) => Isolate.run(() => base64Decode(data));
