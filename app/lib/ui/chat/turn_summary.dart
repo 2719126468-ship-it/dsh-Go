@@ -1,6 +1,7 @@
 // Tool-group summaries and per-turn file changes.
 
 import 'package:dsh_client/dsh_client.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../l10n/l10n.dart';
 import 'render/diff_view.dart';
@@ -93,7 +94,7 @@ ToolSummary summarizeTools(Iterable<ToolChatItem> tools) {
     total++;
     final view = _cachedView(tool);
     if (view.sandboxBlocked) continue;
-    if (tool.status == ToolStatus.failed) failed++;
+    if (tool.status == ToolStatus.failed && (view.phoneResult?.isFault ?? true)) failed++;
     final fileKey = _normalisePath(view.path) ?? '#${tool.callId}';
     // "改了 / 读了" claim it happened: a failed, refused or abandoned file
     // call shows up in the failure count (or nowhere), not as a file.
@@ -273,6 +274,20 @@ List<FileChange> fileChangesOf(Iterable<ToolChatItem> tools) {
 final _changeCache = <String, ({List<ToolChatItem> tools, List<FileChange> changes})>{};
 const _maxCachedTurns = 200;
 
+/// 整个会话改了哪些文件(会话详情的页头和改动页)。会话还在跑时每多一个工具
+/// 就是一组新输入,进上面按轮的缓存会一份份留下整会话的旧结果,所以只留最新一份。
+List<FileChange> sessionChangesOf(Iterable<ToolChatItem> tools) {
+  final list = tools.where((tool) => tool.status == ToolStatus.succeeded).toList();
+  final language = AppLocale.current.languageCode;
+  final hit = _sessionChanges;
+  if (hit != null && hit.language == language && _sameTools(hit.tools, list)) return hit.changes;
+  final changes = _computeChanges(list);
+  _sessionChanges = (language: language, tools: list, changes: changes);
+  return changes;
+}
+
+({String language, List<ToolChatItem> tools, List<FileChange> changes})? _sessionChanges;
+
 bool _sameTools(List<ToolChatItem> a, List<ToolChatItem> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
@@ -298,7 +313,7 @@ List<FileChange> _computeChanges(List<ToolChatItem> tools) {
     final path = _normalisePath(view.path);
     if (path == null) continue;
     if (kind == ToolKind.read) {
-      if (view.readWindow case final window?) {
+      if (view.readFresh() case final window?) {
         known[path] = _KnownLines(window.firstLine, window.code.split('\n'));
       }
       continue;
@@ -461,8 +476,32 @@ List<TurnChanges> turnChanges(List<ChatItem> items, {bool running = false}) {
 
 List<DiffLine> _allAdded(String text) {
   if (text.isEmpty) return const [];
-  final body = text.endsWith('\n') ? text.substring(0, text.length - 1) : text;
-  return [for (final line in body.split('\n')) DiffLine(DiffLineKind.add, '+$line')];
+  final lines = <DiffLine>[_AddedLine(text, 0)];
+  for (var end = text.indexOf('\n'); end >= 0 && end + 1 < text.length; end = text.indexOf('\n', end + 1)) {
+    lines.add(_AddedLine(text, end + 1));
+  }
+  return lines;
+}
+
+// 改动卡只数增删行。第一次查看正文时才生成带加号的行，并放开对整篇原文的引用。
+class _AddedLine implements DiffLine {
+  _AddedLine(this._text, int start) : _start = start;
+  String _text;
+  int? _start;
+
+  @override
+  DiffLineKind get kind => DiffLineKind.add;
+
+  @override
+  String get text {
+    final start = _start;
+    if (start != null) {
+      final end = _text.indexOf('\n', start);
+      _text = '+${_text.substring(start, end < 0 ? null : end)}';
+      _start = null;
+    }
+    return _text;
+  }
 }
 
 class _FileAccumulator {
@@ -533,6 +572,20 @@ String? _normalisePath(String? path) {
 // 视图,用 [ToolView.matches] 校验,diff 每次调用只算一遍。
 final _views = <String, ToolView>{};
 const _maxCachedViews = 600;
+
+/// Drops what the caches here hold for [callIds]: one conversation's calls,
+/// when its chat closes. They are global and keep the calls' results (and
+/// diffs) alive until 600 calls / 200 turns of other chats push them out.
+void forgetToolSummaries(Set<String> callIds) {
+  if (callIds.isEmpty) return;
+  _views.removeWhere((callId, _) => callIds.contains(callId));
+  _changeCache.removeWhere((_, entry) => entry.tools.any((tool) => callIds.contains(tool.callId)));
+  if (_sessionChanges?.tools.any((tool) => callIds.contains(tool.callId)) ?? false) _sessionChanges = null;
+}
+
+/// How many calls and turns the caches here hold.
+@visibleForTesting
+({int views, int turns}) get debugToolSummaryCaches => (views: _views.length, turns: _changeCache.length);
 
 ToolView _cachedView(ToolChatItem tool) {
   final previous = _views.remove(tool.callId);
