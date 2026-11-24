@@ -873,9 +873,12 @@ class DshClient {
           break;
         }
         if (stopped) break;
-        final stream = mux.open(endpoint, args);
-        current = stream;
         try {
+          // Closing the mux can race the continuation after ready(). Keep open()
+          // inside the same error boundary as the stream so close is delivered
+          // through this watch instead of escaping its unawaited onListen task.
+          final stream = mux.open(endpoint, args);
+          current = stream;
           await for (final item in stream.items) {
             if (stopped) break;
             controller.add(parse(item));
