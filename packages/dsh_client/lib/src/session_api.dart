@@ -898,19 +898,25 @@ class DshClient {
   Stream<WorkspaceUpdate> watchWorkspaces() => _resilient('workspace/follow', const {}, WorkspaceUpdate.fromJson);
 
   /// `session/control`, reopened after reconnects (baseline first).
-  Stream<SessionControlUpdate> watchSessionControl() => _resilient('session/control', const {}, (value) {
-    final map = asMapOrEmpty(value);
-    if (map['type'] == 'baseline') {
-      final projections = asMapOrEmpty(asMap(map['value'])?['projections']);
-      return SessionControlBaseline(projections.map((id, v) => MapEntry(id, SessionProjections.fromJson(v))));
-    }
-    return SessionControlProjection(
-      asString(map['sessionId']) ?? '',
-      asString(map['key']) ?? '',
-      map['value'],
-      asInt(map['seq']) ?? -1,
-    );
-  });
+  Stream<SessionControlUpdate> watchSessionControl() =>
+      _resilient('session/control', const {}, (value) => value).expand((value) {
+        final map = asMapOrEmpty(value);
+        if (map['type'] == 'baseline') {
+          final projections = asMapOrEmpty(asMap(map['value'])?['projections']);
+          return [SessionControlBaseline(projections.map((id, v) => MapEntry(id, SessionProjections.fromJson(v))))];
+        }
+        final sessionId = asString(map['sessionId']) ?? '';
+        final seq = asInt(map['seq']) ?? -1;
+        // 0.2.2 batches all keys changed by one committed event. Preserve the
+        // existing per-key public stream and the shared commit sequence.
+        if (map['changes'] is List) {
+          return asListOrEmpty(map['changes']).map((change) {
+            final entry = asMapOrEmpty(change);
+            return SessionControlProjection(sessionId, asString(entry['key']) ?? '', entry['val'], seq);
+          });
+        }
+        return [SessionControlProjection(sessionId, asString(map['key']) ?? '', map['value'], seq)];
+      });
 
   Future<void> close() async {
     await mux.close();
@@ -1124,6 +1130,9 @@ class _SessionWatch {
   /// Waits for the next ready generation (a new login); false once the client
   /// closes or the watch stops.
   Future<bool> _nextGeneration() async {
+    // History may reject after a successor's non-replay ready event was sent.
+    final current = client.mux.generation;
+    if (current != null && !identical(current, _epochGeneration)) return !_stopped;
     final wake = _wake = Completer<bool>();
     void done(bool ready) {
       if (!wake.isCompleted) wake.complete(ready);
@@ -1171,9 +1180,10 @@ class _SessionWatch {
         break;
       }
       if (_stopped) break;
-      final stream = client.mux.open('session/follow', {'request': _followRequest()});
-      _current = stream;
+      MuxStream? stream;
       try {
+        stream = client.mux.open('session/follow', {'request': _followRequest()});
+        _current = stream;
         var opened = false;
         await for (final item in stream.items) {
           if (_stopped) break;
@@ -1183,12 +1193,14 @@ class _SessionWatch {
             await _onSnapshot(first);
             opened = true;
             if (options.activate) {
-              unawaited(client.activateSessionForInteraction(
-                sessionId,
-                epoch: epoch,
-                allowed: () => !_stopped && (options.activationAllowed?.call() ?? true),
-                onActivationChecked: options.onActivationChecked,
-              ));
+              unawaited(
+                client.activateSessionForInteraction(
+                  sessionId,
+                  epoch: epoch,
+                  allowed: () => !_stopped && (options.activationAllowed?.call() ?? true),
+                  onActivationChecked: options.onActivationChecked,
+                ),
+              );
             }
           } else {
             await _onFrame(item);
@@ -1207,10 +1219,12 @@ class _SessionWatch {
         epoch.retire();
         break;
       } on _Resync catch (error) {
+        if (!epoch.isCurrent || !identical(epoch.generation, client.mux.generation)) continue;
         epoch.retire();
         _emit(SessionSyncEvent(epoch));
-        await stream.cancel();
+        await stream?.cancel();
         if (_stopped) break;
+        if (!identical(epoch.generation, client.mux.generation)) continue;
         // Back-to-back resyncs back off; six without a clean frame end the watch.
         if (++_resyncs >= 6) {
           _controller.addError(DshProtocolException(error.reason));
@@ -1218,13 +1232,23 @@ class _SessionWatch {
         }
         if (_resyncs > 1 && !await _backoff(_resyncs - 2)) break;
       } on Object catch (error) {
+        // Preserve a closed client's terminal failure without recovery.
+        if (client.mux.state == DshConnectionState.closed) {
+          epoch.retire();
+          if (!_stopped) _controller.addError(error);
+          break;
+        }
+        if (!epoch.isCurrent || !identical(epoch.generation, client.mux.generation)) continue;
         epoch.retire();
         _emit(SessionSyncEvent(epoch));
-        await stream.cancel();
+        await stream?.cancel();
         if (_stopped) break;
+        if (!identical(epoch.generation, client.mux.generation)) continue;
         // A subagent child opened without its parent route: route it, retry.
         if (await client.adoptSubagentRoute(sessionId, error)) continue;
+        if (!identical(epoch.generation, client.mux.generation)) continue;
         if (await _recover(error)) continue;
+        if (!identical(epoch.generation, client.mux.generation)) continue;
         if (!_stopped) _controller.addError(error);
         break;
       }
@@ -1244,6 +1268,7 @@ class _SessionWatch {
       final firstSeq = events.isEmpty ? snapshot.cursor + 1 : events.first.seq;
       if (firstSeq > _lastSeq + 1) {
         final filled = await _fill(from: _lastSeq + 1, before: firstSeq, through: snapshot.cursor);
+        _checkHistoryOwner(epoch);
         if (options.includeSyncEvents) {
           var expected = _lastSeq + 1;
           for (final event in filled) {
@@ -1271,7 +1296,9 @@ class _SessionWatch {
           // Revalidate the complete inbox/running baseline, not only the
           // missing log records. The next snapshot repairs durable history.
           if (options.includeSyncEvents) throw _Resync('resync after gap before seq ${event.seq}');
+          final epoch = _epoch!;
           final filled = await _fill(from: _lastSeq + 1, before: event.seq, through: event.seq - 1);
+          _checkHistoryOwner(epoch);
           if (filled.isEmpty || filled.first.seq != _lastSeq + 1 || filled.last.seq != event.seq - 1) {
             throw _Resync('unrepairable gap before seq ${event.seq}');
           }
@@ -1293,18 +1320,38 @@ class _SessionWatch {
     }
   }
 
+  void _checkHistoryOwner(SessionFollowEpoch epoch) {
+    if (_stopped || client.mux.state == DshConnectionState.closed) throw const DshClosedException();
+    if (!epoch.isCurrent || !identical(epoch.generation, client.mux.generation)) {
+      throw const DshCarrierLostException('history repair belongs to a retired follow');
+    }
+  }
+
   Future<List<SessionLogEvent>> _fill({required int from, required int before, required int through}) async {
+    final epoch = _epoch!;
     final out = <SessionLogEvent>[];
     var beforeSeq = before;
-    while (beforeSeq > from && !_stopped) {
-      final page = await client.history(sessionId, throughSeq: through, beforeSeq: beforeSeq, maxMessages: 500);
+    while (beforeSeq > from) {
+      _checkHistoryOwner(epoch);
+      final HistoryPage page;
+      try {
+        page = await client.history(sessionId, throughSeq: through, beforeSeq: beforeSeq, maxMessages: 500);
+      } catch (_) {
+        // Closing the client keeps the original terminal error contract;
+        // only a live successor must be protected from stale recovery.
+        if (!_stopped && client.mux.state == DshConnectionState.closed) rethrow;
+        _checkHistoryOwner(epoch);
+        rethrow;
+      }
+      _checkHistoryOwner(epoch);
       final usable = page.events.where((e) => e.seq >= from && e.seq < beforeSeq).toList();
       if (usable.isEmpty) break;
-      out.insertAll(0, usable);
+      // Reverse each page now, then the whole result, without shifting the accumulated prefix.
+      out.addAll(usable.reversed);
       beforeSeq = usable.first.seq;
       if (!page.hasMore) break;
     }
-    return out;
+    return out.reversed.toList();
   }
 }
 
