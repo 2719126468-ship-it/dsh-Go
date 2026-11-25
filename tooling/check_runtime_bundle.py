@@ -13,7 +13,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
-ABIS = {"arm64": "arm64-v8a", "x64": "x86_64"}
+ABIS = {"arm64": "arm64-v8a", "arm32": "armeabi-v7a", "x64": "x86_64"}
 REQUIRED_JNI = ("libproot.so", "libproot-loader.so", "libtalloc.so", "libandroid-shmem.so")
 
 
