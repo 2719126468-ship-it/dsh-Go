@@ -47,7 +47,7 @@ fi
 LOG="$TMP/dsh-web.log"
 env -i PATH="$(dirname "$NODE"):/usr/bin:/bin" HOME="$TMP/home" DSH_HOME="$TMP/home/.dsh" LANG=C.UTF-8 TZ="${TZ:-Asia/Shanghai}" \
   DEEPSEEK_API_KEY=sk-dsh-app-guard-test-not-a-real-key UV_USE_IO_URING=0 \
-  "$NODE" "$PREFIX/node_modules/@deepseek-ai/dsh/lib/bin.js" web "${PATCHES[@]}" \
+  "$NODE" --expose-internals "$PREFIX/node_modules/@deepseek-ai/dsh/lib/bin.js" web "${PATCHES[@]}" \
   --host 127.0.0.1 --port "$PORT" --no-open > "$LOG" 2>&1 &
 DSH_PID=$!
 token=""
