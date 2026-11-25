@@ -72,7 +72,7 @@ While the AI replies with an empty composer, the send button becomes a stop butt
 
 ## Answer questions and approvals
 
-Question cards: pick an answer, or tap **Other answer** to write your own, then tap **Submit**. When exactly one question is waiting, with no pending approval, attachments, quote or create mode, you can also answer in the composer; **Send text as an answer** stays visible while you type. Attachments, a quote or create mode show **Send a new message**; choosing another send mode by holding Send still sends a message. Once the host records the answer, the chat keeps an **Answered** receipt with your answer, visible even when the turn’s process is folded.
+Question cards: pick an answer, or tap **Other answer** to write your own, then tap **Submit**. When exactly one question is waiting, with no pending approval, attachments, quote or create mode, you can also answer in the composer; Send text as an answer stays visible while you type. Attachments, a quote or create mode show Send a new message; choosing another send mode by holding Send still sends a message. Once the host records the answer, the chat keeps an Answered receipt with your answer, visible even when the turn’s process is folded.
 
 Approval cards: check the command, files and reason, then tap **Allow once** or **Decline**.
 
@@ -121,7 +121,7 @@ Swipe right to left over the chat and **Shortcuts** slides in from the right; ta
 
 You can turn off **Open with a left swipe**, and under **What it lists** tick what to show and drag to reorder. There's no swipe while the chat list stays open at the side.
 
-With a conversation open, the panel is about that conversation, in two parts, **Info** and **Plugins**: Info has the whole title, workspace, model and host, with the full page a tap away at the top right; Plugins has every plugin panel, switched along its top when there are several. The shortcuts you ticked sit along the bottom. On a phone the header has no model chip, with the status and workspace under the title, and while you type, the composer shows the model and thinking depth at its foot: tap them to change, or use Overview.
+With a conversation open, the panel is about that conversation, in two parts, Info and **Plugins**: Info has the whole title, workspace, model and host, with the full page a tap away at the top right; Plugins has every plugin panel, switched along its top when there are several. The shortcuts you ticked sit along the bottom. On a phone the header has no model chip, with the status and workspace under the title, and while you type, the composer shows the model and thinking depth at its foot: tap them to change, or use Overview.
 
 ## Hardware keyboard
 
