@@ -84,7 +84,7 @@ class PatchDsh(unittest.TestCase):
 """
         patched = rtbuild.patch_arm32_internal_modules_text(source)
         self.assertIn('process.execArgv.includes("--expose-internals")', patched)
-        self.assertEqual(patched.count("requireInternal("), 5)
+        self.assertEqual(patched.count("requireInternal("), 6)
         self.assertNotIn("const addon =", patched)
         self.assertEqual(rtbuild.patch_arm32_internal_modules_text(patched), patched)
 
