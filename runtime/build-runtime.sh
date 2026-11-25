@@ -40,7 +40,7 @@ LOCKS="$HERE/locks"
 PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
-RUNTIME_REVISION="${RUNTIME_REVISION:-r17}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
+RUNTIME_REVISION="${RUNTIME_REVISION:-r18}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
 DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
