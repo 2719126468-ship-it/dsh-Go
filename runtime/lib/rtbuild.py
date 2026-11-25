@@ -348,10 +348,10 @@ def patch_arm32_internal_modules_text(source):
     pattern = re.compile(r"""(?m)^([ \t]*)const addon = require\((["'])node-addon-require-builtin\2\);?[ \t]*$""")
     replacement = (
         r"\1const requireInternal = (moduleId) => {\n"
-        r"\1  if (process.execArgv.includes(\"--expose-internals\")) {\n"
+        r'\1  if (process.execArgv.includes("--expose-internals")) {\n'
         r"\1    try { return require(moduleId); } catch {}\n"
         r"\1  }\n"
-        r"\1  return require(\"node-addon-require-builtin\").requireBuiltin(moduleId);\n"
+        r'\1  return require("node-addon-require-builtin").requireBuiltin(moduleId);\n'
         r"\1};"
     )
     block, replaced = pattern.subn(replacement, block, count=1)
