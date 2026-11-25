@@ -69,6 +69,25 @@ class PatchDsh(unittest.TestCase):
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                               env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C"})
 
+    def test_arm32_internal_loader_fallback(self):
+        self.assertEqual(rtbuild.dsh_node_flags("armeabi-v7a"), ["--expose-internals"])
+        self.assertEqual(rtbuild.dsh_node_flags("arm64-v8a"), [])
+        source = """function internalModules() {
+  const require = createRequire(import.meta.url);
+  const addon = require("node-addon-require-builtin");
+  const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+  const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+  const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
+  const esmUtils = addon.requireBuiltin("internal/modules/esm/utils");
+  const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");
+}
+"""
+        patched = rtbuild.patch_arm32_internal_modules_text(source)
+        self.assertIn('process.execArgv.includes("--expose-internals")', patched)
+        self.assertEqual(patched.count("requireInternal("), 5)
+        self.assertNotIn("const addon =", patched)
+        self.assertEqual(rtbuild.patch_arm32_internal_modules_text(patched), patched)
+
     def test_parse_hunks(self):
         files = rtbuild.parse_unified_diff(DIFF)
         self.assertEqual([f[0] for f in files], [REL])
