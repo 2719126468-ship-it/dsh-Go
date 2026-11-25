@@ -13,6 +13,7 @@ import json
 import lzma
 import os
 import posixpath
+import re
 import shutil
 import stat
 import struct
@@ -324,6 +325,65 @@ def apply_hunks(data, hunks, label):
                              "re-vet the patch" % (label, n, count))
         data = data.replace(old, new, 1)
     return data
+
+
+
+def dsh_node_flags(abi):
+    """Node flags required by the ARM32 PRoot runtime."""
+    return ["--expose-internals"] if abi == "armeabi-v7a" else []
+
+
+def patch_arm32_internal_modules_text(source):
+    """Prefer Node's exposed internal require before the unsupported ARM32 native addon."""
+    marker = "/* dsh-go-arm32-internals-fallback */"
+    if marker in source:
+        return source
+    start = source.find("function internalModules()")
+    if start < 0:
+        raise ValueError("dsh-app-boot internalModules() was not found")
+    end = source.find("\n}\n", start)
+    if end < 0:
+        raise ValueError("dsh-app-boot internalModules() has no closing brace")
+    block = source[start:end]
+    pattern = re.compile(r"""(?m)^([ \\t]*)const addon = require\\(([\"'])node-addon-require-builtin\\2\\);?[ \\t]*$""")
+    replacement = (
+        r"""\\1const requireInternal = (moduleId) => {\\n"""
+        r"""\\1  if (process.execArgv.includes("--expose-internals")) {\\n"""
+        r"""\\1    try { return require(moduleId); } catch {}\\n"""
+        r"""\\1  }\\n"""
+        r"""\\1  return require("node-addon-require-builtin").requireBuiltin(moduleId);\\n"""
+        r"""\\1};"""
+    )
+    block, replaced = pattern.subn(replacement, block, count=1)
+    if replaced != 1:
+        raise ValueError("dsh-app-boot internalModules() addon declaration did not match the reviewed shape")
+    block, calls = re.subn(r"\\baddon\\.requireBuiltin\\(", "requireInternal(", block)
+    if calls != 5:
+        raise ValueError("dsh-app-boot internalModules() expected 5 addon calls, found %d" % calls)
+    block = block.replace("function internalModules() {",
+                          "function internalModules() {\\n  " + marker, 1)
+    return source[:start] + block + source[end:]
+
+
+def cmd_patch_arm32_internals(args):
+    path = os.path.join(args.prefix, "node_modules/@deepseek-ai/dsh-app-boot/lib/index.js")
+    if not os.path.isfile(path):
+        sys.exit("missing dsh-app-boot bundle: " + path)
+    with open(path, encoding="utf-8") as f:
+        original = f.read()
+    try:
+        patched = patch_arm32_internal_modules_text(original)
+    except ValueError as error:
+        sys.exit("ARM32 internal-loader fallback patch refused: " + str(error))
+    if patched == original:
+        print("ARM32 internal-loader fallback already patched")
+        return
+    tmp = path + ".arm32-fallback"
+    with open(tmp, "w", encoding="utf-8", newline="") as f:
+        f.write(patched)
+    os.chmod(tmp, os.stat(path).st_mode & 0o777)
+    os.replace(tmp, path)
+    print("patched ARM32 dsh-app-boot internalModules() to use --expose-internals first")
 
 
 def cmd_patch_dsh(args):
@@ -865,15 +925,17 @@ def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridg
         if name.endswith(".mjs"):
             with open(os.path.join(DIRECT_SRC, name), "rb") as src:
                 E["opt/dsh-go/direct/" + name] = Entry("file", 0o644, data=src.read(), origin="overlay")
+    node_flags = " ".join(dsh_node_flags(abi))
+    node_flag_arg = (" " + node_flags) if node_flags else ""
     f("usr/local/bin/dsh",
-      "#!/bin/sh\n"
-      "# dsh-app shim: run the bundled DeepSeek Harness CLI with the bundled Node.\n"
-      "# `dsh web` (the app's launch) preloads the boot cache, " + BOOT_CACHE + ".\n"
-      "if [ \"$1\" = web ]; then\n"
-      "  exec /opt/node/bin/node --import=" + BOOT_CACHE + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n"
-      "fi\n"
-      "exec /opt/node/bin/node /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n", 0o755)
-    if with_pnpm:
+      "#!/bin/sh\\n"
+      "# dsh-app shim: run the bundled DeepSeek Harness CLI with the bundled Node.\\n"
+      "# ARM32 uses Node's --expose-internals path because upstream has no 32-bit ARM addon.\\n"
+      "# `dsh web` (the app's launch) preloads the boot cache, " + BOOT_CACHE + ".\\n"
+      "if [ \\"$1\\" = web ]; then\\n"
+      "  exec /opt/node/bin/node" + node_flag_arg + " --import=" + BOOT_CACHE + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \\"$@\\"\\n"
+      "fi\\n"
+      "exec /opt/node/bin/node" + node_flag_arg + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \\"$@\\"\\n", 0o755)    if with_pnpm:
         # what `npm i -g pnpm` creates under npm's global prefix (/usr/local)
         for name, target in PNPM_BINS.items():
             s("usr/local/bin/" + name, "../lib/node_modules/pnpm/bin/" + target)
@@ -1497,6 +1559,10 @@ def main():
     p.add_argument("--record", action="store_true", help="write the observed hashes as this version's pins")
     p.add_argument("--out", help="write the applied patch names (JSON list) here")
     p.set_defaults(fn=cmd_patch_dsh)
+
+    p = sub.add_parser("patch-arm32-internals")
+    p.add_argument("--prefix", required=True, help="npm --prefix tree containing the bundled DSH packages")
+    p.set_defaults(fn=cmd_patch_arm32_internals)
 
     p = sub.add_parser("resolve-debs")
     p.add_argument("--base", required=True)
