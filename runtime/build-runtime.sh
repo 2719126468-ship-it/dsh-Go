@@ -540,6 +540,10 @@ PYEOF
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
   "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
     --out "$work/dsh-patches.json" >&2
+  if [[ "$abi" == armeabi-v7a ]]; then
+    log "enabling ARM32 Node --expose-internals fallback for unsupported native addon platform"
+    "${PY[@]}" patch-arm32-internals --prefix "$prefix" >&2
+  fi
   local bridge="$HERE/bridge/dsh-go-bridge"
   local bridge_version
   bridge_version="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$bridge/package.json")"
