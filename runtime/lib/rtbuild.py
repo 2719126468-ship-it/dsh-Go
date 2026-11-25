@@ -345,23 +345,23 @@ def patch_arm32_internal_modules_text(source):
     if end < 0:
         raise ValueError("dsh-app-boot internalModules() has no closing brace")
     block = source[start:end]
-    pattern = re.compile(r"""(?m)^([ \\t]*)const addon = require\\(([\"'])node-addon-require-builtin\\2\\);?[ \\t]*$""")
+    pattern = re.compile(r"""(?m)^([ \t]*)const addon = require\((["'])node-addon-require-builtin\2\);?[ \t]*$""")
     replacement = (
-        r"""\\1const requireInternal = (moduleId) => {\\n"""
-        r"""\\1  if (process.execArgv.includes("--expose-internals")) {\\n"""
-        r"""\\1    try { return require(moduleId); } catch {}\\n"""
-        r"""\\1  }\\n"""
-        r"""\\1  return require("node-addon-require-builtin").requireBuiltin(moduleId);\\n"""
-        r"""\\1};"""
+        r"\1const requireInternal = (moduleId) => {\n"
+        r"\1  if (process.execArgv.includes(\"--expose-internals\")) {\n"
+        r"\1    try { return require(moduleId); } catch {}\n"
+        r"\1  }\n"
+        r"\1  return require(\"node-addon-require-builtin\").requireBuiltin(moduleId);\n"
+        r"\1};"
     )
     block, replaced = pattern.subn(replacement, block, count=1)
     if replaced != 1:
         raise ValueError("dsh-app-boot internalModules() addon declaration did not match the reviewed shape")
-    block, calls = re.subn(r"\\baddon\\.requireBuiltin\\(", "requireInternal(", block)
+    block, calls = re.subn(r"\baddon\.requireBuiltin\(", "requireInternal(", block)
     if calls != 5:
         raise ValueError("dsh-app-boot internalModules() expected 5 addon calls, found %d" % calls)
     block = block.replace("function internalModules() {",
-                          "function internalModules() {\\n  " + marker, 1)
+                          "function internalModules() {\n  " + marker, 1)
     return source[:start] + block + source[end:]
 
 
@@ -928,14 +928,15 @@ def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridg
     node_flags = " ".join(dsh_node_flags(abi))
     node_flag_arg = (" " + node_flags) if node_flags else ""
     f("usr/local/bin/dsh",
-      "#!/bin/sh\\n"
-      "# dsh-app shim: run the bundled DeepSeek Harness CLI with the bundled Node.\\n"
-      "# ARM32 uses Node's --expose-internals path because upstream has no 32-bit ARM addon.\\n"
-      "# `dsh web` (the app's launch) preloads the boot cache, " + BOOT_CACHE + ".\\n"
-      "if [ \\"$1\\" = web ]; then\\n"
-      "  exec /opt/node/bin/node" + node_flag_arg + " --import=" + BOOT_CACHE + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \\"$@\\"\\n"
-      "fi\\n"
-      "exec /opt/node/bin/node" + node_flag_arg + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \\"$@\\"\\n", 0o755)    if with_pnpm:
+      "#!/bin/sh\n"
+      "# dsh-app shim: run the bundled DeepSeek Harness CLI with the bundled Node.\n"
+      "# ARM32 uses Node's --expose-internals path because upstream has no 32-bit ARM addon.\n"
+      "# dsh web (the app's launch) preloads the boot cache, " + BOOT_CACHE + ".\n"
+      "if [ \"$1\" = web ]; then\n"
+      "  exec /opt/node/bin/node" + node_flag_arg + " --import=" + BOOT_CACHE + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n"
+      "fi\n"
+      "exec /opt/node/bin/node" + node_flag_arg + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n", 0o755)
+    if with_pnpm:
         # what `npm i -g pnpm` creates under npm's global prefix (/usr/local)
         for name, target in PNPM_BINS.items():
             s("usr/local/bin/" + name, "../lib/node_modules/pnpm/bin/" + target)
