@@ -1537,10 +1537,6 @@
         "node_modules/@deepseek-ai/dsh-config-editor/lib/index.js": {
           "after": "5874c1f64c8ffbc600cd7ac9c1a1f408d0010c698e3fd4fecf283348cb734645",
           "before": "db049a3c24343dc93dc36c7726a3760c9fd1bcaa2aa4b719e1fcbd1efb1a890d"
-        },
-        "node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js": {
-          "after": "c9cb745e93e75b4627a2ff3851e17fa891d2cca785cad7062ee2bc11dcccf74d",
-          "before": "b8ab1228fc7e024448f0ab7c9bcf8d1747288c11dde7db428a0a10384d3ca302"
         }
       }
     },
