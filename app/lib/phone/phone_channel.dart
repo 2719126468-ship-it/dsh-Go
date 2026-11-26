@@ -8,6 +8,11 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import '../l10n/l10n.dart';
+import 'phone_skill.dart';
+import 'phone_skill_replay.dart';
+
+export 'phone_skill.dart';
+export 'phone_skill_replay.dart';
 
 // ── Wire helpers ─────────────────────────────────────────────────────────────
 
