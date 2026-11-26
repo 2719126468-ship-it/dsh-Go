@@ -72,9 +72,9 @@ class PatchDsh(unittest.TestCase):
     def test_arm32_internal_loader_fallback(self):
         self.assertEqual(rtbuild.dsh_node_flags("armeabi-v7a"), ["--expose-internals"])
         self.assertEqual(rtbuild.dsh_node_flags("arm64-v8a"), [])
-        source = """function internalModules() {
-  const require = createRequire(import.meta.url);
-  const addon = require("node-addon-require-builtin");
+        source = """import { createRequire, isBuiltin } from "node:module";
+function internalModules() {
+  const addon = createRequire(import.meta.url)("node-addon-require-builtin");
   const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
   const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
   const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
@@ -84,9 +84,50 @@ class PatchDsh(unittest.TestCase):
 """
         patched = rtbuild.patch_arm32_internal_modules_text(source)
         self.assertIn('process.execArgv.includes("--expose-internals")', patched)
-        self.assertEqual(patched.count("requireInternal("), 6)
-        self.assertNotIn("const addon =", patched)
+        self.assertIn("createRequire(import.meta.url)(moduleId)", patched)
+        self.assertIn('createRequire(import.meta.url)("node-addon-require-builtin").requireBuiltin(moduleId)', patched)
+        self.assertEqual(patched.count("requireInternal("), 5)
+        self.assertNotIn("addon.requireBuiltin", patched)
         self.assertEqual(rtbuild.patch_arm32_internal_modules_text(patched), patched)
+
+        legacy_source = """import { createRequire } from "node:module";
+function internalModules() {
+  const require = createRequire(import.meta.url);
+  const addon = require("node-addon-require-builtin");
+  const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+  const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+  const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
+  const esmUtils = addon.requireBuiltin("internal/modules/esm/utils");
+  const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");
+}
+"""
+        legacy_patched = rtbuild.patch_arm32_internal_modules_text(legacy_source)
+        self.assertEqual(legacy_patched.count("requireInternal("), 5)
+        self.assertNotIn("addon.requireBuiltin", legacy_patched)
+
+    def test_overlay_launcher_flags_are_abi_specific(self):
+        with tempfile.TemporaryDirectory() as temp:
+            boot_cache = os.path.join(temp, "boot-cache.mjs")
+            direct_dir = os.path.join(temp, "direct")
+            os.makedirs(direct_dir)
+            with open(boot_cache, "wb") as f:
+                f.write(b"// test boot cache\\n")
+            with open(os.path.join(direct_dir, "entry.mjs"), "wb") as f:
+                f.write(b"// test direct entry\\n")
+            old_boot_cache = rtbuild.BOOT_CACHE_SRC
+            old_direct_dir = rtbuild.DIRECT_SRC
+            try:
+                rtbuild.BOOT_CACHE_SRC = boot_cache
+                rtbuild.DIRECT_SRC = direct_dir
+                arm32 = rtbuild.overlay_entries({}, "armeabi-v7a")
+                arm64 = rtbuild.overlay_entries({}, "arm64-v8a")
+            finally:
+                rtbuild.BOOT_CACHE_SRC = old_boot_cache
+                rtbuild.DIRECT_SRC = old_direct_dir
+        arm32_shim = arm32["usr/local/bin/dsh"].data.decode()
+        arm64_shim = arm64["usr/local/bin/dsh"].data.decode()
+        self.assertIn("node --expose-internals --import=", arm32_shim)
+        self.assertNotIn("--expose-internals", arm64_shim)
 
     def test_parse_hunks(self):
         files = rtbuild.parse_unified_diff(DIFF)
