@@ -338,30 +338,37 @@ def patch_arm32_internal_modules_text(source):
     marker = "/* dsh-go-arm32-internals-fallback */"
     if marker in source:
         return source
+    if not re.search(r'''(?m)^import\\s+\\{[^}]*\\bcreateRequire\\b[^}]*\\}\\s+from\\s+["']node:module["'];?\\s*$''', source):
+        raise ValueError("dsh-app-boot createRequire import was not found")
     start = source.find("function internalModules()")
     if start < 0:
         raise ValueError("dsh-app-boot internalModules() was not found")
-    end = source.find("\n}\n", start)
+    end = source.find("\\n}\\n", start)
     if end < 0:
         raise ValueError("dsh-app-boot internalModules() has no closing brace")
     block = source[start:end]
-    pattern = re.compile(r"""(?m)^([ \t]*)const addon = require\((["'])node-addon-require-builtin\2\);?[ \t]*$""")
-    replacement = (
-        r"\1const requireInternal = (moduleId) => {\n"
-        r'\1  if (process.execArgv.includes("--expose-internals")) {\n'
-        r"\1    try { return require(moduleId); } catch {}\n"
-        r"\1  }\n"
-        r'\1  return require("node-addon-require-builtin").requireBuiltin(moduleId);\n'
-        r"\1};"
+    pattern = re.compile(
+        r'''(?m)^([ \\t]*)const addon = (?:require|createRequire\\(import\\.meta\\.url\\))\\((["'])node-addon-require-builtin\\2\\);?[ \\t]*$'''
     )
-    block, replaced = pattern.subn(replacement, block, count=1)
+    replacement = (
+        'const requireInternal = (moduleId) => {\\n'
+        '  if (process.execArgv.includes("--expose-internals")) {\\n'
+        '    try { return createRequire(import.meta.url)(moduleId); } catch {}\\n'
+        '  }\\n'
+        '  return createRequire(import.meta.url)("node-addon-require-builtin").requireBuiltin(moduleId);\\n'
+        '};'
+    )
+    def indent_replacement(match):
+        indent = match.group(1)
+        return replacement.replace("\\n", "\\n" + indent).replace("const requireInternal", indent + "const requireInternal", 1)
+    block, replaced = pattern.subn(indent_replacement, block, count=1)
     if replaced != 1:
         raise ValueError("dsh-app-boot internalModules() addon declaration did not match the reviewed shape")
-    block, calls = re.subn(r"\baddon\.requireBuiltin\(", "requireInternal(", block)
+    block, calls = re.subn(r"\\baddon\\.requireBuiltin\\(", "requireInternal(", block)
     if calls != 5:
         raise ValueError("dsh-app-boot internalModules() expected 5 addon calls, found %d" % calls)
     block = block.replace("function internalModules() {",
-                          "function internalModules() {\n  " + marker, 1)
+                          "function internalModules() {\\n  " + marker, 1)
     return source[:start] + block + source[end:]
 
 
@@ -868,7 +875,7 @@ def install_ca_bundle(entries, report):
                                 "bundleBytes": len(bundle)}
 
 
-def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridge=False):
+def overlay_entries(runtime_info, abi, with_python=False, with_pnpm=False, with_bridge=False):
     """Files dsh-app adds to the rootfs. Kept here so the recipe lives in one place."""
     E = {}
 
@@ -1214,7 +1221,7 @@ def cmd_assemble(args):
 
     # 4. dsh-app overlay (wins over everything above)
     runtime_info = json.loads(args.runtime_info)
-    for p, e in overlay_entries(runtime_info, with_python=bool(args.python), with_pnpm=bool(args.pnpm_prefix),
+    for p, e in overlay_entries(runtime_info, abi, with_python=bool(args.python), with_pnpm=bool(args.pnpm_prefix),
                                 with_bridge=bool(args.bridge)).items():
         entries[p] = e
     if abi == "armeabi-v7a":
