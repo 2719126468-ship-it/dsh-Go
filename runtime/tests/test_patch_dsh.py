@@ -126,8 +126,8 @@ function internalModules() {
                 rtbuild.DIRECT_SRC = old_direct_dir
         arm32_shim = arm32["usr/local/bin/dsh"].data.decode()
         arm64_shim = arm64["usr/local/bin/dsh"].data.decode()
-        self.assertIn("node --expose-internals --import=", arm32_shim)
-        self.assertNotIn("--expose-internals", arm64_shim)
+        self.assertIn("exec /opt/node/bin/node --expose-internals", arm32_shim)
+        self.assertNotIn("exec /opt/node/bin/node --expose-internals", arm64_shim)
 
     def test_parse_hunks(self):
         files = rtbuild.parse_unified_diff(DIFF)
