@@ -1426,10 +1426,6 @@
           "after": "b1ad9ebed6c9fa18b88c3ef4281e8cc07dc60323b171143da6d885e22b34d5f5",
           "before": "9877a6117c5def69b61fae12f70a7a7400894a9dc4a9f7069ce4cc58aeb66e9d"
         },
-        "node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js": {
-          "after": "5b5dc0b170f902a084b851147f08121bc7b8bcc75c7920d99110ba93ba70d3bf",
-          "before": "8eb1674f9c3c2e336efae7ecc734d5197dc8b80bc29f1f1d61bfe0b5a1472188"
-        },
         "node_modules/@deepseek-ai/dsh-sandbox/lib/index.js": {
           "after": "cc4f6b7e84eaff0bb692413f59c1bc8de457dbe5569d02985ea8e87f68281ea7",
           "before": "9ece3e7b04d5526441e2439431d769acf67abc46fa49de000dd9c792893eb5e7"
@@ -1441,10 +1437,6 @@
         "node_modules/@deepseek-ai/dsh-subprocess-local/lib/index.js": {
           "after": "4784084d8dd7abf217b75fe546dec6c87975a167e1a20ed035e220d279080d1c",
           "before": "2964d94d6aa735f79e5cd5f54035a9d73b371e8060dda7e3bf666593428c04f4"
-        },
-        "node_modules/@deepseek-ai/dsh-working-directory/lib/index.js": {
-          "after": "ee0876bbfa11c8d52dcdb663810d6a042c65274f1088bca3f6dd7b8446ed8e09",
-          "before": "76b2f53517bc3312084bc062ce8bbc4111f3b723d96da080157046c2b6d4766a"
         }
       }
     },
