@@ -929,7 +929,7 @@
       },
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-          "after": "272efa48be4bce0a75ce7fe06eabf1c7fb60ca0e68b0708945199e80a9893bea",
+          "after": "a41b60bca7bebf3bbf53963b919fc5b9e3b510b00f567a555fe532ca31a8b56d",
           "before": "da9d664272068326529de7774909387499a0a1bc6d4e8e5219a43977ad1efcf1"
         }
       }
