@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,124 @@ class PatchDsh(unittest.TestCase):
                                "--patches", self.patches, *extra],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                               env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C"})
+
+    def test_arm32_internal_loader_fallback(self):
+        self.assertEqual(rtbuild.dsh_node_flags("armeabi-v7a"), ["--expose-internals"])
+        self.assertEqual(rtbuild.dsh_node_flags("arm64-v8a"), [])
+        source = """import { createRequire, isBuiltin } from "node:module";
+function internalModules() {
+  const addon = createRequire(import.meta.url)("node-addon-require-builtin");
+  const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+  const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+  const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
+  const esmUtils = addon.requireBuiltin("internal/modules/esm/utils");
+  const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");
+}
+"""
+        patched = rtbuild.patch_arm32_internal_modules_text(source)
+        self.assertIn('process.execArgv.includes("--expose-internals")', patched)
+        self.assertIn("createRequire(import.meta.url)(moduleId)", patched)
+        self.assertIn('createRequire(import.meta.url)("node-addon-require-builtin").requireBuiltin(moduleId)', patched)
+        self.assertEqual(patched.count("requireInternal("), 5)
+        self.assertNotIn("addon.requireBuiltin", patched)
+        self.assertEqual(rtbuild.patch_arm32_internal_modules_text(patched), patched)
+
+        # A marker must not make a partially edited loader look successfully patched.
+        damaged = patched.replace(
+            'const esmResolve = requireInternal("internal/modules/esm/resolve");',
+            'const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");',
+        )
+        with self.assertRaisesRegex(ValueError, "marker exists but the transformed loader is incomplete"):
+            rtbuild.patch_arm32_internal_modules_text(damaged)
+
+        # Exercise the exact transformed loader with Node's exposed-internals path.
+        # The string assertions above alone would not catch a Node-version/API mismatch.
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js is required to exercise the ARM32 loader fallback")
+        runtime_source = patched + "\ninternalModules();\n"
+        result = subprocess.run(
+            [node, "--expose-internals", "--input-type=module", "-e", runtime_source],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+        legacy_source = """import { createRequire } from "node:module";
+function internalModules() {
+  const require = createRequire(import.meta.url);
+  const addon = require("node-addon-require-builtin");
+  const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+  const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+  const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
+  const esmUtils = addon.requireBuiltin("internal/modules/esm/utils");
+  const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");
+}
+"""
+        legacy_patched = rtbuild.patch_arm32_internal_modules_text(legacy_source)
+        self.assertEqual(legacy_patched.count("requireInternal("), 5)
+        self.assertNotIn("addon.requireBuiltin", legacy_patched)
+
+    def test_arm32_internal_loader_cli_is_idempotent_and_preserves_mode(self):
+        source = """import { createRequire } from "node:module";
+function internalModules() {
+  const addon = createRequire(import.meta.url)("node-addon-require-builtin");
+  const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+  const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+  const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
+  const esmUtils = addon.requireBuiltin("internal/modules/esm/utils");
+  const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");
+}
+"""
+        with tempfile.TemporaryDirectory() as prefix:
+            target = os.path.join(prefix, "node_modules", "@deepseek-ai", "dsh-app-boot", "lib", "index.js")
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(source)
+            os.chmod(target, 0o750)
+
+            def run():
+                return subprocess.run(
+                    [sys.executable, "-I", RTBUILD, "patch-arm32-internals", "--prefix", prefix],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C"},
+                )
+
+            first = run()
+            self.assertEqual(first.returncode, 0, first.stdout)
+            with open(target, encoding="utf-8") as f:
+                patched = f.read()
+            self.assertIn("requireInternal", patched)
+            self.assertEqual(os.stat(target).st_mode & 0o777, 0o750)
+
+            second = run()
+            self.assertEqual(second.returncode, 0, second.stdout)
+            self.assertIn("already patched", second.stdout)
+            with open(target, encoding="utf-8") as f:
+                self.assertEqual(f.read(), patched)
+
+    def test_overlay_launcher_flags_are_abi_specific(self):
+        with tempfile.TemporaryDirectory() as temp:
+            boot_cache = os.path.join(temp, "boot-cache.mjs")
+            direct_dir = os.path.join(temp, "direct")
+            os.makedirs(direct_dir)
+            with open(boot_cache, "wb") as f:
+                f.write(b"// test boot cache\n")
+            with open(os.path.join(direct_dir, "entry.mjs"), "wb") as f:
+                f.write(b"// test direct entry\n")
+            old_boot_cache = rtbuild.BOOT_CACHE_SRC
+            old_direct_dir = rtbuild.DIRECT_SRC
+            try:
+                rtbuild.BOOT_CACHE_SRC = boot_cache
+                rtbuild.DIRECT_SRC = direct_dir
+                arm32 = rtbuild.overlay_entries({}, "armeabi-v7a")
+                arm64 = rtbuild.overlay_entries({}, "arm64-v8a")
+            finally:
+                rtbuild.BOOT_CACHE_SRC = old_boot_cache
+                rtbuild.DIRECT_SRC = old_direct_dir
+        arm32_shim = arm32["usr/local/bin/dsh"].data.decode()
+        arm64_shim = arm64["usr/local/bin/dsh"].data.decode()
+        self.assertIn("exec /opt/node/bin/node --expose-internals", arm32_shim)
+        self.assertNotIn("exec /opt/node/bin/node --expose-internals", arm64_shim)
 
     def test_parse_hunks(self):
         files = rtbuild.parse_unified_diff(DIFF)

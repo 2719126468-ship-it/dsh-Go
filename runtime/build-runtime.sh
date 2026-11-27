@@ -40,7 +40,7 @@ LOCKS="$HERE/locks"
 PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
-RUNTIME_REVISION="${RUNTIME_REVISION:-r17}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
+RUNTIME_REVISION="${RUNTIME_REVISION:-r18}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
 DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
@@ -540,6 +540,10 @@ PYEOF
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
   "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
     --out "$work/dsh-patches.json" >&2
+  if [[ "$abi" == armeabi-v7a ]]; then
+    log "enabling ARM32 Node --expose-internals fallback for unsupported native addon platform"
+    "${PY[@]}" patch-arm32-internals --prefix "$prefix" >&2
+  fi
   local bridge="$HERE/bridge/dsh-go-bridge"
   local bridge_version
   bridge_version="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$bridge/package.json")"
