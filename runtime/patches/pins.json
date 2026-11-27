@@ -792,7 +792,7 @@
         },
         "node_modules/@deepseek-ai/dsh-working-directory/lib/index.js": {
           "after": "167c67034bde5de5862e99ddd27a42d6d690fc42d2cc8748ed58cedf06c01b50",
-          "before": "76b2f53517bc3312084bc062ce8bbc4111f3b723d96da080157046c2b6d4766a"
+          "before": "ee0876bbfa11c8d52dcdb663810d6a042c65274f1088bca3f6dd7b8446ed8e09"
         },
         "node_modules/@deepseek-ai/dsh-workspace/lib/index.js": {
           "after": "6413e6c3a6d14a5518e3121ab936b599a2a46f40ab603eab39fd383c4067b72a",
@@ -1314,7 +1314,7 @@
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-host-webserver/lib/index.js": {
           "after": "f1ec2e39c509d2662761e888cc782c048d1c6a6220aa95387f3bf8573038bd79",
-          "before": "b8ab1228fc7e024448f0ab7c9bcf8d1747288c11dde7db428a0a10384d3ca302"
+          "before": "c9cb745e93e75b4627a2ff3851e17fa891d2cca785cad7062ee2bc11dcccf74d"
         }
       }
     },
@@ -1811,8 +1811,8 @@
     "zzzzzzz-ohos-session-publication.diff": {
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js": {
-          "after": "53a8eb489be48479da039d63696d831149c37c8b9d645b9ae94560fcc86941dc",
-          "before": "4ce5ef22bc25c37ead321f86427231ca8b4491e46ffa6033c6760d0783fc38eb"
+          "after": "ac3511a72c5225555c32995187f924246f8b51fd63f7681acaadc14a00d67ab9",
+          "before": "8714888700f1508ffa212c5cdcd5650bf8c1ccb07014703120dc3fb0a825c7f2"
         }
       }
     },
@@ -2055,8 +2055,8 @@
           "before": "80933656125dec9d255a4b6a71514736bfc4f80b6cca67d2bfd09d062db3690b"
         },
         "node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js": {
-          "after": "4ea142d366555ee3cf64992e56745a9299dff44404fa8ccd7abaecbdd88b019b",
-          "before": "53a8eb489be48479da039d63696d831149c37c8b9d645b9ae94560fcc86941dc"
+          "after": "076c80e36815d10434e1aacd05511d6cd5efc81c6b2cc14418151ea52ecd7087",
+          "before": "ac3511a72c5225555c32995187f924246f8b51fd63f7681acaadc14a00d67ab9"
         }
       }
     },
@@ -2431,8 +2431,8 @@
     "zzzzzzzzzzzz-ohos-runtime-capabilities.diff": {
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js": {
-          "after": "7718483b03c2b036c14318a6123fd43e5e07a521dbd2bdf0a7b9a078bb50353a",
-          "before": "4ea142d366555ee3cf64992e56745a9299dff44404fa8ccd7abaecbdd88b019b"
+          "after": "e41aefd237a3dea1a2a0a3c530d6ebdb192d8612e0ab85169b99b514bcd766ea",
+          "before": "076c80e36815d10434e1aacd05511d6cd5efc81c6b2cc14418151ea52ecd7087"
         }
       }
     },
