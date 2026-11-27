@@ -126,6 +126,44 @@ function internalModules() {
         self.assertEqual(legacy_patched.count("requireInternal("), 5)
         self.assertNotIn("addon.requireBuiltin", legacy_patched)
 
+    def test_arm32_internal_loader_cli_is_idempotent_and_preserves_mode(self):
+        source = """import { createRequire } from "node:module";
+function internalModules() {
+  const addon = createRequire(import.meta.url)("node-addon-require-builtin");
+  const esmModule = addon.requireBuiltin("internal/modules/esm/loader");
+  const cjsModule = addon.requireBuiltin("internal/modules/cjs/loader");
+  const cjsHelpers = addon.requireBuiltin("internal/modules/helpers");
+  const esmUtils = addon.requireBuiltin("internal/modules/esm/utils");
+  const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");
+}
+"""
+        with tempfile.TemporaryDirectory() as prefix:
+            target = os.path.join(prefix, "node_modules", "@deepseek-ai", "dsh-app-boot", "lib", "index.js")
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(source)
+            os.chmod(target, 0o750)
+
+            def run():
+                return subprocess.run(
+                    [sys.executable, "-I", RTBUILD, "patch-arm32-internals", "--prefix", prefix],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C"},
+                )
+
+            first = run()
+            self.assertEqual(first.returncode, 0, first.stdout)
+            with open(target, encoding="utf-8") as f:
+                patched = f.read()
+            self.assertIn("requireInternal", patched)
+            self.assertEqual(os.stat(target).st_mode & 0o777, 0o750)
+
+            second = run()
+            self.assertEqual(second.returncode, 0, second.stdout)
+            self.assertIn("already patched", second.stdout)
+            with open(target, encoding="utf-8") as f:
+                self.assertEqual(f.read(), patched)
+
     def test_overlay_launcher_flags_are_abi_specific(self):
         with tempfile.TemporaryDirectory() as temp:
             boot_cache = os.path.join(temp, "boot-cache.mjs")
