@@ -345,7 +345,7 @@ class PatchDsh(unittest.TestCase):
         self.write_series(["zzzzzzz-prior.diff", "aa-ohos-only.diff", generator.PATCH_NAME, "aa-after.diff"])
         self.write_pins({"schema": 2, "patches": {
             "zzzzzzz-prior.diff": {"0.2.1-rc.4": {
-                REL: {"before": sha("original\\n"), "after": sha("preceding\\n")}
+                REL: {"before": sha("original\n"), "after": sha("preceding\n")}
             }}
         }, "targetSets": {"android": android, "ohos": android + ["aa-ohos-only.diff"]}})
         for name, before, after in [("zzzzzzz-prior.diff", "original", "preceding"),
