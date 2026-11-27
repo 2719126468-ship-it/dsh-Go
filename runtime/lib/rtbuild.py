@@ -345,7 +345,7 @@ def patch_arm32_internal_modules_text(source):
             and block.count('process.execArgv.includes("--expose-internals")') == 1
             and block.count("createRequire(import.meta.url)(moduleId)") == 1
             and block.count('createRequire(import.meta.url)("node-addon-require-builtin").requireBuiltin(moduleId)') == 1
-            and len(re.findall(r"\\brequireInternal\\(", block)) == 5
+            and len(re.findall(r"\brequireInternal\(", block)) == 5
             and "addon.requireBuiltin(" not in block
         )
         if not valid:
