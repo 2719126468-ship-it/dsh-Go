@@ -91,6 +91,14 @@ function internalModules() {
         self.assertNotIn("addon.requireBuiltin", patched)
         self.assertEqual(rtbuild.patch_arm32_internal_modules_text(patched), patched)
 
+        # A marker must not make a partially edited loader look successfully patched.
+        damaged = patched.replace(
+            'const esmResolve = requireInternal("internal/modules/esm/resolve");',
+            'const esmResolve = addon.requireBuiltin("internal/modules/esm/resolve");',
+        )
+        with self.assertRaisesRegex(ValueError, "marker exists but the transformed loader is incomplete"):
+            rtbuild.patch_arm32_internal_modules_text(damaged)
+
         # Exercise the exact transformed loader with Node's exposed-internals path.
         # The string assertions above alone would not catch a Node-version/API mismatch.
         node = shutil.which("node")
