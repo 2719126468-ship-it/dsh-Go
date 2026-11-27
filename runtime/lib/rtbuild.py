@@ -865,14 +865,19 @@ def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridg
         if name.endswith(".mjs"):
             with open(os.path.join(DIRECT_SRC, name), "rb") as src:
                 E["opt/dsh-go/direct/" + name] = Entry("file", 0o644, data=src.read(), origin="overlay")
+    # Android/Bionic ARM32 has no published node-addon-require-builtin binding.
+    # Pass --expose-internals as a real Node CLI argument so Cordis can use its
+    # process.execArgv fallback instead of probing an unavailable native .node file.
+    # NODE_OPTIONS is insufficient because Cordis checks process.execArgv directly.
+    expose_internals = " --expose-internals" if runtime_info.get("abi") == "armeabi-v7a" else ""
     f("usr/local/bin/dsh",
       "#!/bin/sh\n"
       "# dsh-app shim: run the bundled DeepSeek Harness CLI with the bundled Node.\n"
-      "# `dsh web` (the app's launch) preloads the boot cache, " + BOOT_CACHE + ".\n"
+      "# dsh web (the app's launch) preloads the boot cache, " + BOOT_CACHE + ".\n"
       "if [ \"$1\" = web ]; then\n"
-      "  exec /opt/node/bin/node --import=" + BOOT_CACHE + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n"
+      "  exec /opt/node/bin/node" + expose_internals + " --import=" + BOOT_CACHE + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n"
       "fi\n"
-      "exec /opt/node/bin/node /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n", 0o755)
+      "exec /opt/node/bin/node" + expose_internals + " /opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js \"$@\"\n", 0o755)
     if with_pnpm:
         # what `npm i -g pnpm` creates under npm's global prefix (/usr/local)
         for name, target in PNPM_BINS.items():
