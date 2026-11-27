@@ -96,7 +96,7 @@ function internalModules() {
         node = shutil.which("node")
         if not node:
             self.skipTest("Node.js is required to exercise the ARM32 loader fallback")
-        runtime_source = patched + "\\ninternalModules();\\n"
+        runtime_source = patched + "\ninternalModules();\n"
         result = subprocess.run(
             [node, "--expose-internals", "--input-type=module", "-e", runtime_source],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
