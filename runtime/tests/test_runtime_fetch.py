@@ -132,7 +132,7 @@ print('{"ok": true}')
 ''')
         entry = ('mkdir -p "$WORK"\n'
                  'host_npm() { printf "%s" "$FETCH_TEST_ROOT/bin"; }\n'
-                 f'install_{kind} x64 "$FETCH_TEST_ROOT/prefix-{kind}"')
+                 f'install_{kind} x64 "$FETCH_TEST_ROOT/prefix-{kind}" glibc')
         env = dict(DSH_VERSION=version, PNPM_VERSION=version, PNPM_INTEGRITY=integrity)
         return entry, env, lockdir, helper
 
@@ -143,7 +143,7 @@ print('{"ok": true}')
     def deb_inputs_entry(self):
         source = SCRIPT.read_text()
         start = source.index('  ubuntu_extra_debs "$ubuntu_arch" "$base"')
-        end = source.index('  local python;', start)
+        end = source.index('  local python=', start)
         # Exercise the shipped caller too: redirect, read the list, reject empty.
         return ('exercise() {\n'
                 '  local ubuntu_arch="$TEST_ARCH" base=/unused-base work="$FETCH_TEST_ROOT/work"\n'
@@ -316,7 +316,8 @@ os.replace(sys.argv[1], sys.argv[2])
         for arch in ("arm64", "amd64"):
             name = f"ubuntu-base-24.04.5-base-{arch}.tar.gz"
             cases.append((f"ubuntu_base {arch}", name,
-                          f"https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/24.04/release/{name}", None))
+                          f"https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/24.04/release/{name}",
+                          f"https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/{name}"))
         for arch in ("arm64", "x64"):
             name = f"node-v24.22.1-linux-{arch}.tar.xz"
             cases.append((f"node_dist {arch}", name,
