@@ -19,7 +19,10 @@
      const isNonStandard = isNvidia ||
          isCerebras ||
          provider === "xai" ||
-@@ -1256,1 +1268,1 @@
+@@ -1256,7 +1268,7 @@
+     const isOpenRouterDeveloperRoleModel = isOpenRouter && (model.id.startsWith("anthropic/") || model.id.startsWith("openai/"));
+     const cacheControlFormat = provider === "openrouter" && model.id.startsWith("anthropic/") ? "anthropic" : undefined;
+     return {
 -        supportsStore: !isNonStandard,
 +        supportsStore: !isNonStandard && !isGoogleOpenAI,
          supportsDeveloperRole: isOpenRouterDeveloperRoleModel || (!isNonStandard && !isOpenRouter),
