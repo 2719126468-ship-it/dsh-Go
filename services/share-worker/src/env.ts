@@ -44,6 +44,18 @@ export interface Env {
   USAGE_SECRET?: string;
   /** Usage reports per client per minute. */
   USAGE_LIMIT?: RateLimiter;
+  /** Emergency switches for optional Workshop capabilities. */
+  WORKSHOP_UPLOAD_ENABLED?: string;
+  WORKSHOP_COMPANION_ENABLED?: string;
+  /** "1" enables automatic approval; omitted keeps manual moderation. */
+  WORKSHOP_AUTO_APPROVE?: string;
+  WORKSHOP_GITHUB_CLIENT_ID?: string;
+  /** Tests/local rehearsal only; never set in production. */
+  WORKSHOP_GITHUB_API_URL?: string;
+  /** "1": cron also verifies and mirrors pets/adapters from the same market. */
+  PET_MARKET_ENABLED?: string;
+  /** Versioned usage analytics dataset. */
+  USAGE_V4?: AnalyticsEngineDataset;
   /** Optional secret: a GitHub token (no scopes) for the star count's API
    *  requests, which otherwise share GitHub's per-IP limit (src/github.ts). */
   GITHUB_TOKEN?: string;

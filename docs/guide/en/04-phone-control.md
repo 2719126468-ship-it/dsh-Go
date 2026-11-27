@@ -41,7 +41,7 @@ When a task starts, a floating bar appears at the top of the screen. It takes th
 
 - Capsule (the default): one line saying what DSH is doing, like "Tap “Send”", with **Pause** and **Stop** on the right. After **Pause**, the button reads **Continue**; tap it to let DSH carry on.
 - Card: tap the line on the capsule to open it. It shows the app DSH is working in, whether approvals are off, the last few steps, and a field to steer DSH another way. Left alone for a few seconds, it goes back to the capsule.
-- Ball: tap the dot at the capsule's left end, or **Shrink to a ball** in the card, to shrink it to a ball at the screen edge. Tap the ball to open it. Drag it anywhere; it snaps to the nearest edge and stays there next time. **Hold the ball for a second to stop**: a ring closes round it first, and letting go cancels.
+- Ball: tap the dot at the capsule's left end, or **Shrink to a ball** in the card, to shrink it to a ball at the screen edge. Tap the ball to open it. Drag it anywhere; it snaps to the nearest edge and stays there next time. Hold the ball for a second to stop: a ring closes round it first, and letting go cancels.
 
 When DSH needs your approval, the capsule says "Waiting for you below" and the approval card appears at the bottom of the screen.
 

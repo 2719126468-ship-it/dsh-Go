@@ -32,10 +32,11 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      app: ${{ github.event_name != 'pull_request' || steps.filter.outputs.app == 'true' }}
-      packages: ${{ github.event_name != 'pull_request' || steps.filter.outputs.packages == 'true' }}
-      runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.runtime == 'true' }}
-      codex: ${{ github.event_name != 'pull_request' || steps.filter.outputs.codex == 'true' }}
+      # GitHub's PR-files API stops at 3,000 entries; large merge PRs must run every area.
+      app: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.app == 'true' }}
+      packages: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.packages == 'true' }}
+      runtime: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.runtime == 'true' }}
+      codex: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files > 3000 || steps.filter.outputs.codex == 'true' }}
     steps:
       - id: filter
         if: github.event_name == 'pull_request'
@@ -216,7 +217,7 @@ jobs:
           echo '--- bundled index warning-repair path ---'
           grep -n -A55 -B12 'warnings.length > 0' "$prefix/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js" | head -n 95 || true
           cp "$prefix/node_modules/@deepseek-ai/dsh-fs-local/lib/index.js" "$prefix/fs-local-original.js"
-          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --record
+          python3 -I runtime/lib/rtbuild.py patch-dsh --prefix "$prefix" --dsh-version "$version" --target android --record
           cat runtime/patches/pins.json
           {
             echo "DSH_PREFIX=$prefix"
@@ -240,7 +241,7 @@ jobs:
         run: |
           debug="$RUNNER_TEMP/dsh-patch-debug"
           mkdir -p "$debug"
-          for package in dsh-api-session-controller dsh-session-projection-cache dsh-storage-domain dsh-storage-json dsh-fs-local dsh-host-webserver dsh-agent-loop dsh-app-boot dsh-config-editor dsh-plugin-manager; do
+          for package in dsh-api-session-controller dsh-session-projection-cache dsh-storage-domain dsh-storage-json dsh-fs-local dsh-host-webserver dsh-agent-loop dsh-app-boot dsh-config-editor dsh-plugin-manager dsh-client-modules dsh-attachment-local; do
             source="$RUNNER_TEMP/dsh/node_modules/@deepseek-ai/$package/lib/index.js"
             if [[ -f "$source" ]]; then cp "$source" "$debug/$package-index.js"; fi
           done

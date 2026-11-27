@@ -41,7 +41,7 @@ PY=(python3 -I "$HERE/lib/rtbuild.py")
 
 # ---- pinned inputs (override via environment; pinned hashes then must be updated too) ----
 RUNTIME_REVISION="${RUNTIME_REVISION:-r17}"  # Android 8.1 Bionic Node 24 for ARM32 PRoot engine
-DSH_VERSION="${DSH_VERSION:-0.2.1-rc.4}"
+DSH_VERSION="${DSH_VERSION:-0.2.2-rc.1}"
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 TERMUX_ARM_NODE_VERSION="${TERMUX_ARM_NODE_VERSION:-24.22.3}"
 # pnpm runs DSH's plugin installs (pluginManager / `dsh plugin`); the version the DSH repo pins.
@@ -538,8 +538,8 @@ PYEOF
   local npm_libc=glibc; [[ "$abi" != armeabi-v7a ]] || npm_libc=android
   install_dsh "$npm_cpu" "$prefix" "$npm_libc"
   log "patching DSH (runtime/patches, pinned for $DSH_VERSION)"
-  "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --patches "$HERE/patches" \
-    --out "$work/dsh-patches.json" >&2
+  "${PY[@]}" patch-dsh --prefix "$prefix" --dsh-version "$DSH_VERSION" --target android --patches "$HERE/patches" \
+    --out "$work/dsh-patches.json" --target-report "$work/dsh-patch-target.json" >&2
   local bridge="$HERE/bridge/dsh-go-bridge"
   local bridge_version
   bridge_version="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$bridge/package.json")"
