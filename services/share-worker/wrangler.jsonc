@@ -14,6 +14,7 @@
   "account_id": "00000000000000000000000000000000",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
   // Only the custom domain: *.workers.dev is unreliable from mainland China.
   "workers_dev": false,
   "preview_urls": false,
@@ -31,12 +32,12 @@
     // to the Worker too (its 404).
     "run_worker_first": [
       "/api/*", "/c/*", "/market", "/market/*", "/p", "/p/*", "/beta", "/beta/*",
-      "/download", "/download/*", "/share", "/c.html", "/index.html"
+      "/download", "/download/*", "/share", "/workshop/admin", "/c.html", "/index.html"
     ],
     "html_handling": "none",
     "not_found_handling": "none"
   },
-  // Every 10 minutes: the plugin market onto dshgo-dl (src/market.ts publishMarket).
+  // Every 10 minutes: plugins plus verified pet/adapter artifacts onto dshgo-dl.
   "triggers": { "crons": ["*/10 * * * *"] },
   "r2_buckets": [
     // Lifecycle rules on this bucket: 7d/ → 7 days, 30d/ → 30 days (provision.sh).
@@ -66,7 +67,8 @@
   "analytics_engine_datasets": [
     { "binding": "DOWNLOADS", "dataset": "dshgo_downloads" },
     { "binding": "CHECKS", "dataset": "dshgo_checks" },
-    { "binding": "USAGE", "dataset": "dshgo_usage" }
+    { "binding": "USAGE", "dataset": "dshgo_usage" },
+    { "binding": "USAGE_V4", "dataset": "dshgo_usage_v4" }
   ],
   "ratelimits": [
     { "name": "UPLOAD_BURST", "namespace_id": "42001", "simple": { "limit": 5, "period": 60 } },
@@ -78,6 +80,10 @@
     "MAX_BYTES": "20971520",
     // "key": /beta asks for an access key (the private beta). "public": anyone
     // downloads at /download, and /beta redirects there (docs/release.md「公测」).
+    "PET_MARKET_ENABLED": "1",
+    "WORKSHOP_UPLOAD_ENABLED": "1",
+    "WORKSHOP_COMPANION_ENABLED": "1",
+    "WORKSHOP_GITHUB_CLIENT_ID": "Ov23liTzDLV00cgtMBqG",
     "DOWNLOAD_ACCESS": "public",
     // The public download bucket dshgo-dl (releases only), files at
     // <base>download/<version>/<file>, the latest manifest at <base>update.json.
