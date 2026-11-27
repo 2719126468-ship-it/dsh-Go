@@ -1,17 +1,10 @@
 # Prevent overlapping installs from mutating the same profile after the request is cancelled.
 --- a/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js
-@@ -2867,3 +2867,3 @@
- 				enabled: options?.enabled !== false
--			}, "install");
-+			}, "install", undefined, stopped);
- 			control.result = result;
-@@ -3164,2 +3164,8 @@
- 					this.abort.signal.throwIfAborted();
-+					const isCancelled = arguments[4];
-+					if (isCancelled?.()) throw new InstallCancelledError();
-+					const active = await activeRecordedRun(this.profile.dir);
-+					if (isCancelled?.()) throw new InstallCancelledError();
-+					this.abort.signal.throwIfAborted();
-+					if (active !== void 0) throw new Error(active);
- 					const before = this.diskState();
+@@ -2728,2 +2728,6 @@
+ 			const result = this.change(async (result) => {
++				if (stopped()) throw new InstallCancelledError();
++				const active = await activeRecordedRun(this.profile.dir);
++				if (stopped()) throw new InstallCancelledError();
++				if (active !== void 0) throw new Error(active);
+ 				if (spec.trim() === "" || spec.startsWith("-")) throw new ManagementFailure("invalid-spec");
