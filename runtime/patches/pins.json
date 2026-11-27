@@ -923,13 +923,13 @@
     "plugin-manager-active-run-guard.diff": {
       "0.2.1-rc.4": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-          "after": "7a2c0b3e117e23744fa30adb744137308e2212a50d631feeab19ee9de6ed94b5",
+          "after": "5c1ac871de7e82e8225a5dee6c2ead04e05e1e8b8943b6c13516986cf419b0a9",
           "before": "1cc0c2d7eff5c72c35bb6bcac1551222280c4dcccf860a532bbcae9bc4385877"
         }
       },
       "0.2.2-rc.1": {
         "node_modules/@deepseek-ai/dsh-plugin-manager/lib/index.js": {
-          "after": "a41b60bca7bebf3bbf53963b919fc5b9e3b510b00f567a555fe532ca31a8b56d",
+          "after": "85025f717645d7619e4f5fed1134ac25db3e57f71fc3bf473c99e52b9424cee0",
           "before": "da9d664272068326529de7774909387499a0a1bc6d4e8e5219a43977ad1efcf1"
         }
       }
