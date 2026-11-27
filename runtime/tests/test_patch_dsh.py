@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -89,6 +90,18 @@ function internalModules() {
         self.assertEqual(patched.count("requireInternal("), 5)
         self.assertNotIn("addon.requireBuiltin", patched)
         self.assertEqual(rtbuild.patch_arm32_internal_modules_text(patched), patched)
+
+        # Exercise the exact transformed loader with Node's exposed-internals path.
+        # The string assertions above alone would not catch a Node-version/API mismatch.
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js is required to exercise the ARM32 loader fallback")
+        runtime_source = patched + "\\ninternalModules();\\n"
+        result = subprocess.run(
+            [node, "--expose-internals", "--input-type=module", "-e", runtime_source],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
 
         legacy_source = """import { createRequire } from "node:module";
 function internalModules() {
