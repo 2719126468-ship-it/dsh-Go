@@ -506,8 +506,8 @@ os.execv(os.environ["LOCK_TEST_MV"], ["mv", *sys.argv[1:]])
                 self.assert_first_lock_retries(kind, "rename")
 
     def test_existing_locks_use_fixed_basename_for_both_architectures(self):
-        for arch, mirror in (("amd64", "https://mirrors.tuna.tsinghua.edu.cn/ubuntu"),
-                             ("arm64", "https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports")):
+        for arch, mirror in (("amd64", "https://archive.ubuntu.com/ubuntu"),
+                             ("arm64", "https://ports.ubuntu.com/ubuntu-ports")):
             with self.subTest(arch=arch):
                 packages = []
                 expected_calls = []
@@ -554,7 +554,7 @@ os.execv(os.environ["LOCK_TEST_MV"], ["mv", *sys.argv[1:]])
         for name in ("first_1_all.deb", "second_1_all.deb"):
             filename = f"pool/main/f/fixture/{name}"
             packages.append(dict(filename=filename, sha256=self.sha))
-            urls.append(f"https://mirrors.tuna.tsinghua.edu.cn/ubuntu/{filename}")
+            urls.append(f"https://archive.ubuntu.com/ubuntu/{filename}")
         backup = "https://launchpad.net/ubuntu/+archive/primary/+files/second_1_all.deb"
         self.routes = {urls[0]: [0, self.payload], urls[1]: [22, "partial"], backup: [22, "partial"]}
         lock = self.locks / "ubuntu-noble-amd64.json"
