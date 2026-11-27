@@ -337,6 +337,19 @@ def patch_arm32_internal_modules_text(source):
     """Prefer Node's exposed internal require before the unsupported ARM32 native addon."""
     marker = "/* dsh-go-arm32-internals-fallback */"
     if marker in source:
+        start = source.find("function internalModules()")
+        end = source.find("\n}\n", start) if start >= 0 else -1
+        block = source[start:end] if end >= 0 else ""
+        valid = (
+            block.count("const requireInternal = (moduleId) => {") == 1
+            and block.count('process.execArgv.includes("--expose-internals")') == 1
+            and block.count("createRequire(import.meta.url)(moduleId)") == 1
+            and block.count('createRequire(import.meta.url)("node-addon-require-builtin").requireBuiltin(moduleId)') == 1
+            and len(re.findall(r"\\brequireInternal\\(", block)) == 5
+            and "addon.requireBuiltin(" not in block
+        )
+        if not valid:
+            raise ValueError("dsh-app-boot ARM32 fallback marker exists but the transformed loader is incomplete")
         return source
     if not re.search(r'''(?m)^import\s+\{[^}]*\bcreateRequire\b[^}]*\}\s+from\s+["']node:module["'];?\s*$''', source):
         raise ValueError("dsh-app-boot createRequire import was not found")
