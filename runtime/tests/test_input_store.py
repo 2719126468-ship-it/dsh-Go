@@ -45,15 +45,15 @@ class InputStoreTest(unittest.TestCase):
     def test_current_inventory_covers_two_abis_host_and_all_npm_locks(self):
         current = store.inventory(REPO)
         historical = store.inventory(REPO, all_locks=True)
-        self.assertEqual(len(current), 736)
-        self.assertEqual(len(historical), 1074)
+        self.assertEqual(len(current), 740)
+        self.assertEqual(len(historical), 1078)
         npm = [obj for obj in current if obj["algorithm"] == "sha512"]
         self.assertEqual(len(npm), 674)
         self.assertEqual(sum(len(obj["refs"]) for obj in npm), 675)
         self.assertEqual(sum(ref["optional"] for obj in npm for ref in obj["refs"]), 90)
         refs = [ref for obj in current for ref in obj["refs"]]
         self.assertEqual({ref["abi"] for ref in refs if ref["kind"] == "termux_jni"},
-                         {"arm64-v8a", "x86_64"})
+                         {"arm64-v8a", "armeabi-v7a", "x86_64"})
         self.assertEqual(sum(ref["kind"] == "node_guest_and_x64_build_host" for ref in refs), 1)
         self.assertTrue(all("license" in ref and ref["source"] for ref in refs))
 
