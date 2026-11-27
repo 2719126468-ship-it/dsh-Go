@@ -141,6 +141,18 @@ def inventory(repo, npm_locks=None, all_locks=False):
                 "source": lock_label(lock, repo) + ":packages[" + str(index) + "]",
                 "license": None, "license_note": "inspect archive copyright and corresponding source before redistribution",
             }, package["size"])
+    # ARM32 assembles Node from Termux packages, but its Ubuntu base and JNI
+    # libraries are still pinned inputs and must be covered by the retained inventory.
+    abi = "armeabi-v7a"
+    name = "ubuntu-base-" + values["UBUNTU_VERSION"] + "-base-armhf.tar.gz"
+    pinned(name, [values["UBUNTU_MIRROR"] + "/" + name], abi, "ubuntu_base")
+    for package, version_key, pool in (("proot", "PROOT_VERSION", "p"),
+                                       ("libtalloc", "TALLOC_VERSION", "libt"),
+                                       ("libandroid-shmem", "SHMEM_VERSION", "liba")):
+        name = package + "_" + values[version_key] + "_arm.deb"
+        pinned(name, [values["TERMUX_REPO"] + "/pool/main/" + pool + "/" + package + "/" + name],
+               abi, "termux_jni")
+
     name = "proot-v" + values["PROOT_VERSION"] + ".zip"
     pinned(name, ["https://github.com/termux/proot/archive/v" + values["PROOT_VERSION"] + ".zip"],
            "both", "proot_source_for_COPYING")
