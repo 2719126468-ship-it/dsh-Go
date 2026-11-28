@@ -75,9 +75,9 @@ class PatchDsh(unittest.TestCase):
             direct_dir = os.path.join(temp, "direct")
             os.makedirs(direct_dir)
             with open(boot_cache, "wb") as f:
-                f.write(b"// test boot cache\\n")
+                f.write(b"// test boot cache\n")
             with open(os.path.join(direct_dir, "entry.mjs"), "wb") as f:
-                f.write(b"// test direct entry\\n")
+                f.write(b"// test direct entry\n")
 
             old_boot_cache = rtbuild.BOOT_CACHE_SRC
             old_direct_dir = rtbuild.DIRECT_SRC
