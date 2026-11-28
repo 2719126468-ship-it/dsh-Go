@@ -69,6 +69,35 @@ class PatchDsh(unittest.TestCase):
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                               env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C"})
 
+    def test_arm32_launcher_flag_is_abi_specific(self):
+        with tempfile.TemporaryDirectory() as temp:
+            boot_cache = os.path.join(temp, "boot-cache.mjs")
+            direct_dir = os.path.join(temp, "direct")
+            os.makedirs(direct_dir)
+            with open(boot_cache, "wb") as f:
+                f.write(b"// test boot cache\\n")
+            with open(os.path.join(direct_dir, "entry.mjs"), "wb") as f:
+                f.write(b"// test direct entry\\n")
+
+            old_boot_cache = rtbuild.BOOT_CACHE_SRC
+            old_direct_dir = rtbuild.DIRECT_SRC
+            try:
+                rtbuild.BOOT_CACHE_SRC = boot_cache
+                rtbuild.DIRECT_SRC = direct_dir
+                arm32 = rtbuild.overlay_entries({"abi": "armeabi-v7a"})
+                arm64 = rtbuild.overlay_entries({"abi": "arm64-v8a"})
+                x64 = rtbuild.overlay_entries({"abi": "x86_64"})
+            finally:
+                rtbuild.BOOT_CACHE_SRC = old_boot_cache
+                rtbuild.DIRECT_SRC = old_direct_dir
+
+        arm32_shim = arm32["usr/local/bin/dsh"].data.decode()
+        arm64_shim = arm64["usr/local/bin/dsh"].data.decode()
+        x64_shim = x64["usr/local/bin/dsh"].data.decode()
+        self.assertIn("exec /opt/node/bin/node --expose-internals", arm32_shim)
+        self.assertNotIn("--expose-internals", arm64_shim)
+        self.assertNotIn("--expose-internals", x64_shim)
+
     def test_parse_hunks(self):
         files = rtbuild.parse_unified_diff(DIFF)
         self.assertEqual([f[0] for f in files], [REL])
